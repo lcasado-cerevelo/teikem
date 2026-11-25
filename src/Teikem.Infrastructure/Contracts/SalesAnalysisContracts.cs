@@ -4,34 +4,64 @@ namespace Teikem.Infrastructure.Contracts;
 
 // ---------------------------------------------------------------- ajustes
 
-/// <summary>Ajustes del análisis: fecha de corte (historial antes, facturas de Teikem desde ella; null = todo cuenta), días de entrega y nivel de servicio (z).</summary>
-public sealed record SalesAnalysisSettingsDto(DateOnly? CutoffDate, int LeadTimeDays, decimal ServiceLevelZ);
+/// <summary>
+/// Ajustes del análisis: fecha de corte (historial antes, facturas de Teikem desde ella; null = todo cuenta), días de entrega y nivel de servicio (z). Lote 244: QuotaBy =
+/// cómo se lleva la cuota, REP (por persona) o ROUTE (por ruta).
+/// </summary>
+public sealed record SalesAnalysisSettingsDto(DateOnly? CutoffDate, int LeadTimeDays, decimal ServiceLevelZ, string QuotaBy = "REP");
 
-/// <summary>Cambio parcial: null = sin cambio; ClearCutoff = quitar la fecha de corte.</summary>
-public sealed record SalesAnalysisSettingsRequest(DateOnly? CutoffDate = null, bool ClearCutoff = false, int? LeadTimeDays = null, decimal? ServiceLevelZ = null);
+/// <summary>Cambio parcial: null = sin cambio; ClearCutoff = quitar la fecha de corte. Lote 244: QuotaBy REP | ROUTE (otro valor = 400).</summary>
+public sealed record SalesAnalysisSettingsRequest(DateOnly? CutoffDate = null, bool ClearCutoff = false, int? LeadTimeDays = null, decimal? ServiceLevelZ = null,
+    string? QuotaBy = null);
 
 // ---------------------------------------------------------------- rutas, representantes, cuotas, líneas
 
-public sealed record SalesRouteDto(int Id, string Name, int SortOrder, bool IsActive, int RepCount);
+/// <summary>
+/// Ruta con cuántos representantes activos tiene. Lote 244: el titular vigente (usuario, nombre y si sigue siendo persona activa; HasPrimary = hay titular vigente),
+/// cuántos apoyos vigentes, cuántos clientes activos tiene (su ruta directa, o la de su representante si no tienen) y su cuota de ruta vigente del mes en curso.
+/// </summary>
+public sealed record SalesRouteDto(int Id, string Name, int SortOrder, bool IsActive, int RepCount, int? PrimaryUserId = null, string? PrimaryName = null,
+    bool PrimaryIsActiveMember = false, bool HasPrimary = false, int SupportCount = 0, int ClientCount = 0, decimal? CurrentQuota = null);
 public sealed record SalesRouteRequest(string? Name, int? SortOrder = null);
 
-/// <summary>Representante con su ruta, su usuario de Teikem (opcional), cuántos clientes activos tiene y su cuota vigente del mes en curso.</summary>
-public sealed record SalesRepDto(int Id, string Name, int? RouteId, string? RouteName, int? UserId, string? UserName, bool IsActive, int ClientCount, decimal? CurrentQuota);
+/// <summary>
+/// Representante con su ruta, su usuario de Teikem, cuántos clientes activos tiene y su cuota vigente del mes en curso. Lote 244: HasUser, UserIsActiveMember (su usuario
+/// es persona activa de la compañía), IsPrimaryOfRoute (su usuario es el titular vigente de su ruta) y, en la respuesta de un alta o cambio, BecamePrimary (quedó como
+/// titular automático de su ruta).
+/// </summary>
+public sealed record SalesRepDto(int Id, string Name, int? RouteId, string? RouteName, int? UserId, string? UserName, bool IsActive, int ClientCount, decimal? CurrentQuota,
+    bool HasUser = false, bool UserIsActiveMember = false, bool IsPrimaryOfRoute = false, bool BecamePrimary = false);
 
-/// <summary>Alta o cambio: null = sin cambio (en el alta, sin ruta / sin usuario); ClearRoute / ClearUser los quitan.</summary>
+/// <summary>
+/// Alta o cambio: null = sin cambio (en el alta, sin ruta); ClearRoute quita la ruta. Lote 244: el usuario es OBLIGATORIO en el alta y no se puede quitar (ClearUser = 400);
+/// un representante heredado sin usuario se puede renombrar o cambiar de ruta sin mandarlo.
+/// </summary>
 public sealed record SalesRepRequest(string? Name, int? RouteId = null, bool ClearRoute = false, int? UserId = null, bool ClearUser = false);
 
-/// <summary>Cuotas de un mes: una fila por representante (activos y los que tienen cuota propia ese mes). Amount = la propia del mes; Effective = la que vale (la del mes o la anterior más reciente).</summary>
-public sealed record SalesQuotaMonthDto(string Month, IReadOnlyList<SalesQuotaRowDto> Rows, decimal TotalEffective);
+/// <summary>
+/// Cuotas de un mes: una fila por representante (activos y los que tienen cuota propia ese mes). Amount = la propia del mes; Effective = la que vale (la del mes o la anterior
+/// más reciente). Lote 244: RouteRows = lo mismo por ruta (activas y las que tienen cuota propia ese mes); QuotaBy = la clase que cuenta (la pedida con «by» o la del
+/// ajuste); TotalEffective = la suma de la clase que cuenta; RepTotalEffective / RouteTotalEffective = las dos sumas.
+/// </summary>
+public sealed record SalesQuotaMonthDto(string Month, IReadOnlyList<SalesQuotaRowDto> Rows, decimal TotalEffective, IReadOnlyList<SalesRouteQuotaRowDto>? RouteRows = null,
+    string QuotaBy = "REP", decimal RepTotalEffective = 0m, decimal RouteTotalEffective = 0m);
 public sealed record SalesQuotaRowDto(int RepId, string RepName, string? RouteName, bool RepActive, decimal? Amount, decimal? Effective, string? EffectiveFrom);
+
+/// <summary>Lote 244 — la cuota de una ruta en un mes: la propia (Amount), la que vale (Effective, con la misma herencia mensual) y desde qué mes vale.</summary>
+public sealed record SalesRouteQuotaRowDto(int RouteId, string RouteName, bool RouteActive, decimal? Amount, decimal? Effective, string? EffectiveFrom);
 
 /// <summary>Edición en bloque de un mes: Amount null = quitar la cuota propia de ese mes (vuelve a valer la anterior).</summary>
 public sealed record SalesQuotaBulkRequest(IReadOnlyList<SalesQuotaItemRequest>? Items);
-public sealed record SalesQuotaItemRequest(int RepId, decimal? Amount);
+
+/// <summary>Un renglón: el representante (RepId) o, Lote 244, la ruta (RouteId), exactamente uno de los dos (si no, 400).</summary>
+public sealed record SalesQuotaItemRequest(int? RepId, decimal? Amount, int? RouteId = null);
 
 /// <summary>Las cuotas propias de un representante, mes por mes.</summary>
 public sealed record SalesQuotaHistoryDto(int RepId, string RepName, IReadOnlyList<SalesQuotaPointDto> Quotas);
 public sealed record SalesQuotaPointDto(string Month, decimal Amount);
+
+/// <summary>Lote 244 — las cuotas propias de una ruta, mes por mes.</summary>
+public sealed record SalesRouteQuotaHistoryDto(int RouteId, string RouteName, IReadOnlyList<SalesQuotaPointDto> Quotas);
 
 public sealed record ProductLineDto(int Id, string Name, int SortOrder, bool IsActive, IReadOnlyList<string> Brands);
 public sealed record ProductLineRequest(string? Name, int? SortOrder = null);
@@ -44,7 +74,14 @@ public sealed record SalesBrandDto(string Brand, int ProductCount, int? LineId, 
 
 // ---------------------------------------------------------------- clientes ↔ representante
 
-public sealed record SalesClientRepDto(int ClientId, Guid PublicId, string Code, string Name, bool IsActive, int? RepId, string? RepName, string? RouteName);
+/// <summary>
+/// Un cliente con su representante (RouteName = la ruta del representante, como en el Lote 241). Lote 244: DirectRouteId / DirectRouteName = su ruta propia;
+/// EffectiveRouteId / EffectiveRouteName = la que cuenta (la propia o, sin ella, la del representante, con RouteFromRep = true); PreferredUserId / PreferredName = su
+/// vendedor preferido.
+/// </summary>
+public sealed record SalesClientRepDto(int ClientId, Guid PublicId, string Code, string Name, bool IsActive, int? RepId, string? RepName, string? RouteName,
+    int? DirectRouteId = null, string? DirectRouteName = null, int? EffectiveRouteId = null, string? EffectiveRouteName = null, bool RouteFromRep = false,
+    int? PreferredUserId = null, string? PreferredName = null);
 public sealed record SalesClientRepRequest(int? RepId);
 public sealed record SalesClientRepBulkRequest(IReadOnlyList<int>? ClientIds, int? RepId);
 public sealed record SalesClientRepBulkResultDto(int Updated, int? RepId, string? RepName);
@@ -85,9 +122,43 @@ public sealed record SalesRepProductDto(string RouteName, int? RepId, string Rep
 /// <summary>Ruta × producto: todos los productos vendidos en el mes para cada ruta, aunque esa ruta no los haya vendido (0).</summary>
 public sealed record SalesRouteProductDto(int? RouteId, string RouteName, string RepNames, string Line, int? ProductId, string Sku, string Product, decimal Units, decimal Sales);
 
-/// <summary>Una línea de venta del análisis (historial o factura/nota de crédito de Teikem).</summary>
+/// <summary>
+/// Una línea de venta del análisis (historial o factura/nota de crédito de Teikem). Lote 244: RepId / RepName / RouteName son la persona y la ruta ATRIBUIDAS (la copia de
+/// la orden, si la tiene; si no, la regla de hoy: ruta del cliente y su representante o el titular de la ruta el día de la línea). RepId = el representante (null si la
+/// persona es un usuario sin representante); SellerUserId = el usuario de la persona; RouteId = la ruta (null = sin ruta); SalesOrderId = la orden de la línea.
+/// </summary>
 public sealed record SalesTransactionDto(DateOnly Date, string Source, string Type, string? Number, int? ClientId, string ClientName, int? RepId, string? RepName,
-    string? RouteName, int? ProductId, string Sku, string Product, string Line, string LineClass, decimal Quantity, decimal? UnitPrice, decimal Amount);
+    string? RouteName, int? ProductId, string Sku, string Product, string Line, string LineClass, decimal Quantity, decimal? UnitPrice, decimal Amount,
+    int? RouteId = null, int? SellerUserId = null, string? PersonKey = null, int? SalesOrderId = null);
+
+// ---------------------------------------------------------------- Lote 244: vista «Por ruta»
+
+/// <summary>
+/// Vista «Por ruta» del mes contra el de comparación. Routes = una fila por ruta (y «Sin ruta» con RouteId null para lo que tiene vendedor pero no ruta), cada una con sus
+/// personas; People = la venta TOTAL de cada persona en todas las rutas (con REP, su cuota y cumplimiento); Totals: con ROUTE la suma de las cuotas de ruta, con REP cada
+/// representante una vez. Conciliación: RoutesTotal + Unassigned (sin ruta y sin vendedor) + ShippingAndOther = MonthTotal. Lines y RouteProducts por la ruta atribuida.
+/// </summary>
+public sealed record SalesByRouteDto(string Month, string CompareMonth, DateOnly? CutoffDate, string QuotaBy, IReadOnlyList<string> Warnings,
+    IReadOnlyList<SalesRouteRowDto> Routes, SalesRepTotalsDto Totals, SalesReconciliationDto Reconciliation, IReadOnlyList<SalesPersonTotalDto> People,
+    IReadOnlyList<SalesLineShareDto> Lines, IReadOnlyList<SalesRouteProductDto> RouteProducts);
+
+/// <summary>
+/// Una ruta: venta del mes de comparación y del mes (producto + descuentos), cambio $ y %, y con ROUTE su cuota y cumplimiento (con REP, null). PrimaryUserId / PrimaryName =
+/// el titular vigente el último día del mes. People = sus personas («Sin vendedor» con PersonKey NONE).
+/// </summary>
+public sealed record SalesRouteRowDto(int? RouteId, string RouteName, decimal CompareSales, decimal Sales, decimal Change, decimal? ChangePct, decimal? Quota,
+    decimal? Compliance, int? PrimaryUserId, string? PrimaryName, IReadOnlyList<SalesPersonRowDto> People);
+
+/// <summary>
+/// Una persona dentro de una ruta: su venta EN ESA RUTA. Con REP, Quota es la del representante y Compliance = su venta TOTAL (todas las rutas) ÷ su cuota. PersonKey =
+/// «R{repId}», «U{userId}» o «NONE» («Sin vendedor»). IsPrimary = es el titular de la ruta el último día del mes.
+/// </summary>
+public sealed record SalesPersonRowDto(string PersonKey, int? RepId, int? UserId, string Name, bool IsPrimary, decimal CompareSales, decimal Sales, decimal Change,
+    decimal? ChangePct, decimal? Quota, decimal? Compliance);
+
+/// <summary>Una persona en todas las rutas («Por persona»): venta total, cambio, las rutas donde vendió y, con REP, su cuota y cumplimiento.</summary>
+public sealed record SalesPersonTotalDto(string PersonKey, int? RepId, int? UserId, string Name, string Routes, decimal CompareSales, decimal Sales, decimal Change,
+    decimal? ChangePct, decimal? Quota, decimal? Compliance);
 
 // ---------------------------------------------------------------- vista «Movimiento de productos»
 
@@ -121,22 +192,27 @@ public sealed record ProductClientDto(int? ProductId, string Sku, string Name, i
 /// <summary>
 /// Series listas para graficar: venta neta por mes (total y por línea), venta vs. cuota por representante del mes, participación por línea del mes, unidades por mes de
 /// los N productos principales y cobertura (semanas) por producto.
+/// Lote 244: RepVsQuota sale de la atribución nueva (una fila por persona; con ROUTE sin cuota), RouteVsQuota = venta por ruta (con ROUTE, su cuota) y QuotaBy.
 /// </summary>
 public sealed record SalesChartsDto(IReadOnlyList<string> Months, SalesChartSeriesDto TotalByMonth, IReadOnlyList<SalesChartSeriesDto> ByLineByMonth,
     string Month, IReadOnlyList<SalesRepQuotaPointDto> RepVsQuota, IReadOnlyList<SalesLineSharePointDto> LineShare,
-    IReadOnlyList<SalesChartSeriesDto> TopProductUnits, IReadOnlyList<SalesCoveragePointDto> Coverage);
+    IReadOnlyList<SalesChartSeriesDto> TopProductUnits, IReadOnlyList<SalesCoveragePointDto> Coverage, string QuotaBy = "REP",
+    IReadOnlyList<SalesRouteQuotaPointDto>? RouteVsQuota = null);
 
 public sealed record SalesChartSeriesDto(string Key, string Label, IReadOnlyList<decimal> Values);
 public sealed record SalesRepQuotaPointDto(int? RepId, string Rep, string Route, decimal Sales, decimal? Quota, decimal? Compliance);
+public sealed record SalesRouteQuotaPointDto(int? RouteId, string Route, decimal Sales, decimal? Quota, decimal? Compliance);
 public sealed record SalesLineSharePointDto(string Line, decimal Sales, decimal? Share);
 public sealed record SalesCoveragePointDto(int? ProductId, string Sku, string Name, string Abc, decimal Available, decimal? WeeklyAverage, decimal? CoverageWeeks);
 
 // ---------------------------------------------------------------- estado, sin emparejar, importación
 
+/// <summary>Estado del análisis. Lote 244: clientes activos sin ruta, rutas activas sin titular (o con el titular inactivo), representantes activos sin usuario y QuotaBy.</summary>
 public sealed record SalesAnalysisStatusDto(DateOnly? CutoffDate, int LeadTimeDays, decimal ServiceLevelZ, IReadOnlyList<SalesHistoryBatchDto> Batches,
     int ActiveClients, int ClientsWithoutRep, IReadOnlyList<string> BrandsWithoutLine,
     IReadOnlyList<SalesUnmatchedDto> UnmatchedClients, IReadOnlyList<SalesUnmatchedDto> UnmatchedItems, IReadOnlyList<SalesUnmatchedDto> UnmatchedPurchaseItems,
-    DateOnly? HistoryFrom, DateOnly? HistoryTo, DateOnly? InvoicesFrom, DateOnly? InvoicesTo, bool Overlap, IReadOnlyList<string> Warnings);
+    DateOnly? HistoryFrom, DateOnly? HistoryTo, DateOnly? InvoicesFrom, DateOnly? InvoicesTo, bool Overlap, IReadOnlyList<string> Warnings,
+    int ClientsWithoutRoute = 0, int RoutesWithoutPrimary = 0, int RoutesWithInactivePrimary = 0, int RepsWithoutUser = 0, string QuotaBy = "REP");
 
 public sealed record SalesHistoryBatchDto(Guid PublicId, string Kind, string FileName, DateOnly? DateFrom, DateOnly? DateTo, int LineCount, decimal TotalAmount,
     string Source, DateTime ImportedAtUtc, string? ImportedBy, bool IsActive, DateTime? ReplacedAtUtc);

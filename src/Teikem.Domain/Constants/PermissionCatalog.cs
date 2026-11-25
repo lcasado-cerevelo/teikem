@@ -1030,6 +1030,12 @@ public static class PermissionCatalog
 
         [Sales.SalesAnalysisCodes.DataSourceKey] = SalesAnalysisView,
 
+        // Lote 244: rutas de venta y personas de la ruta (titular y apoyo) con sales.analysis.view
+
+        [Sales.SalesRouteCodes.RouteDataSourceKey] = SalesAnalysisView,
+
+        [Sales.SalesRouteCodes.AssignmentDataSourceKey] = SalesAnalysisView,
+
     };
 
 

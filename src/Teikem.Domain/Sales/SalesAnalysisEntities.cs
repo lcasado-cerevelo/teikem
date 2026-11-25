@@ -71,13 +71,20 @@ public class SalesRep : ITenantScoped, ISoftDeletable
 /// <summary>
 /// Lote 241 — cuota mensual de un representante en dólares. Month = primer día del mes. Un mes sin cuota propia vale la del mes anterior más reciente
 /// (<see cref="SalesAnalysisRules.EffectiveQuota"/>). Quitar la de un mes = IsActive 0 (vuelve a valer la anterior).
+/// <para>
+/// Lote 244 — también la cuota de una RUTA: cada fila lleva el representante (SalesRepId) o la ruta (SalesRouteId), uno de los dos (CK_SalesQuota_Target), con la misma
+/// herencia mensual. El ajuste <see cref="SalesAnalysisSetting.QuotaBy"/> escoge cuál de las dos clases cuenta; las dos conviven.
+/// </para>
 /// </summary>
 [AuditEntity(SalesAnalysisCodes.QuotaEntityType)]
 public class SalesQuota : ITenantScoped, ISoftDeletable
 {
     public int SalesQuotaId { get; set; }
     public int TenantId { get; set; }
-    public int SalesRepId { get; set; }
+    /// <summary>El representante (cuota por persona). NULL = es una cuota de ruta.</summary>
+    public int? SalesRepId { get; set; }
+    /// <summary>Lote 244 — la ruta (cuota por ruta). NULL = es una cuota de representante.</summary>
+    public int? SalesRouteId { get; set; }
     public DateOnly Month { get; set; }
     public decimal Amount { get; set; }
     public bool IsActive { get; set; } = true;
@@ -118,6 +125,8 @@ public class SalesAnalysisSetting : ITenantScoped
     public DateOnly? CutoffDate { get; set; }
     public int LeadTimeDays { get; set; } = SalesAnalysisRules.DefaultLeadTimeDays;
     public decimal ServiceLevelZ { get; set; } = SalesAnalysisRules.DefaultServiceLevelZ;
+    /// <summary>Lote 244 — cómo se lleva la cuota: REP (por persona, lo de siempre) o ROUTE (por ruta). Ver <see cref="SalesRouteCodes"/>.</summary>
+    public string QuotaBy { get; set; } = SalesRouteCodes.QuotaByRep;
     [NotAudited] public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
     public int? UpdatedBy { get; set; }
 }

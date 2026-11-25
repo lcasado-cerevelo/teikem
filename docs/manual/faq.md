@@ -12578,3 +12578,172 @@ No. En el ambiente de pruebas todo correo a una dirección que no sea `@cerevelo
 
 **¿Cómo veo el correo en mi computadora sin mandarlo a nadie?**
 En Reglas de aviso, abra la regla y pulse «Vista previa» (con o sin número de orden). El soporte puede además levantar el API con el buzón local (Mailpit; solo en desarrollo) y ver el correo completo en http://localhost:8025.
+
+## Lote 244 — Rutas de venta
+<!-- kemi:staff -->
+
+Capítulo: [52 — Rutas de venta](52-rutas-de-venta.md). Pantallas: [L244](frontend/l244-rutas-de-venta.md). Una ruta de venta no es la ruta de entrega ni el viaje: solo decide de quién es una venta.
+
+### Personas de la ruta
+
+**¿Qué significa «El papel debe ser PRIMARY (titular) o SUPPORT (apoyo).»? (HTTP 400)**
+El papel que se mandó al agregar una persona a la ruta no es ninguno de los dos. En la pantalla se escoge de una lista («Titular» o «Apoyo»); solo sale al llamar al API a mano con otro valor.
+
+**¿Qué significa «Escoja el usuario.»? (HTTP 400)**
+Se intentó agregar una persona a la ruta sin escoger a quién. Busque a la persona por nombre o correo en «Agregar persona» y escójala.
+
+**¿Qué significa «El usuario no pertenece a esta compañía.»? (HTTP 400)**
+El usuario no tiene membresía en la compañía (es de otra compañía, del portal o no existe). Escoja a alguien de la lista de personas; si falta, pida al administrador que lo agregue a la compañía en Usuarios.
+
+**¿Qué significa «El usuario no está activo en esta compañía: actívelo o escoja otro.»? (HTTP 400)**
+La persona existe pero está suspendida, invitada (aún no aceptó) o inactiva. Una persona de la ruta debe estar activa. Actívela en Usuarios o escoja otra. Lo mismo vale para el usuario de un representante.
+
+**¿Qué significa «La ruta está desactivada: actívela o escoja otra.»? (HTTP 400)**
+Quiso agregar personas a una ruta desactivada, o escogerla como ruta de un cliente o de un representante. Reactívela en Configuración → Rutas o escoja otra. Recuerde que desactivar una ruta cerró a sus personas y reactivarla no las reabre.
+
+**¿Qué significa «La fecha de inicio no puede ser futura.»? (HTTP 400)**
+La fecha «Desde» de una persona de la ruta es posterior a hoy. No se programan asignaciones a futuro: ponga hoy o una fecha pasada.
+
+**¿Qué significa «La fecha de inicio no puede ser anterior a la del titular actual (AAAA-MM-DD).»? (HTTP 400)**
+Quiso poner un titular nuevo con una fecha «Desde» anterior a la del titular que tiene la ruta hoy. Use esa fecha o una posterior; el titular anterior se cierra con el inicio del nuevo.
+
+**¿Qué significa «La fecha de cierre no puede ser anterior a la de inicio.»? (HTTP 400)**
+Al cerrar una asignación, la «Fecha de cierre» es anterior a la fecha «Desde» de esa persona. Escoja una fecha igual o posterior.
+
+**¿Qué significa «La fecha de cierre no puede ser futura.»? (HTTP 400)**
+Al cerrar una asignación, la «Fecha de cierre» es posterior a hoy. Ponga hoy o una fecha pasada.
+
+**¿Qué significa «rowVersion inválido: se espera el valor base64 devuelto por la ficha.»? (HTTP 400)**
+Se mandó un `rowVersion` que no es el valor que devolvió la ficha. Solo ocurre al llamar al API a mano: use el valor tal cual vino.
+
+**¿Qué significa «La persona ya es titular de esta ruta.»? (HTTP 409)**
+Está poniendo como titular a quien ya lo es. No hace falta hacer nada.
+
+**¿Qué significa «La persona ya es apoyo de esta ruta.»? (HTTP 409)**
+Está agregando como apoyo a quien ya es apoyo vigente. Si quiere que sea titular, agréguela con el papel «Titular»: la fila de apoyo se cierra sola.
+
+**¿Qué significa «La persona es la titular de esta ruta: cierre su asignación antes de ponerla de apoyo.»? (HTTP 409)**
+La persona es hoy la titular y se quiso agregar también como apoyo. Para pasarla a apoyo, cierre primero su asignación como titular (queda la ruta sin titular hasta que ponga otro).
+
+**¿Qué significa «La asignación ya está cerrada.»? (HTTP 409)**
+Esa persona ya salió de la ruta. Recargue la ventana. Una asignación cerrada no se reabre: si volvió, agréguela otra vez.
+
+**¿Qué significa «La asignación ya está anulada.»? (HTTP 409)**
+La asignación se anuló antes (se registró por error). Ya no cuenta ni se puede cerrar o anular de nuevo. Recargue la ventana.
+
+**¿Qué significa «Otra persona cambió las personas de la ruta al mismo tiempo: recargue e intente de nuevo.»? (HTTP 409)**
+Dos personas modificaron la misma ruta a la vez (o se usó un dato viejo). Nunca quedan dos titulares: gana el primero. Recargue la ventana de «Personas», revise cómo quedó y repita su cambio si hace falta.
+
+**¿Qué significa «Ruta no encontrada.»? (HTTP 404)**
+La ruta no existe en su compañía (o es de otra). Actualice la lista de rutas.
+
+**¿Qué significa «Asignación no encontrada.»? (HTTP 404)**
+La asignación no existe o no es de esa ruta. Recargue la ventana de personas.
+
+**¿Cómo cambio al titular?** Agregue a la nueva persona con el papel «Titular»: el titular anterior se cierra solo con el inicio de la nueva. **¿Cerrar o anular?** Cerrar cuando la persona dejó la ruta (el historial cuenta hasta esa fecha). Anular solo si se registró por error: deja de contar en el historial y en el análisis.
+
+### Representantes y rutas
+
+**¿Qué significa «Escoja el usuario del representante: el vendedor siempre es un usuario de Teikem.»? (HTTP 400)**
+Un representante nuevo necesita un usuario, y a uno existente no se le puede quitar. Si la persona aún no tiene usuario, cree el usuario en Sistema → Usuarios y luego escójalo aquí (la lista tiene el enlace «Ir a Usuarios para crear el usuario»).
+
+**¿Qué significa «El usuario ya es el representante «X».»? (HTTP 409)**
+Ese usuario ya es el de otro representante activo. Un usuario solo puede estar en un representante activo. Desactive el otro representante (si no tiene clientes) o escoja otro usuario. También sale al reactivar un representante cuyo usuario ya tomó otro.
+
+**¿Qué significa «La ruta tiene clientes asignados: páselos a otra ruta antes de desactivarla.»? (HTTP 409)**
+Hay clientes activos con esa ruta como ruta propia. En Configuración → Clientes sin representante, use «Asignar ruta» en bloque para pasarlos a otra ruta (o «Quitar la ruta propia») y vuelva a desactivar.
+
+**¿Qué significa «La ruta tiene representantes activos: páselos a otra ruta antes de desactivarla.»? (HTTP 409)**
+Hay representantes activos en esa ruta. Cámbielos de ruta en Configuración → Representantes y vuelva a desactivar.
+
+**¿Qué significa «Ya hay una ruta activa con ese nombre.»? (HTTP 409)**
+Al reactivar una ruta, otra ruta activa ya usa su nombre. Cambie el nombre de una de las dos.
+
+**¿Qué significa «Representante no encontrado.»? (HTTP 404)**
+Al cargar cuotas, un renglón trae un representante que no existe en la compañía. Recargue la pantalla de Cuotas.
+
+**Creé un representante y quedó como titular de su ruta. ¿Por qué?** Si su ruta estaba activa y sin titular, su usuario queda de titular automático desde hoy (la pantalla avisa «{nombre} quedó como titular de su ruta.»). Si la ruta ya tenía titular, no se toca. Para cambiarlo, vea «¿Cómo cambio al titular?».
+
+**La ruta sigue sin titular aunque tiene representantes.** Si tiene **varios** representantes con usuario, todos quedan de apoyo y usted escoge al titular (Configuración → Rutas → «Personas»). Si ninguno tiene usuario, no pueden ser personas de la ruta: póngales usuario.
+
+**¿Qué hace «Pasar rutas desde representantes»?** Pasa la ruta de cada representante a sus clientes sin ruta y deja de titular al único representante con usuario de cada ruta sin titular (con varios, de apoyo). Pulse «Simular» primero: no guarda nada. Correrla de nuevo no cambia nada más. Lista aparte a los representantes sin usuario, que no se pueden pasar.
+
+### Cliente: ruta y vendedor preferido
+
+**¿Qué significa «El cliente necesita una ruta antes de asignarle un vendedor preferido.»? (HTTP 400)**
+El cliente no tiene ruta de venta (ni propia ni del representante). Escoja primero su ruta en el panel «Venta» (o asígnele un representante con ruta) y luego el preferido.
+
+**¿Qué significa «El vendedor preferido debe ser una persona activa de la ruta del cliente.»? (HTTP 400)**
+La persona que escogió no es titular ni apoyo vigente de la ruta del cliente, o no está activa. Escoja a alguien de la lista de la ruta, o primero agregue a esa persona a la ruta en Configuración → Rutas → «Personas». Si cambia la ruta y el preferido en el mismo guardado, el preferido se compara con la ruta nueva.
+
+**La ficha dice «El vendedor preferido ya no pertenece a la ruta del cliente.» (es un aviso, no un error)**
+El preferido dejó la ruta (se cerró o se anuló), se desactivó o se cambió la ruta del cliente. No se bloquea nada: guarde la ficha con otros cambios sin problema. Escoja otro preferido de la ruta actual o quítelo con «Quitar el vendedor preferido».
+
+**¿Qué significa «Cliente no encontrado.»? (HTTP 404)**
+Al ver o cambiar la venta de un cliente, asignar ruta en bloque o pedir las opciones de vendedor, el cliente no existe en su compañía. En el bloque basta que **uno** falte para que no se asigne ninguno. Recargue la lista de clientes.
+
+**¿Qué significa «Indique los clientes (clientIds).»? (HTTP 400)**
+Quiso asignar ruta en bloque sin marcar ningún cliente. Marque al menos uno.
+
+**¿Qué significa «No se pueden mandar más de 2000 renglones en una sola llamada.»? (HTTP 400)**
+Marcó más de 2000 clientes (o cuotas) en una sola operación. Hágalo en tandas. Aplica también a la carga de cuotas.
+
+**¿Qué significa «El registro fue modificado por otro usuario; recargue e intente de nuevo.»? (HTTP 409)**
+Otra persona cambió al cliente mientras usted editaba su venta. Recargue la ficha y repita el cambio.
+
+**Asigné la ruta a varios clientes y su preferido quedó «fuera de la ruta».** Es normal: asignar ruta en bloque no toca el preferido. La ficha de cada uno lo señala; escoja otro o déjelo.
+
+### Orden de venta: vendedor
+
+**¿Qué significa «El vendedor debe ser el vendedor preferido del cliente o una persona vigente de su ruta.»? (HTTP 400)**
+En el borrador escogió como vendedor a alguien que no es el preferido activo del cliente ni titular o apoyo vigente de su ruta. Escoja de la lista del campo «Vendedor». Si necesita otra persona, agréguela como apoyo de la ruta del cliente.
+
+**¿Qué significa «Escoja el cliente que compra.»? (HTTP 400, campo `client`)**
+Se pidieron las opciones de vendedor (`seller-options`) sin cliente. En la orden, escoja primero el cliente: el campo «Vendedor» se llena con su equipo de venta.
+
+**¿Qué significa «Solo se puede editar una orden en borrador.»? (HTTP 422)**
+Intentó cambiar el vendedor (o cualquier dato) de una orden ya solicitada. El vendedor y la ruta se congelan al solicitar y no cambian. Si la orden salió mal, cancélela y cree otra.
+
+**¿Por qué mi orden de antes no tiene ruta ni vendedor?** Las órdenes solicitadas antes del Lote 244 no se rellenaron: en la lista salen «—». Las nuevas guardan ruta y vendedor al solicitar.
+
+**Cambié la ruta o el preferido del cliente y la orden solicitada no cambió.** Es a propósito: la orden guarda para siempre la ruta y el vendedor del momento en que se solicitó.
+
+**El campo «Vendedor» está vacío o dice «Sin vendedor».** El cliente no tiene ruta, o su ruta no tiene personas activas, y quien crea la orden no es de la ruta. Asigne ruta al cliente y ponga un titular. Se puede solicitar igual.
+
+### Cuota por ruta o por persona
+
+**¿Qué significa «La cuota se lleva por ruta (ROUTE) o por persona (REP).»? (HTTP 400)**
+El ajuste `quotaBy`, o el parámetro `by` de las cuotas, trae otro valor. En la pantalla se escoge de una lista («Ruta de venta» o «Persona (representante)»); solo sale al llamar al API a mano.
+
+**¿Qué significa «Cada renglón lleva el representante (repId) o la ruta (routeId), uno de los dos.»? (HTTP 400)**
+Un renglón de la carga de cuotas trae los dos ids o ninguno. Mande `repId` o `routeId`, no los dos. Desde la pantalla no pasa.
+
+**¿Qué significa «La cuota debe ser cero o mayor, con hasta 2 decimales.»? (HTTP 400)**
+El monto de una cuota es negativo o tiene más de 2 decimales. Corríjalo; para quitar la cuota propia del mes, deje el monto vacío.
+
+**¿Qué significa «El mes debe tener la forma AAAA-MM (por ejemplo 2026-10).»? (HTTP 400)**
+El mes de «Por ruta», de sus transacciones o de las cuotas no tiene la forma año-guion-mes. Se escoge de una lista, así que solo sale al llamar al API a mano.
+
+**Cambié a «La cuota se mide por Ruta de venta» y el cumplimiento salió en cero o «Sin cuota».** Las cuotas por ruta se cargan aparte de las de persona. Cárguelas en Configuración → Cuotas → «Cuotas por ruta de venta». Las de persona siguen guardadas.
+
+### Análisis por ruta y avisos
+
+**La venta de un cliente sale en «Sin ruta» o en «Sin ruta ni vendedor».** El cliente no tiene ruta de venta (propia ni por representante), o es historial importado sin emparejar. Asigne la ruta (panel «Venta» o «Asignar rutas de venta») o empareje el nombre. «Sin ruta ni vendedor» entra en la conciliación para que el total del mes cuadre.
+
+**Una persona sale como «Sin vendedor» dentro de una ruta.** Esa venta no tiene vendedor copiado, ni representante activo de esa ruta, y la ruta no tenía titular ese día. Ponga un titular que empiece antes si hace falta corregir el pasado.
+
+**En el análisis, «Sin vendedor» lleva la etiqueta «Apoyo».** Es un defecto visual conocido de la pantalla; las cifras están bien.
+
+**Salió «N rutas activas sin titular: …» o «N clientes activos sin ruta: …».** Son avisos, no errores, del análisis (arriba, «Para que el análisis cuadre falta»). Ponga un titular a cada ruta y una ruta a cada cliente. También salen «N rutas con el titular inactivo: …», «N representantes sin usuario: …» y «El usuario «X» está en varios representantes activos (…): su venta se cuenta en el primero que se creó.».
+
+**¿Qué es «Ruta de venta sin titular: {ruta}» en «Necesita tu atención»?** Una ruta activa no tiene titular vigente («No tiene titular vigente») o su titular ya no está activo («Su titular ya no está activo»). La ven quienes administran el análisis de ventas. Rojo si la ruta tiene clientes. «Revisar la ruta de venta» abre Configuración → Rutas: agregue un titular y la fila desaparece. No bloquea solicitar órdenes.
+
+**¿Qué pasó con «Por representante»?** Sigue ahí, al lado de «Por ruta». «Por ruta» es la que abre por omisión.
+
+**¿Una ruta de venta es lo mismo que una ruta de entrega?** No. La ruta de venta decide de quién es la venta y contra qué cuota se mide. La ruta de entrega y el viaje son de Transporte.
+
+**¿«Cadenas» es especial?** No: es una ruta de venta más.
+
+### Compartidos con el Lote 241 que también pueden salir aquí
+
+Estos mensajes son los mismos del Lote 241 ([sección «Lote 241»](#lote-241--análisis-de-ventas)): «El cuerpo de la solicitud es obligatorio.» (400), «Ya hay un representante activo con ese nombre.» (409) y «El representante tiene clientes asignados: páselos a otro representante antes de desactivarlo.» (409). Y el del módulo apagado: «El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» (403). Sin permiso, el API responde 403 sin mensaje propio y queda un evento `PERMISSION_DENIED`.

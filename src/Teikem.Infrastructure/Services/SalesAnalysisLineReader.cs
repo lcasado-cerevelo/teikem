@@ -12,9 +12,11 @@ namespace Teikem.Infrastructure.Services;
 /// <summary>
 /// Lote 241 — una línea de venta del análisis, venga del historial importado de QuickBooks o de una factura / nota de crédito de Teikem. Sku y Item: el SKU y el nombre
 /// (del producto de Teikem o, sin emparejar, los del historial). Quantity y Amount con signo (las notas de crédito restan).
+/// Lote 244: SalesOrderId = la orden de venta de la línea de factura / nota de crédito (la de su línea de orden o la del cargo de envío), para leer la copia de ruta y
+/// vendedor congelada al solicitar; NULL en el historial importado y en lo que no sale de una orden.
 /// </summary>
 public sealed record SalesAnalysisLine(DateOnly Date, string Source, string Type, string? Number, int? ClientId, string ClientName, int? ProductId, string Sku, string Item,
-    string LineClass, decimal Quantity, decimal? UnitPrice, decimal Amount);
+    string LineClass, decimal Quantity, decimal? UnitPrice, decimal Amount, int? SalesOrderId = null);
 
 /// <summary>Una línea de compra del análisis (historial importado o recibo de una orden de compra en Teikem).</summary>
 public sealed record SalesAnalysisPurchase(DateOnly Date, string Source, int? ProductId, string Sku, string Item, decimal Quantity, decimal Amount);
@@ -118,14 +120,16 @@ public sealed class SalesAnalysisLineReader(TeikemDbContext db, ITenantClock clo
                           select new { i.InvoiceNumber, Date = i.IssueDate!.Value, i.ClientId, l.ProductId, l.SalesOrderLineId, l.SalesOrderId, l.Quantity, l.UnitAmount, l.Description })
             .ToListAsync(ct);
         if (rows.Count == 0) return;
-        var parts = await KitPartsAsync(rows.Where(r => r.SalesOrderLineId != null).Select(r => r.SalesOrderLineId!.Value).Distinct().ToList(),
-            rows.Where(r => r.ProductId != null).Select(r => r.ProductId!.Value).Distinct().ToList(), products, ct);
+        var soLineIds = rows.Where(r => r.SalesOrderLineId != null).Select(r => r.SalesOrderLineId!.Value).Distinct().ToList();
+        var parts = await KitPartsAsync(soLineIds, rows.Where(r => r.ProductId != null).Select(r => r.ProductId!.Value).Distinct().ToList(), products, ct);
+        var orderOf = await OrderOfLinesAsync(soLineIds, ct);
         foreach (var r in rows)
         {
             var client = clients.GetValueOrDefault(r.ClientId) ?? string.Empty;
             var amount = QuickBooksRules.LineAmount(r.Quantity, r.UnitAmount);
+            var orderId = r.SalesOrderId ?? (r.SalesOrderLineId is int sl && orderOf.TryGetValue(sl, out var o) ? o : null);
             Expand(lines, r.Date, SalesAnalysisCodes.SourceInvoice, "Invoice", r.InvoiceNumber, r.ClientId, client, r.ProductId, r.SalesOrderLineId,
-                r.SalesOrderId != null, r.Description, r.Quantity, r.UnitAmount, amount, products, parts);
+                r.SalesOrderId != null, r.Description, r.Quantity, r.UnitAmount, amount, products, parts, orderId);
         }
     }
 
@@ -143,38 +147,41 @@ public sealed class SalesAnalysisLineReader(TeikemDbContext db, ITenantClock clo
         if (rows.Count == 0) return;
         var invLineIds = rows.Where(r => r.InvoiceLineId != null).Select(r => r.InvoiceLineId!.Value).Distinct().ToList();
         var invLines = invLineIds.Count == 0
-            ? new Dictionary<int, (int? ProductId, int? SoLine, bool Shipping)>()
+            ? new Dictionary<int, (int? ProductId, int? SoLine, bool Shipping, int? OrderId)>()
             : (await db.Set<InvoiceLine>().AsNoTracking().Where(l => invLineIds.Contains(l.InvoiceLineId))
                 .Select(l => new { l.InvoiceLineId, l.ProductId, l.SalesOrderLineId, l.SalesOrderId }).ToListAsync(ct))
-                .ToDictionary(l => l.InvoiceLineId, l => (ProductId: l.ProductId, SoLine: l.SalesOrderLineId, Shipping: l.SalesOrderId != null));
+                .ToDictionary(l => l.InvoiceLineId, l => (ProductId: l.ProductId, SoLine: l.SalesOrderLineId, Shipping: l.SalesOrderId != null, OrderId: l.SalesOrderId));
         var soLineIds = invLines.Values.Where(v => v.SoLine != null).Select(v => v.SoLine!.Value).Distinct().ToList();
         var productIds = rows.Where(r => r.ProductId != null).Select(r => r.ProductId!.Value).Concat(invLines.Values.Where(v => v.ProductId != null).Select(v => v.ProductId!.Value))
             .Distinct().ToList();
         var parts = await KitPartsAsync(soLineIds, productIds, products, ct);
+        var orderOf = await OrderOfLinesAsync(soLineIds, ct);
         foreach (var r in rows)
         {
-            (int? ProductId, int? SoLine, bool Shipping) inv = r.InvoiceLineId is int il && invLines.TryGetValue(il, out var x) ? x : (null, null, false);
+            (int? ProductId, int? SoLine, bool Shipping, int? OrderId) inv = r.InvoiceLineId is int il && invLines.TryGetValue(il, out var x) ? x : (null, null, false, null);
             var productId = r.ProductId ?? inv.ProductId;
             var isSalesLine = inv.SoLine != null || inv.Shipping;
             if (productId is null && !isSalesLine) continue;   // concepto libre (transporte, almacén…): no es venta
             var amount = -QuickBooksRules.LineAmount(r.Quantity, r.UnitAmount);
+            var orderId = inv.OrderId ?? (inv.SoLine is int sl && orderOf.TryGetValue(sl, out var o) ? o : null);
             Expand(lines, clock.DayOf(r.At), SalesAnalysisCodes.SourceCredit, "Credit Memo", r.CreditNumber, r.ClientId, clients.GetValueOrDefault(r.ClientId) ?? string.Empty,
-                productId, inv.SoLine, inv.Shipping && productId is null, r.Description, -r.Quantity, r.UnitAmount, amount, products, parts);
+                productId, inv.SoLine, inv.Shipping && productId is null, r.Description, -r.Quantity, r.UnitAmount, amount, products, parts, orderId);
         }
     }
 
     /// <summary>Agrega una línea de Teikem: envío, producto (un kit se reparte entre sus piezas) u otro.</summary>
     private static void Expand(List<SalesAnalysisLine> lines, DateOnly date, string source, string type, string number, int clientId, string client, int? productId,
-        int? soLineId, bool shipping, string description, decimal qty, decimal unitPrice, decimal amount, Dictionary<int, SalesAnalysisProduct> products, KitParts parts)
+        int? soLineId, bool shipping, string description, decimal qty, decimal unitPrice, decimal amount, Dictionary<int, SalesAnalysisProduct> products, KitParts parts,
+        int? orderId)
     {
         if (shipping)
         {
-            lines.Add(new SalesAnalysisLine(date, source, type, number, clientId, client, null, "SHIPPING", description, SalesAnalysisCodes.ClassShipping, qty, unitPrice, amount));
+            lines.Add(new SalesAnalysisLine(date, source, type, number, clientId, client, null, "SHIPPING", description, SalesAnalysisCodes.ClassShipping, qty, unitPrice, amount, orderId));
             return;
         }
         if (productId is not int pid)
         {
-            lines.Add(new SalesAnalysisLine(date, source, type, number, clientId, client, null, string.Empty, description, SalesAnalysisCodes.ClassOther, qty, unitPrice, amount));
+            lines.Add(new SalesAnalysisLine(date, source, type, number, clientId, client, null, string.Empty, description, SalesAnalysisCodes.ClassOther, qty, unitPrice, amount, orderId));
             return;
         }
         var comp = soLineId is int sl && parts.ByLine.TryGetValue(sl, out var byLine) ? byLine : parts.ByKit.GetValueOrDefault(pid);
@@ -184,13 +191,29 @@ public sealed class SalesAnalysisLineReader(TeikemDbContext db, ITenantClock clo
             {
                 var cp = products.GetValueOrDefault(share.ProductId);
                 lines.Add(new SalesAnalysisLine(date, source, type, number, clientId, client, share.ProductId, cp?.Sku ?? string.Empty, cp?.Name ?? description,
-                    SalesAnalysisCodes.ClassProduct, share.Quantity, share.Quantity == 0m ? null : Math.Round(share.Amount / share.Quantity, 5), share.Amount));
+                    SalesAnalysisCodes.ClassProduct, share.Quantity, share.Quantity == 0m ? null : Math.Round(share.Amount / share.Quantity, 5), share.Amount, orderId));
             }
             return;
         }
         var p = products.GetValueOrDefault(pid);
         lines.Add(new SalesAnalysisLine(date, source, type, number, clientId, client, pid, p?.Sku ?? string.Empty, p?.Name ?? description, SalesAnalysisCodes.ClassProduct,
-            qty, unitPrice, amount));
+            qty, unitPrice, amount, orderId));
+    }
+
+    /// <summary>
+    /// Lote 244 — la orden de cada línea de orden (diccionario soLineId → orderId, en una consulta aparte por trozos: sin join que multiplique las filas de la factura).
+    /// </summary>
+    private async Task<Dictionary<int, int?>> OrderOfLinesAsync(List<int> soLineIds, CancellationToken ct)
+    {
+        var map = new Dictionary<int, int?>();
+        foreach (var chunk in soLineIds.Chunk(2000))
+        {
+            var ids = chunk.ToList();
+            foreach (var r in await db.SalesOrderLines.AsNoTracking().Where(l => ids.Contains(l.SalesOrderLineId))
+                         .Select(l => new { l.SalesOrderLineId, l.SalesOrderId }).ToListAsync(ct))
+                map[r.SalesOrderLineId] = r.SalesOrderId;
+        }
+        return map;
     }
 
     private sealed record KitParts(Dictionary<int, List<SalesKitPart>> ByLine, Dictionary<int, List<SalesKitPart>> ByKit);

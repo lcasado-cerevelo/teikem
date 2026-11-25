@@ -23,6 +23,7 @@ import {
   type ProductMovement,
   type ProductMovementRow,
   type SalesByRep,
+  type SalesByRoute,
   type SalesTransaction,
 } from './salesAnalysisRules'
 
@@ -346,6 +347,115 @@ export function byRepSheets({ byRep, transactions, inventory, t, lang }: ByRepWo
 
 export function buildByRepWorkbook(XLSX: XlsxModule, input: ByRepWorkbookInput): WorkBook {
   return buildWorkbook(XLSX, byRepSheets(input))
+}
+
+// =============================================================== libro «Por ruta» ===============================================================
+
+export interface ByRouteWorkbookInput {
+  byRoute: SalesByRoute
+  transactions: readonly SalesTransaction[]
+  t: TFn
+  lang: string
+}
+
+/** Hoja «Comparativo por ruta» (ruta → personas, totales y conciliación) y las Transacciones del mes. */
+export function byRouteSheets({ byRoute, transactions, t, lang }: ByRouteWorkbookInput): SheetSpec[] {
+  const k = (key: string, p?: Record<string, string | number>) => t(`salesAnalysis.xlsx.${key}`, p)
+  const month = byRoute.month ?? ''
+  const compare = byRoute.compareMonth ?? ''
+  const mName = cap(monthName(month, lang))
+  const cName = cap(monthName(compare, lang))
+  const routes = byRoute.routes ?? []
+  const totals = byRoute.totals ?? {}
+  const rec = byRoute.reconciliation ?? {}
+  const noRoute = t('salesAnalysis.byRoute.noRoute')
+  const noSeller = t('salesAnalysis.byRoute.noSeller')
+
+  const comp: XRow[] = [[k('compRouteTitle', { month: monthName(month, lang), year: month.slice(0, 4), compare: monthName(compare, lang) })], []]
+  comp.push([k('route'), k('person'), k('role'), `${cName} $`, `${mName} $`, k('change'), k('changePct'), k('quota'), k('compliance')])
+  const routeRows: number[] = []
+  for (const r of routes) {
+    const R = comp.length + 1
+    routeRows.push(R)
+    comp.push([
+      r.routeName ?? noRoute,
+      r.primaryName ?? '',
+      '',
+      num(r.compareSales ?? 0, FMT.money),
+      num(r.sales ?? 0, FMT.money),
+      fx(`E${R}-D${R}`, r.change ?? 0, FMT.money),
+      fx(`IF(D${R}<>0,F${R}/D${R},"")`, r.changePct ?? '', FMT.pct2),
+      num(r.quota, FMT.money),
+      fx(`IF(N(H${R})>0,E${R}/H${R},"")`, r.compliance ?? '', FMT.pct2),
+    ])
+    for (const p of r.people ?? []) {
+      const P = comp.length + 1
+      comp.push([
+        '',
+        p.name ?? noSeller,
+        p.isPrimary ? t('salesAnalysis.byRoute.rolePrimary') : t('salesAnalysis.byRoute.roleSupport'),
+        num(p.compareSales ?? 0, FMT.money),
+        num(p.sales ?? 0, FMT.money),
+        fx(`E${P}-D${P}`, p.change ?? 0, FMT.money),
+        fx(`IF(D${P}<>0,F${P}/D${P},"")`, p.changePct ?? '', FMT.pct2),
+        num(p.quota, FMT.money),
+        fx(`IF(N(H${P})>0,E${P}/H${P},"")`, p.compliance ?? '', FMT.pct2),
+      ])
+    }
+  }
+  const T = comp.length + 1
+  const sum = (c: string, v: number | undefined) => (routeRows.length > 0 ? fx(routeRows.map((r) => `${c}${r}`).join('+'), v ?? 0, FMT.money) : num(v ?? 0, FMT.money))
+  comp.push([
+    k('totalRoutes'),
+    '',
+    '',
+    sum('D', totals.compareSales),
+    sum('E', totals.sales),
+    sum('F', totals.change),
+    fx(`IF(D${T}<>0,F${T}/D${T},"")`, totals.changePct ?? '', FMT.pct2),
+    sum('H', totals.quota),
+    fx(`IF(H${T}>0,E${T}/H${T},"")`, totals.compliance ?? '', FMT.pct2),
+  ])
+  comp.push([])
+  comp.push([k('reconciliation')])
+  const rRoutes = comp.length + 1
+  comp.push([k('recRoutes'), '', '', '', fx(`E${T}`, rec.routesTotal ?? 0, FMT.money)])
+  const rUn = comp.length + 1
+  comp.push([k('recUnassigned'), '', '', '', num(rec.unassigned ?? 0, FMT.money)])
+  const rNet = comp.length + 1
+  comp.push([k('recNet'), '', '', '', fx(`E${rRoutes}+E${rUn}`, (rec.routesTotal ?? 0) + (rec.unassigned ?? 0), FMT.money)])
+  const rShip = comp.length + 1
+  comp.push([k('recShipping'), '', '', '', num(rec.shippingAndOther ?? 0, FMT.money)])
+  comp.push([k('recMonthTotal', { month: monthName(month, lang) }), '', '', '', fx(`E${rNet}+E${rShip}`, rec.monthTotal ?? 0, FMT.money)])
+  if (Math.abs(rec.difference ?? 0) >= 0.005) comp.push([k('recDifference'), '', '', '', num(rec.difference ?? 0, FMT.money)])
+
+  const tx: XRow[] = [[k('transactionsTitle', { month: monthName(month, lang), year: month.slice(0, 4) })], [k('transactionsNote', { count: transactions.length })], []]
+  tx.push([k('date'), k('route'), k('person'), k('type'), k('number'), k('client'), k('sku'), k('product'), k('line'), k('units'), k('amount'), k('source')])
+  const txHeader = tx.length
+  for (const r of transactions) {
+    tx.push([
+      num(excelDay(r.date), FMT.dateIso),
+      r.routeName ?? '',
+      r.repName ?? noSeller,
+      r.type ?? '',
+      txt(r.number, FMT.text),
+      r.clientName ?? '',
+      txt(r.sku, FMT.text),
+      r.product ?? '',
+      r.line ?? '',
+      num(r.quantity ?? 0, FMT.units),
+      num(r.amount ?? 0, FMT.money),
+      r.source ? t(`salesAnalysis.source.${r.source}`) : '',
+    ])
+  }
+  return [
+    { name: k('sheet.byRoute'), rows: comp, widths: [26, 28, 12, 16, 16, 14, 11, 14, 14] },
+    { name: k('sheet.transactions'), rows: tx, widths: [12, 22, 24, 14, 14, 30, 16, 36, 16, 10, 14, 14], headerRow: txHeader, filterLastRow: tx.length },
+  ]
+}
+
+export function buildByRouteWorkbook(XLSX: XlsxModule, input: ByRouteWorkbookInput): WorkBook {
+  return buildWorkbook(XLSX, byRouteSheets(input))
 }
 
 // =============================================================== libro «Movimiento de productos» ===============================================================

@@ -1,0 +1,13 @@
+/* Lote 244 — «Venta» en la ficha del cliente. Prefijo propio `sa-csales-`; colores solo de la paleta del tema. */
+.sa-csales-val{display:flex;flex-direction:column;gap:2px;min-width:0;overflow-wrap:anywhere}
+.sa-csales-sub{font-size:12px;color:var(--muted)}
+.sa-csales-warn{margin:0 0 12px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--warnbg);color:var(--warn);font-size:13px;overflow-wrap:anywhere}
+.sa-csales-edit{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px 18px;align-items:start;min-width:0}
+.sa-csales-edit .f{margin:0;min-width:0}
+.sa-csales-edit select{max-width:100%}
+.sa-csales-edit .ferr{grid-column:1/-1;margin:0}
+.sa-csales-act{display:flex;align-items:flex-end}
+.sa-csales-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px 18px;margin:0 0 14px}
+.sa-csales-facts>div{min-width:0}
+.sa-csales-facts dt{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;margin:0 0 2px}
+.sa-csales-facts dd{margin:0;font-size:13.5px}

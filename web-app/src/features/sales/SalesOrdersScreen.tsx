@@ -35,6 +35,7 @@ import {
 import { AssignDocumentModal } from '../warehouse/AssignDocumentModal'
 import { ToggleFilter } from '../warehouse/filterControls'
 import { ProductSearchSelect } from '../warehouse/pickers'
+import { useSalesRoutes, useSellerCandidates } from '../salesAnalysis/salesAnalysisApi'
 import { EMPTY_ORDERS_FILTERS, hasOrdersFilters, ordersApiFilters, type OrdersFilterState } from './ordersFilters'
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { OrderBadges } from './OrderBadges'
@@ -84,6 +85,15 @@ function OrdersTab({ onOpen, filters, onFilters }: { onOpen: (id: string, status
   }
   const statusOptions = useMemo(() => ORDER_STATUSES.map((s) => ({ value: s, label: t(`sales.statuses.${s}`) })), [t])
   const requiredDate = filters.dateField === 'REQUIRED'
+  // Lote 244: filtros por ruta y vendedor (sus listas son del análisis de ventas: sin ese permiso no se pintan)
+  const canAnalysis = useCan('sales.analysis.view|sales.analysis.manage')
+  const routes = useSalesRoutes(canAnalysis)
+  const sellers = useSellerCandidates('', canAnalysis)
+  const routeOptions = useMemo(
+    () => [{ value: '0', label: t('clients.sales.noRoute') }, ...(routes.data ?? []).map((r) => ({ value: String(r.id), label: r.name ?? '' }))],
+    [routes.data, t],
+  )
+  const sellerOptions = useMemo(() => (sellers.data ?? []).map((u) => ({ value: String(u.userId), label: u.name ?? '' })), [sellers.data])
 
   const columns = useMemo<DataColumn<SalesOrderListItemDto>[]>(
     () => [
@@ -105,6 +115,8 @@ function OrdersTab({ onOpen, filters, onFilters }: { onOpen: (id: string, status
       { id: 'required', header: t('sales.col.required'), cell: (o) => (o.requiredDate ? f.date(o.requiredDate) : '—'), exportValue: (o) => o.requiredDate ?? '', sortValue: (o) => o.requiredDate ?? '' },
       { id: 'lines', header: t('sales.col.lines'), cell: (o) => o.lineCount, sortValue: (o) => o.lineCount ?? 0, align: 'end' },
       { id: 'total', header: t('sales.col.total'), cell: (o) => f.money(o.total ?? 0), exportValue: (o) => o.total ?? 0, sortValue: (o) => o.total ?? 0, align: 'end' },
+      { id: 'route', header: t('sales.col.route'), cell: (o) => o.salesRouteName ?? '—', exportValue: (o) => o.salesRouteName ?? '', sortValue: (o) => o.salesRouteName ?? '' },
+      { id: 'seller', header: t('sales.col.seller'), cell: (o) => o.sellerName ?? '—', exportValue: (o) => o.sellerName ?? '', sortValue: (o) => o.sellerName ?? '' },
       { id: 'assignee', header: t('warehouse.assign.column'), cell: (o) => o.assignedToName ?? '—', exportValue: (o) => o.assignedToName ?? '', sortValue: (o) => o.assignedToName ?? '' },
       { id: 'by', header: t('sales.col.by'), cell: (o) => o.requestedByName ?? '—', sortValue: (o) => o.requestedByName ?? '' },
     ],
@@ -164,6 +176,12 @@ function OrdersTab({ onOpen, filters, onFilters }: { onOpen: (id: string, status
           <ClientSearchSelect label={t('sales.orders.filters.client')} value={filters.clients} onChange={set('clients')} includeInactive />
           <ProductSearchSelect label={t('sales.orders.filters.product')} value={filters.products} onChange={set('products')} includeInactive />
           <SearchSelect label={t('sales.orders.filters.status')} options={statusOptions} value={filters.statuses} onChange={set('statuses')} />
+          {canAnalysis && (
+            <SelectFilter label={t('sales.seller.filterRoute')} value={filters.route} onChange={set('route')} allLabel={t('sales.seller.anyRoute')} options={routeOptions} />
+          )}
+          {canAnalysis && (
+            <SelectFilter label={t('sales.seller.filterSeller')} value={filters.seller} onChange={set('seller')} allLabel={t('sales.seller.anySeller')} options={sellerOptions} />
+          )}
           <ToggleFilter label={t('warehouse.assign.mineOnly')} checked={filters.mine} onChange={set('mine')} />
         </Filters>
         {list.isError ? (

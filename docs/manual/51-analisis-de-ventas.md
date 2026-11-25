@@ -4,6 +4,8 @@
 
 Lote 241 (2026-11-12). Una pantalla para saber **cuánto vendió cada representante y cada ruta contra su cuota**, **qué se mueve y qué se va a acabar** de cada producto, y **gráficos listos para presentar**. Reemplaza los dos Excel que hoy se arman a mano (`Analisis_Ventas_<Mes>.xlsx` y `Movimiento_de_productos.xlsx`) y los puede exportar con las mismas hojas. Se alimenta de **dos fuentes**: el **historial de QuickBooks** (lo que se vendió antes de Teikem, que se importa de dos reportes) y las **facturas de Teikem** (desde la fecha de corte).
 
+> **Lote 244 (2026-11-25):** las rutas ganaron personas (titular y apoyo), la cuota puede llevarse por ruta, y la pestaña «Por ruta» es ahora la de por omisión (esta pestaña, «Por representante», se conserva). Ver el [capítulo 52 — Rutas de venta](52-rutas-de-venta.md). Lo que este capítulo dice del representante y del usuario del representante cambió: **el usuario es obligatorio** al crear un representante.
+
 > Capturas pendientes: los pantallazos de este capítulo no se han tomado todavía. Faltan: el aviso «Para que el análisis cuadre falta», la pestaña «Por representante» (tarjetas, Comparativo, «Totales y conciliación», Líneas), «Movimiento de productos» (Resumen con colores y las matrices por mes), «Gráficos» y la hoja impresa, «Configuración» (Cuotas, Líneas y marcas, Importar historial con una simulación, Emparejar a mano) y el panel «Representante de ventas» de la ficha del cliente.
 
 ## 1. Qué es, dónde está y quién puede

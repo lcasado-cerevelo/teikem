@@ -42,6 +42,38 @@ const BY_REP = {
     { routeId: 1, routeName: 'Cadenas', repNames: 'ADVANCE SOLUTIONS GROUP LLC', line: 'Padimont', productId: 39, sku: 'NECH1003', product: 'Padimont Gloves Large', units: 0, sales: 0 },
   ],
 }
+const BY_ROUTE = (quotaBy: 'ROUTE' | 'REP') => ({
+  month: '2026-10',
+  compareMonth: '2026-09',
+  cutoffDate: '2026-11-06',
+  quotaBy,
+  warnings: [],
+  routes: [
+    {
+      routeId: 1,
+      routeName: 'Cadenas',
+      compareSales: 60773,
+      sales: 58866.41,
+      change: -1906.59,
+      changePct: -0.0314,
+      quota: quotaBy === 'ROUTE' ? 57700 : null,
+      compliance: quotaBy === 'ROUTE' ? 1.0202 : null,
+      primaryUserId: 5,
+      primaryName: 'Ana Titular',
+      people: [
+        { personKey: 'U5', userId: 5, name: 'Ana Titular', isPrimary: true, compareSales: 50000, sales: 50000, change: 0, quota: quotaBy === 'REP' ? 40000 : null, compliance: quotaBy === 'REP' ? 1.25 : null },
+        { personKey: 'U6', userId: 6, name: 'Beto Apoyo', isPrimary: false, compareSales: 10773, sales: 8866.41, change: -1906.59 },
+      ],
+    },
+    { routeId: 2, routeName: 'Norte', compareSales: 100, sales: 50, change: -50, primaryName: null, people: [{ personKey: 'NONE', name: null, isPrimary: false, compareSales: 100, sales: 50, change: -50 }] },
+    { routeId: null, routeName: null, compareSales: 0, sales: 10, change: 10, people: [] },
+  ],
+  totals: { compareSales: 60873, sales: 58926.41, change: -1946.59, changePct: -0.032, quota: 57700, compliance: 1.0213 },
+  reconciliation: { routesTotal: 58926.41, unassigned: 0, shippingAndOther: 12, monthTotal: 58938.41, difference: 0, productSales: 60000, discounts: -1073.59, shipping: 12, other: 0, unassignedClients: 0, unassignedCompare: 0 },
+  people: [{ personKey: 'U5', userId: 5, name: 'Ana Titular', routes: 'Cadenas', compareSales: 50000, sales: 50000, change: 0, quota: 40000, compliance: 1.25 }],
+  lines: [{ line: 'Prodigy', isDiscounts: false, sales: 60000, shareOfNet: 0.9, shareOfGross: 0.85, leaderName: 'Ana Titular', leaderRoute: 'Cadenas', leaderSales: 50000 }],
+  routeProducts: [{ routeId: 1, routeName: 'Cadenas', repNames: 'Ana Titular', line: 'Prodigy', productId: 5, sku: '52800', product: 'PRODIGY STRIPS', units: 10, sales: 100 }],
+})
 const TX = { date: '2026-10-01', source: 'HISTORY', type: 'Invoice', number: '2025-5114', clientName: 'FARMACIA CARIDAD #13', repId: 1, repName: 'ADVANCE SOLUTIONS GROUP LLC', routeName: 'Cadenas', productId: 5, sku: '52800', product: 'PRODIGY STRIPS 1/50CT.', line: 'Prodigy', lineClass: 'PRODUCT', quantity: 160, unitPrice: 4.18, amount: 668.8 }
 const MOVEMENT = {
   fromMonth: '2026-09',
@@ -85,6 +117,10 @@ const STATUS = {
   batches: [{ publicId: 'b1', kind: 'SALES', fileName: 'SalesByItemDetail.CSV', dateFrom: '2025-12-19', dateTo: '2026-11-05', lineCount: 13350, totalAmount: 1285918.96, importedAtUtc: '2026-11-12T10:00:00', isActive: true }],
   activeClients: 700,
   clientsWithoutRep: 3,
+  clientsWithoutRoute: 2,
+  routesWithoutPrimary: 1,
+  routesWithInactivePrimary: 0,
+  repsWithoutUser: 4,
   brandsWithoutLine: ['YARDLEY'],
   unmatchedClients: [{ raw: 'FARMACIA FANTASMA', lines: 4, amount: 120, firstDate: '2026-01-02', lastDate: '2026-03-04' }],
   unmatchedItems: [],
@@ -130,6 +166,8 @@ const mock = vi.hoisted(() => ({
   requests: [] as { method: string; path: string; search: string; body: unknown }[],
   uploads: [] as { field: string; value: unknown }[],
   workbooks: [] as { wb: WorkBook; fileName: string }[],
+  quotaBy: 'ROUTE' as 'ROUTE' | 'REP',
+  chartsRoute: false,
 }))
 
 vi.mock('./salesAnalysisExcel', async (importOriginal) => {
@@ -159,9 +197,10 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     const m = req.method
     if (m === 'GET' && p === '§/status') return json(STATUS)
     if (m === 'GET' && p === '§/by-rep') return json(BY_REP)
+    if (m === 'GET' && p === '§/by-route') return json(BY_ROUTE(mock.quotaBy))
     if (m === 'GET' && p === '§/transactions') return json({ items: [TX], total: 1, skip: 0, take: 25 })
     if (m === 'GET' && p === '§/product-movement') return json(MOVEMENT)
-    if (m === 'GET' && p === '§/charts') return json(CHARTS)
+    if (m === 'GET' && p === '§/charts') return json(mock.chartsRoute ? { ...CHARTS, quotaBy: 'ROUTE', routeVsQuota: [{ routeId: 1, route: 'Cadenas', sales: 58866.41, quota: 57700, compliance: 1.0202 }] } : CHARTS)
     if (m === 'GET' && p === '§/routes') return json([{ id: 1, name: 'Cadenas', sortOrder: 10, isActive: true, repCount: 1 }, { id: 2, name: 'Norte', sortOrder: 20, isActive: true, repCount: 1 }])
     if (m === 'GET' && p === '§/reps') return json(REPS)
     if (m === 'GET' && p === '§/quotas') {
@@ -221,11 +260,13 @@ describe('SalesAnalysisScreen', () => {
     mock.requests.length = 0
     mock.uploads.length = 0
     mock.workbooks.length = 0
+    mock.quotaBy = 'ROUTE'
+    mock.chartsRoute = false
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('«Por representante»: tarjetas, Comparativo con cumplimiento y conciliación, Líneas, transacciones del mes y el aviso de estado con enlaces', async () => {
-    wrap(VIEW)
+  it('«Por representante» (?tab=rep): tarjetas, Comparativo con cumplimiento y conciliación, Líneas, transacciones del mes y el aviso de estado con enlaces', async () => {
+    wrap(VIEW, '/analytics/sales?tab=rep')
     expect(await screen.findByRole('heading', { name: 'Análisis de ventas', level: 1 })).toBeInTheDocument()
     const comp = await screen.findByRole('table', { name: 'Comparativo por ruta y representante' })
     expect(within(comp).getAllByText('ADVANCE SOLUTIONS GROUP LLC').length).toBeGreaterThan(0)
@@ -249,9 +290,71 @@ describe('SalesAnalysisScreen', () => {
     expect(within(banner).getByRole('link', { name: 'Poner la fecha de corte' })).toBeInTheDocument()
   })
 
-  it('«Exportar a Excel» arma UN libro con las 7 hojas del dueño (transacciones de todo el mes e inventario del mismo mes)', async () => {
+  it('«Por ruta» es la vista por omisión: rutas con sus personas plegadas, «Sin ruta», cumplimiento en la ruta y los avisos nuevos', async () => {
     const user = userEvent.setup()
     wrap(VIEW)
+    const tbl = await screen.findByRole('table', { name: 'Ruta de venta y sus personas' })
+    expect(within(tbl).getByText('Cadenas')).toBeInTheDocument()
+    expect(within(tbl).getByText('Sin ruta')).toBeInTheDocument()
+    expect(within(tbl).getByText(/Titular: Ana Titular/)).toBeInTheDocument()
+    expect(within(tbl).getByText('Sin titular')).toBeInTheDocument()
+    expect(within(tbl).getByText('102.0%')).toBeInTheDocument()
+    expect(within(tbl).queryByText('Beto Apoyo')).toBeNull()
+    await user.click(within(tbl).getByRole('button', { name: 'Mostrar las personas de Cadenas' }))
+    expect(within(tbl).getByText('Beto Apoyo')).toBeInTheDocument()
+    expect(within(tbl).getByText('Apoyo')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Desplegar todas' }))
+    expect(within(tbl).getAllByText('Sin vendedor').length).toBeGreaterThan(0)
+    expect(screen.queryByRole('table', { name: 'Por persona' })).toBeNull()
+    expect(screen.getByRole('note')).toHaveTextContent('La cuota se mide por ruta de venta')
+    const rec = screen.getByRole('table', { name: 'Totales y conciliación' })
+    expect(within(rec).getByText('$58,938.41')).toBeInTheDocument()
+    // transacciones con filtro de ruta
+    await waitFor(() => expect(req('GET', '/api/v1/sales-analysis/transactions').length).toBeGreaterThan(0))
+    expect(req('GET', '/api/v1/sales-analysis/by-route').length).toBeGreaterThan(0)
+    const banner = await screen.findByRole('complementary', { name: 'Para que el análisis cuadre falta:' })
+    expect(within(banner).getByText(/2 cliente\(s\) activo\(s\) sin ruta de venta/)).toBeInTheDocument()
+    expect(within(banner).getByText(/1 ruta\(s\) de venta sin titular/)).toBeInTheDocument()
+    expect(within(banner).getByText(/4 representante\(s\) sin usuario/)).toBeInTheDocument()
+    expect(within(banner).getByRole('link', { name: 'Asignar rutas de venta' })).toHaveAttribute('href', '/analytics/sales?tab=setup&sec=clients')
+    expect(within(banner).getByRole('link', { name: 'Rutas' })).toHaveAttribute('href', '/analytics/sales?tab=setup&sec=routes')
+  })
+
+  it('«Por ruta» con la cuota por persona: la tabla «Por persona» y el cumplimiento en la persona', async () => {
+    mock.quotaBy = 'REP'
+    const user = userEvent.setup()
+    wrap(VIEW)
+    const people = await screen.findByRole('table', { name: 'Por persona' })
+    expect(within(people).getByText('125.0%')).toBeInTheDocument()
+    expect(screen.getByRole('note')).toHaveTextContent('La cuota se mide por persona')
+    await user.click(screen.getByRole('button', { name: 'Mostrar las personas de Cadenas' }))
+    const tbl = screen.getByRole('table', { name: 'Ruta de venta y sus personas' })
+    expect(within(tbl).getAllByText('125.0%').length).toBe(1)
+  })
+
+  it('«Por ruta» filtra las transacciones por ruta (0 = sin ruta) y «Exportar a Excel» arma el libro por ruta', async () => {
+    const user = userEvent.setup()
+    wrap(VIEW)
+    await screen.findByRole('table', { name: 'Ruta de venta y sus personas' })
+    await user.click(screen.getByRole('button', { name: 'Exportar a Excel' }))
+    await waitFor(() => expect(mock.workbooks).toHaveLength(1))
+    expect(mock.workbooks[0].wb.SheetNames).toEqual(['Comparativo por ruta', 'Transacciones'])
+    expect(mock.workbooks[0].fileName).toMatch(/\.xlsx$/)
+    expect(req('GET', '/api/v1/sales-analysis/transactions').some((r) => r.search.includes('all=true'))).toBe(true)
+    const selects = screen.getAllByLabelText('Ruta')
+    await user.selectOptions(selects[selects.length - 1], 'none')
+    await waitFor(() => expect(req('GET', '/api/v1/sales-analysis/transactions').some((r) => r.search.includes('routeId=0'))).toBe(true))
+  })
+
+  it('«Gráficos»: con la cuota por ruta pinta «Venta contra cuota por ruta de venta»', async () => {
+    mock.chartsRoute = true
+    wrap(VIEW, '/analytics/sales?tab=charts')
+    expect(await screen.findByText('Venta contra cuota por ruta de venta')).toBeInTheDocument()
+  })
+
+  it('«Exportar a Excel» arma UN libro con las 7 hojas del dueño (transacciones de todo el mes e inventario del mismo mes)', async () => {
+    const user = userEvent.setup()
+    wrap(VIEW, '/analytics/sales?tab=rep')
     await screen.findByRole('table', { name: 'Comparativo por ruta y representante' })
     await user.click(screen.getByRole('button', { name: 'Exportar a Excel' }))
     await waitFor(() => expect(mock.workbooks).toHaveLength(1))

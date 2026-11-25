@@ -10,6 +10,10 @@ namespace Teikem.Infrastructure.Analytics;
 /// corte y facturas / notas de crédito de Teikem desde ella, con los kits repartidos entre sus piezas), con su representante (el actual del cliente), ruta, línea y clase.
 /// Actividad de período por Date (fecha de factura, día de calendario): el rango llega en días de la compañía (FromDay/ToDayExclusive). Sin rango = desde 2000. Tope
 /// ClientDataSourceHelpers.MaxRows (las más recientes). Lectura: sales.analysis.view y el módulo Órdenes de venta encendido.
+/// <para>
+/// Lote 244: la persona y la ruta son las ATRIBUIDAS (la copia de la orden; si no, la ruta del cliente y su representante o el titular de la ruta el día de la línea).
+/// SellerName = la persona («Sin vendedor» si no hay); RepName = el representante si la persona lo es («Sin representante» si no); RouteName = la ruta atribuida.
+/// </para>
 /// </summary>
 public sealed class SalesAnalysisLineDataSource(SalesAnalysisService analysis, ITenantClock? clock = null) : IDataSource
 {
@@ -33,6 +37,7 @@ public sealed class SalesAnalysisLineDataSource(SalesAnalysisService analysis, I
         new DataField("ClientId", "Id de cliente", "Client id", DataFieldType.Number),
         new DataField("ClientName", "Cliente", "Client", DataFieldType.Text),
         new DataField("RepName", "Representante", "Sales rep", DataFieldType.Text),
+        new DataField("SellerName", "Vendedor", "Seller", DataFieldType.Text),
         new DataField("RouteName", "Ruta", "Route", DataFieldType.Text),
         new DataField("Sku", "SKU", "SKU", DataFieldType.Text),
         new DataField("Product", "Producto", "Product", DataFieldType.Text),
@@ -71,8 +76,9 @@ public sealed class SalesAnalysisLineDataSource(SalesAnalysisService analysis, I
                 ["Number"] = l.Number,
                 ["ClientId"] = l.ClientId,
                 ["ClientName"] = l.ClientName,
-                ["RepName"] = l.RepName ?? SalesAnalysisRules.NoRepName,
-                ["RouteName"] = l.RouteName ?? (l.RepName is null ? SalesAnalysisRules.NoRepName : SalesAnalysisRules.NoRouteName),
+                ["RepName"] = l.RepId is not null ? l.RepName : SalesAnalysisRules.NoRepName,
+                ["SellerName"] = l.RepName ?? SalesRouteRules.NoSellerName,
+                ["RouteName"] = l.RouteName ?? SalesAnalysisRules.NoRouteName,
                 ["Sku"] = l.Sku,
                 ["Product"] = l.Product,
                 ["Brand"] = brand,

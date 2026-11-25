@@ -216,12 +216,17 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         var pickupLocations = new List<ClientAddressDto>(warehouses.Count);
         foreach (var w in warehouses) pickupLocations.Add(await ToAddressAsync(w, ct));
 
-        // Lote 238: el representante de ventas y su ruta
+        // Lote 238: el representante de ventas. Lote 244: la ruta EFECTIVA (la directa o, si no tiene, la del representante) y el vendedor preferido
         var rep = client.SalesRepId is int repId
-            ? await (from r in db.Set<Teikem.Domain.Sales.SalesRep>().AsNoTracking()
-                     where r.SalesRepId == repId
-                     select new { r.Name, RouteName = db.Set<Teikem.Domain.Sales.SalesRoute>().Where(x => x.SalesRouteId == r.SalesRouteId).Select(x => x.Name).FirstOrDefault() })
-                .FirstOrDefaultAsync(ct)
+            ? await db.Set<Teikem.Domain.Sales.SalesRep>().AsNoTracking().Where(r => r.SalesRepId == repId).Select(r => new { r.Name, r.SalesRouteId }).FirstOrDefaultAsync(ct)
+            : null;
+        var salesRouteFromRep = client.SalesRouteId is null && rep?.SalesRouteId is not null;
+        var salesRouteId = client.SalesRouteId ?? rep?.SalesRouteId;
+        var salesRouteName = salesRouteId is int srId
+            ? await db.Set<Teikem.Domain.Sales.SalesRoute>().AsNoTracking().Where(x => x.SalesRouteId == srId).Select(x => x.Name).FirstOrDefaultAsync(ct)
+            : null;
+        var preferredName = client.PreferredSalesUserId is int prefId
+            ? await db.Users.AsNoTracking().Where(u => u.Id == prefId).Select(u => u.FullName ?? u.Email).FirstOrDefaultAsync(ct)
             : null;
         return new ClientDetailDto(
             client.ClientId, client.PublicId, client.Code, client.Name, client.LegalName, client.TaxId, client.CreditLimit,
@@ -239,7 +244,8 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             client.DefaultPackageTypeLookupId is int dpId ? (await lookups.GetAsync(dpId, ct))?.InternalCode : null,
             client.RequireDeliverySignature, client.RequireDeliveryPhoto,
             client.MerchantRegistration, client.ShippingMode, client.ShippingCharge, client.ShippingFreeFrom, client.RequireOrderSignature,   // Lote 222
-            client.SalesRepId, rep?.Name, rep?.RouteName);   // Lote 238
+            client.SalesRepId, rep?.Name, salesRouteName,   // Lote 238
+            client.SalesRouteId, salesRouteFromRep, client.PreferredSalesUserId, preferredName);   // Lote 244
     }
 
     // ---------------- Perfil ----------------

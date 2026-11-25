@@ -2,6 +2,8 @@
 // vale la del mes anterior más reciente (se ve tenue como sugerencia). «Copiar del mes anterior» llena la columna con lo que vale
 // el mes de antes. «Guardar» manda solo lo que cambió, un `PUT quotas/{mes}` por mes. Sin `sales.analysis.manage`, solo lectura.
 // La rejilla se desplaza dentro de su contenedor (nunca la página) y la columna del representante queda fija.
+// Lote 244: la cuota se puede llevar POR RUTA o POR PERSONA (representante); las dos rejillas se editan y el ajuste «La cuota se mide por»
+// (Ajustes) dice cuál cuenta para el análisis. La de ruta reutiliza la lógica de la de personas con la ruta en lugar del representante.
 import { useEffect, useMemo, useState } from 'react'
 import { useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
@@ -10,7 +12,7 @@ import { useLang, useT } from '../../kernel/i18n/useT'
 import { Panel } from '../../kernel/ui/Panel'
 import { Spinner } from '../../kernel/ui/Spinner'
 import { toast } from '../../kernel/ui/toast'
-import { useQuotaMonths, useSaveQuotas } from './salesAnalysisApi'
+import { useQuotaMonths, useSalesSettings, useSaveQuotas } from './salesAnalysisApi'
 import {
   SALES_ANALYSIS_MANAGE,
   copyPreviousMonth,
@@ -21,9 +23,22 @@ import {
   quotaDraftFrom,
   quotaMonthTotal,
   type QuotaDraft,
+  type SalesQuotaMonth,
 } from './salesAnalysisRules'
 import { QueryError } from './SaParts'
 import { useSaFormat } from './saFormat'
+import './saRouteSetup.css'
+
+type QuotaBy = 'REP' | 'ROUTE'
+
+/** La cuota por ruta con la forma de la de personas (el id de la ruta ocupa `repId`), para reutilizar las reglas de la rejilla. */
+function routeMonths(data: readonly SalesQuotaMonth[]): SalesQuotaMonth[] {
+  return data.map((m) => ({
+    month: m.month,
+    totalEffective: m.routeTotalEffective,
+    rows: (m.routeRows ?? []).map((r) => ({ repId: r.routeId, repName: r.routeName, routeName: null, repActive: r.routeActive, amount: r.amount, effective: r.effective, effectiveFrom: r.effectiveFrom })),
+  }))
+}
 
 export function QuotasGrid() {
   const t = useT()
@@ -34,8 +49,13 @@ export function QuotasGrid() {
   const thisYear = Number(f.today().slice(0, 4))
   const [year, setYear] = useState(thisYear)
   const months = useMemo(() => Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`), [year])
-  const q = useQuotaMonths(months)
-  const data = q.data
+  const settings = useSalesSettings()
+  const [picked, setPicked] = useState<QuotaBy | null>(null)
+  const counts: QuotaBy = settings.data?.quotaBy === 'ROUTE' ? 'ROUTE' : 'REP'
+  const by: QuotaBy = picked ?? counts
+  const q = useQuotaMonths(months, by)
+  const raw = q.data
+  const data = useMemo(() => (raw && by === 'ROUTE' ? routeMonths(raw) : raw), [raw, by])
   const [draft, setDraft] = useState<QuotaDraft>({})
   useEffect(() => {
     if (data) setDraft(quotaDraftFrom(data))
@@ -48,7 +68,7 @@ export function QuotasGrid() {
   const onSave = async () => {
     if (!data || invalid.length > 0) return
     try {
-      const n = await save.mutateAsync(changes)
+      const n = await save.mutateAsync(by === 'ROUTE' ? changes.map((c) => ({ month: c.month, items: c.items.map((i) => ({ routeId: i.repId, amount: i.amount })) })) : changes)
       toast.success(t('salesAnalysis.quotas.saved', { n }))
     } catch (e) {
       toast.error(applyProblemDetails(e).title)
@@ -58,11 +78,16 @@ export function QuotasGrid() {
   return (
     <Panel
       title={t('salesAnalysis.quotas.title')}
-      subtitle={t('salesAnalysis.quotas.sub')}
+      subtitle={t(by === 'ROUTE' ? 'salesAnalysis.quotaBy.pickRoute' : 'salesAnalysis.quotas.sub')}
       actions={
         <div className="sa-inline">
+          <label htmlFor="sa-q-by" className="sr-only">{t('salesAnalysis.quotaBy.label')}</label>
+          <select id="sa-q-by" className="sa-route-sel" value={by} onChange={(e) => setPicked(e.target.value === 'ROUTE' ? 'ROUTE' : 'REP')}>
+            <option value="ROUTE">{t('salesAnalysis.quotaBy.pickRoute')}</option>
+            <option value="REP">{t('salesAnalysis.quotaBy.pickRep')}</option>
+          </select>
           <label htmlFor="sa-q-year" className="sr-only">{t('salesAnalysis.quotas.year')}</label>
-          <select id="sa-q-year" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+          <select id="sa-q-year" className="sa-route-sel" value={year} onChange={(e) => setYear(Number(e.target.value))}>
             {[thisYear - 2, thisYear - 1, thisYear, thisYear + 1].map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
@@ -79,12 +104,16 @@ export function QuotasGrid() {
         <p className="pb sa-muted">{t('salesAnalysis.quotas.noReps')}</p>
       ) : (
         <>
+          <p className="pb sa-route-counts">
+            {t('salesAnalysis.quotaBy.label')}: <strong>{t(`salesAnalysis.quotaBy.${counts}`)}</strong>
+            {by !== counts && ` · ${t(`salesAnalysis.quotaBy.${by}`)}: ${t('salesAnalysis.quotaBy.notCounted')}`}
+          </p>
           <div className="sa-scroll sa-matrix-wrap" tabIndex={0} role="region" aria-label={t('salesAnalysis.quotas.title')}>
             <table className="sa-matrix sa-quota">
               <caption className="sr-only">{t('salesAnalysis.quotas.caption', { year })}</caption>
               <thead>
                 <tr>
-                  <th scope="col" className="stick">{t('salesAnalysis.col.rep')}</th>
+                  <th scope="col" className="stick">{t(by === 'ROUTE' ? 'salesAnalysis.col.route' : 'salesAnalysis.col.rep')}</th>
                   {months.map((m, i) => (
                     <th key={m} scope="col">
                       <span>{monthShort(m, lang)}</span>

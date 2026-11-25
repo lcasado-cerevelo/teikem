@@ -24,6 +24,8 @@ namespace Teikem.Tests;
 /// Lote 243 (G3) — el contenido del aviso «Orden de venta solicitada» (SalesOrderEmailContent), llamado directo sobre WmsFixture (InMemory): la huella y
 /// la clave de no repetición al solicitar, los destinatarios del evento (vendedor y cliente), el contenido con la tabla y el IVU por componente, la firma
 /// adjunta, los motivos de SKIPPED, el documento real de la vista previa y que nada quede rastreado en el DbContext de quien llama.
+/// Lote 244 (P8): una orden solicitada desde el Lote 244 lleva la copia del vendedor (su vendedor es SellerUserId; ver SalesSellerNoticeContractTests); las
+/// pruebas de la regla provisional (representante + quien la solicitó) le quitan la copia para simular una orden anterior al lote.
 /// </summary>
 public sealed class SalesOrderEmailContentTests
 {
@@ -87,6 +89,15 @@ public sealed class SalesOrderEmailContentTests
         return await w.Sales.RequestAsync(d.PublicId, null, default);
     }
 
+    /// <summary>Lote 244: le quita a la orden la copia de ruta y vendedor, como una orden solicitada antes del lote (regla provisional del Lote 243).</summary>
+    private static async Task LegacyAsync(SalesVendorWorld w, SalesOrderDto r)
+    {
+        var row = await w.F.Db.Set<SalesOrder>().AsTracking().SingleAsync(o => o.PublicId == r.PublicId);
+        (row.SalesRouteId, row.SellerUserId, row.SalesCopyAtUtc) = (null, null, null);
+        await w.F.Db.SaveChangesAsync();
+        w.F.Db.ChangeTracker.Clear();
+    }
+
     private static Dictionary<string, string> ValuesOf(SalesOrderDto o, string? fingerprint = null)
     {
         var v = new Dictionary<string, string> { ["orderNumber"] = o.Number, ["orderPublicId"] = o.PublicId.ToString("N") };
@@ -127,7 +138,7 @@ public sealed class SalesOrderEmailContentTests
     // ---------------------------------------------------------------- destinatarios del evento
 
     [Fact]
-    public async Task Vendedor_es_quien_la_solicito_mas_el_usuario_del_representante_sin_repetir_y_solo_activos()
+    public async Task Orden_anterior_al_lote_vendedor_es_quien_la_solicito_mas_el_usuario_del_representante_sin_repetir_y_solo_activos()
     {
         var (w, prov) = await WorldAsync();
         await using var _w = w;
@@ -139,6 +150,7 @@ public sealed class SalesOrderEmailContentTests
         var p = await w.ProductAsync("MED", 10m);
         await RepAsync(w, c, "Ana Pérez (ruta norte)", 2);
         var r = await RequestedAsync(w, c, p);
+        await LegacyAsync(w, r);
 
         var res = await prov.RecipientsAsync(Tenant, SalesEventCodes.OrderRequested, SalesContextRecipients.Seller, ValuesOf(r), default);
         Assert.Null(res.EmptyReason);
@@ -194,6 +206,7 @@ public sealed class SalesOrderEmailContentTests
         var p = await w.ProductAsync("MED", 10m);
         await RepAsync(w, c, "Ana Suspendida", 2);
         var r = await RequestedAsync(w, c, p);
+        await LegacyAsync(w, r);   // la regla provisional (orden anterior al Lote 244), con la regla de persona activa
 
         var res = await prov.RecipientsAsync(Tenant, SalesEventCodes.OrderRequested, SalesContextRecipients.Seller, ValuesOf(r), default);
         Assert.Empty(res.People);
@@ -264,6 +277,10 @@ public sealed class SalesOrderEmailContentTests
         await using var _w = w;
         await UserAsync(w, 1, "Luis Rivera");
         var c = await w.ClientAsync("FARM", x => { x.Name = "Farmacia Central"; x.MerchantRegistration = "SURI-777"; });
+        // Lote 244: Luis es el titular de la ruta del cliente, así queda como vendedor copiado al solicitar
+        var route = await w.F.AddRouteAsync("Norte");
+        await w.F.AddAssignmentAsync(route.SalesRouteId, 1, true, new DateOnly(2026, 1, 1));
+        await w.F.SetClientSalesAsync(c.ClientId, routeId: route.SalesRouteId);
         var med = await w.ProductAsync("MED-500", 10m);
         var vit = await w.ProductAsync("VIT-C", 2m);
         var d = await w.Sales.CreateAsync(new SalesOrderRequest(w.W.PublicId, c.PublicId, Notes: "Nota <b>prueba</b>",

@@ -35,16 +35,18 @@ public sealed partial class SalesOrderService
     /// Aviso de orden solicitada (dentro de la transacción de Solicitar). Lote 243: lleva la huella de líneas y total (orderFingerprint) para que el correo,
     /// que se arma al enviar, avise si la orden cambió; y sale UNA vez por orden (REQ-{guid}).
     /// </summary>
-    private Task NotifyRequestedAsync(SalesOrder order, CancellationToken ct)
+    private async Task NotifyRequestedAsync(SalesOrder order, CancellationToken ct)
     {
+        if (notifications is null) return;
         var backordered = order.Lines.Count(l => l.QtyBackordered > 0m);
         var detail = backordered == 0 ? "Quedó todo reservado." : $"{backordered} línea(s) con faltante en backorder.";
         var fingerprint = SalesOrderEmailRules.Fingerprint(order.Lines.Select(l => (l.LineNo, l.ProductId, l.QtyOrdered, l.UnitPrice)), TotalOf(order));
-        return NotifyOrderAsync(SalesEventCodes.OrderRequested, order, new Dictionary<string, string?>
+        await NotifyOrderAsync(SalesEventCodes.OrderRequested, order, new Dictionary<string, string?>
         {
             ["lineCount"] = order.Lines.Count.ToString(CultureInfo.InvariantCulture),
             ["detail"] = detail,
             ["orderFingerprint"] = fingerprint,
+            ["seller"] = await NoticeSellerNameAsync(order, ct),   // Lote 244 (el correo lo vuelve a armar al enviar con SalesOrderSeller)
         }, RequestedDedupKey(order.PublicId), ct);
     }
 
@@ -55,8 +57,23 @@ public sealed partial class SalesOrderService
         await NotifyOrderAsync(SalesEventCodes.OrderUrgent, order, new Dictionary<string, string?>
         {
             ["note"] = order.Notes ?? string.Empty,
-            ["seller"] = await CurrentUserNameAsync(ct),
+            ["seller"] = await NoticeSellerNameAsync(order, ct),
         }, $"URG-{order.PublicId:N}", ct);
+    }
+
+    /// <summary>
+    /// Lote 244 — la variable {seller} de los avisos de la orden (solicitada y urgente): el nombre del vendedor COPIADO al solicitar (FullName; si no hay, el
+    /// correo); si la orden no tiene copia o quedó «Sin vendedor», el de quien actúa (lo de antes del lote).
+    /// </summary>
+    private async Task<string> NoticeSellerNameAsync(SalesOrder order, CancellationToken ct)
+    {
+        if (order.SalesCopyAtUtc is not null && order.SellerUserId is int sellerId)
+        {
+            var u = await db.Users.AsNoTracking().Where(x => x.Id == sellerId).Select(x => new { x.FullName, x.Email }).FirstOrDefaultAsync(ct);
+            var name = u is null ? null : string.IsNullOrWhiteSpace(u.FullName) ? u.Email : u.FullName.Trim();
+            if (!string.IsNullOrWhiteSpace(name)) return name;
+        }
+        return await CurrentUserNameAsync(ct);
     }
 
     /// <summary>Aviso de crédito excedido: quien intentó solicitar no tiene (o no usó) la autorización. Una vez por orden y situación (no se repite por cada intento igual).</summary>

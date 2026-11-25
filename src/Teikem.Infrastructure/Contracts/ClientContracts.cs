@@ -69,8 +69,11 @@ public sealed record ClientDetailDto(
     // Lote 222: SURI, regla de envío (ShippingMode null = la de la compañía | FREE | OWN) y «Exige la firma de quien autoriza el pedido»
     string? MerchantRegistration = null, string? ShippingMode = null, decimal? ShippingCharge = null, decimal? ShippingFreeFrom = null,
     bool RequireOrderSignature = false,
-    // Lote 238: representante de ventas asignado (null = sin representante) y su ruta; se cambia en /sales-analysis/clients/{id}/rep
-    int? SalesRepId = null, string? SalesRepName = null, string? SalesRouteName = null);
+    // Lote 238: representante de ventas asignado (null = sin representante); se cambia en /sales-analysis/clients/{id}/rep
+    // Lote 244: SalesRouteName = la ruta EFECTIVA (la directa o, si no tiene, la del representante con SalesRouteFromRep = true; null = «Sin ruta»)
+    int? SalesRepId = null, string? SalesRepName = null, string? SalesRouteName = null,
+    // Lote 244: ruta directa (null = hereda la del representante) y vendedor preferido; se cambian en /sales-analysis/clients/{id}/sales
+    int? DirectSalesRouteId = null, bool SalesRouteFromRep = false, int? PreferredSalesUserId = null, string? PreferredSalesUserName = null);
 
 // ---------------- Edición ----------------
 

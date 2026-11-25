@@ -14,6 +14,9 @@ namespace Teikem.Api.Controllers;
 /// Lote 241 — «Análisis de ventas» (módulo Órdenes de venta). Ver con sales.analysis.view; administrar (rutas, representantes, cuotas, líneas y marcas, representante de los
 /// clientes, ajustes, importar el historial de QuickBooks y enlazar nombres sin emparejar) con sales.analysis.manage. El TenantId sale de la sesión. Bajas lógicas
 /// (deactivate/reactivate), nunca DELETE. Meses «AAAA-MM».
+/// Lote 244 (Lote A del plan de rutas): vista «Por ruta» (by-route, la de por omisión en la web; «Por representante» se conserva), cuota por ruta o por persona (ajuste
+/// quotaBy), cuotas de una ruta, representantes sin usuario, clientes por ruta efectiva y transacciones por ruta. Las personas de la ruta y la venta del cliente viven en
+/// SalesRoutesController (misma raíz, sin chocar).
 /// </summary>
 [ApiController]
 [Route("api/v1/sales-analysis")]
@@ -31,11 +34,23 @@ public sealed class SalesAnalysisController(SalesAnalysisService analysis, Sales
     [HttpGet("by-rep"), RequirePermission(View)]
     public Task<SalesByRepDto> ByRep([FromQuery] string? month, [FromQuery] string? compareMonth, CancellationToken ct) => analysis.GetByRepAsync(month, compareMonth, ct);
 
-    /// <summary>Transacciones del mes, paginadas (skip/take hasta 500) o completas con all = true (exportar). repId = 0: sin representante.</summary>
+    /// <summary>
+    /// Lote 244 — vista «Por ruta»: month (por omisión el último mes completo) contra compareMonth (por omisión el anterior). Filas por ruta con sus personas, «Por persona»,
+    /// cuota según el ajuste quotaBy y conciliación (rutas + sin ruta ni vendedor + envío y otros = total del mes).
+    /// </summary>
+    [HttpGet("by-route"), RequirePermission(View)]
+    [ProducesResponseType(typeof(SalesByRouteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SalesByRouteDto> ByRoute([FromQuery] string? month, [FromQuery] string? compareMonth, CancellationToken ct) => analysis.GetByRouteAsync(month, compareMonth, ct);
+
+    /// <summary>
+    /// Transacciones del mes con la persona y la ruta atribuidas, paginadas (skip/take hasta 500) o completas con all = true (exportar). repId = 0: la persona no es un
+    /// representante; routeId = 0: sin ruta.
+    /// </summary>
     [HttpGet("transactions"), RequirePermission(View)]
     public Task<PagedResult<SalesTransactionDto>> Transactions([FromQuery] string? month, [FromQuery] int? repId, [FromQuery] string? q, [FromQuery] int skip = 0,
-        [FromQuery] int take = 100, [FromQuery] bool all = false, CancellationToken ct = default)
-        => analysis.GetTransactionsAsync(month, repId, q, skip, take, all, ct);
+        [FromQuery] int take = 100, [FromQuery] bool all = false, [FromQuery] int? routeId = null, CancellationToken ct = default)
+        => analysis.GetTransactionsAsync(month, repId, routeId, q, skip, take, all, ct);
 
     /// <summary>Vista «Movimiento de productos» de fromMonth a toMonth (por omisión los 12 meses que terminan en el del día de corte) al día asOf (por omisión hoy).</summary>
     [HttpGet("product-movement"), RequirePermission(View)]
@@ -57,8 +72,9 @@ public sealed class SalesAnalysisController(SalesAnalysisService analysis, Sales
     [HttpGet("settings"), RequirePermission(View)]
     public Task<SalesAnalysisSettingsDto> Settings(CancellationToken ct) => setup.GetSettingsAsync(ct);
 
-    /// <summary>Fecha de corte (clearCutoff la quita), días de entrega y nivel de servicio (z) del punto de reorden sugerido.</summary>
+    /// <summary>Fecha de corte (clearCutoff la quita), días de entrega, nivel de servicio (z) del punto de reorden sugerido y, Lote 244, quotaBy (REP | ROUTE; otro = 400).</summary>
     [HttpPut("settings"), RequirePermission(Manage)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public Task<SalesAnalysisSettingsDto> UpdateSettings([FromBody] SalesAnalysisSettingsRequest req, CancellationToken ct) => setup.UpdateSettingsAsync(req, ct);
 
     // ---------------------------------------------------------------- rutas
@@ -72,29 +88,52 @@ public sealed class SalesAnalysisController(SalesAnalysisService analysis, Sales
     [HttpPatch("routes/{id:int}"), RequirePermission(Manage)]
     public Task<SalesRouteDto> UpdateRoute(int id, [FromBody] SalesRouteRequest req, CancellationToken ct) => setup.UpdateRouteAsync(id, req, ct);
 
-    /// <summary>Baja lógica: 409 si tiene representantes activos.</summary>
+    /// <summary>Baja lógica: 409 si tiene representantes activos o (Lote 244) clientes activos con esa ruta; si pasa, cierra hoy sus personas vigentes.</summary>
     [HttpPost("routes/{id:int}/deactivate"), RequirePermission(Manage)]
+    [ProducesResponseType(typeof(SalesRouteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<SalesRouteDto> DeactivateRoute(int id, CancellationToken ct) => setup.SetRouteActiveAsync(id, false, ct);
 
     [HttpPost("routes/{id:int}/reactivate"), RequirePermission(Manage)]
     public Task<SalesRouteDto> ReactivateRoute(int id, CancellationToken ct) => setup.SetRouteActiveAsync(id, true, ct);
 
+    /// <summary>Lote 244 — las cuotas propias de una ruta, mes por mes.</summary>
+    [HttpGet("routes/{id:int}/quotas"), RequirePermission(View)]
+    [ProducesResponseType(typeof(SalesRouteQuotaHistoryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<SalesRouteQuotaHistoryDto> RouteQuotas(int id, CancellationToken ct) => setup.GetRouteQuotasAsync(id, ct);
+
     // ---------------------------------------------------------------- representantes
 
+    /// <summary>Representantes; Lote 244: withoutUser = true solo los que no tienen usuario.</summary>
     [HttpGet("reps"), RequirePermission(View)]
-    public Task<IReadOnlyList<SalesRepDto>> Reps([FromQuery] bool includeInactive, CancellationToken ct) => setup.ListRepsAsync(includeInactive, ct);
+    public Task<IReadOnlyList<SalesRepDto>> Reps([FromQuery] bool includeInactive, [FromQuery] bool withoutUser, CancellationToken ct)
+        => setup.ListRepsAsync(includeInactive, withoutUser, ct);
 
+    /// <summary>Alta: el usuario es obligatorio (400) y no puede ser el de otro representante activo (409). Si su ruta no tiene titular, queda como titular (becamePrimary).</summary>
     [HttpPost("reps"), RequirePermission(Manage)]
+    [ProducesResponseType(typeof(SalesRepDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<SalesRepDto> CreateRep([FromBody] SalesRepRequest req, CancellationToken ct) => setup.CreateRepAsync(req, ct);
 
+    /// <summary>Cambio: clearUser = 400 (el usuario no se quita); cambiar el usuario lo vuelve a validar. Puede quedar como titular automático (becamePrimary).</summary>
     [HttpPatch("reps/{id:int}"), RequirePermission(Manage)]
+    [ProducesResponseType(typeof(SalesRepDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<SalesRepDto> UpdateRep(int id, [FromBody] SalesRepRequest req, CancellationToken ct) => setup.UpdateRepAsync(id, req, ct);
 
     /// <summary>Baja lógica: 409 si tiene clientes activos asignados.</summary>
     [HttpPost("reps/{id:int}/deactivate"), RequirePermission(Manage)]
     public Task<SalesRepDto> DeactivateRep(int id, CancellationToken ct) => setup.SetRepActiveAsync(id, false, ct);
 
+    /// <summary>Reactivar: 409 si su nombre o (Lote 244) su usuario ya los tiene otro representante activo. Puede quedar como titular automático (becamePrimary).</summary>
     [HttpPost("reps/{id:int}/reactivate"), RequirePermission(Manage)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<SalesRepDto> ReactivateRep(int id, CancellationToken ct) => setup.SetRepActiveAsync(id, true, ct);
 
     /// <summary>Pasa los valores del campo personalizado «Representante» (sales_rep) a representantes y enlaza los clientes sin representante (idempotente).</summary>
@@ -106,12 +145,20 @@ public sealed class SalesAnalysisController(SalesAnalysisService analysis, Sales
 
     // ---------------------------------------------------------------- cuotas
 
-    /// <summary>Cuotas de un mes (por omisión el mes en curso): la propia de cada representante y la vigente.</summary>
+    /// <summary>
+    /// Cuotas de un mes (por omisión el mes en curso): la propia de cada representante y de cada ruta (Lote 244) y la vigente. by = REP | ROUTE escoge el total (por
+    /// omisión, el del ajuste quotaBy).
+    /// </summary>
     [HttpGet("quotas"), RequirePermission(View)]
-    public Task<SalesQuotaMonthDto> Quotas([FromQuery] string? month, CancellationToken ct) => setup.GetQuotasAsync(month, ct);
+    [ProducesResponseType(typeof(SalesQuotaMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SalesQuotaMonthDto> Quotas([FromQuery] string? month, [FromQuery] string? by, CancellationToken ct) => setup.GetQuotasAsync(month, by, ct);
 
-    /// <summary>Edición en bloque de un mes: items [{repId, amount}] (amount null = quitar la propia del mes).</summary>
+    /// <summary>Edición en bloque de un mes: items [{repId | routeId, amount}] (uno de los dos ids; amount null = quitar la propia del mes).</summary>
     [HttpPut("quotas/{month}"), RequirePermission(Manage)]
+    [ProducesResponseType(typeof(SalesQuotaMonthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<SalesQuotaMonthDto> SetQuotas(string month, [FromBody] SalesQuotaBulkRequest req, CancellationToken ct) => setup.SetQuotasAsync(month, req, ct);
 
     // ---------------------------------------------------------------- líneas y marcas
@@ -141,11 +188,14 @@ public sealed class SalesAnalysisController(SalesAnalysisService analysis, Sales
 
     // ---------------------------------------------------------------- clientes ↔ representante
 
-    /// <summary>Clientes activos con su representante; repId filtra por representante y unassigned = true los que no tienen.</summary>
+    /// <summary>
+    /// Clientes activos con su representante; repId filtra por representante y unassigned = true los que no tienen. Lote 244: routeId filtra por la ruta efectiva (la
+    /// propia o la del representante) y noRoute = true los que no tienen ninguna; cada fila trae la ruta propia, la efectiva y el vendedor preferido.
+    /// </summary>
     [HttpGet("clients"), RequirePermission(View)]
     public Task<PagedResult<SalesClientRepDto>> Clients([FromQuery] int? repId, [FromQuery] bool unassigned, [FromQuery] string? q, [FromQuery] int skip = 0,
-        [FromQuery] int take = 100, CancellationToken ct = default)
-        => setup.ListClientsAsync(repId, unassigned, q, skip, take, ct);
+        [FromQuery] int take = 100, [FromQuery] int? routeId = null, [FromQuery] bool noRoute = false, CancellationToken ct = default)
+        => setup.ListClientsAsync(repId, unassigned, routeId, noRoute, q, skip, take, ct);
 
     /// <summary>Asigna (o quita con repId null) el representante de un cliente.</summary>
     [HttpPut("clients/{clientId:int}/rep"), RequirePermission(Manage)]

@@ -3,8 +3,8 @@
 import * as XLSX from 'xlsx'
 import { describe, expect, it } from 'vitest'
 import { translate } from '../../kernel/i18n/i18n'
-import { buildByRepWorkbook, buildMovementWorkbook, col, excelDay, FMT, type TFn } from './salesAnalysisExcel'
-import type { ProductMovement, SalesByRep } from './salesAnalysisRules'
+import { buildByRepWorkbook, buildByRouteWorkbook, buildMovementWorkbook, col, excelDay, FMT, type TFn } from './salesAnalysisExcel'
+import type { ProductMovement, SalesByRep, SalesByRoute } from './salesAnalysisRules'
 
 const t: TFn = (key, params) => translate('es', key, params)
 
@@ -188,5 +188,47 @@ describe('libro «Movimiento de productos»', () => {
     expect(cell(notes, 'A1')?.v).toBe('Qué es cada columna del Resumen')
     expect(String(cell(notes, 'A3')?.v)).toMatch(/^Clasif\. ABC: A = /)
     expect(notes['!cols']?.[0]?.wch).toBe(130)
+  })
+})
+
+describe('libro «Por ruta»', () => {
+  const BY_ROUTE: SalesByRoute = {
+    month: '2026-10',
+    compareMonth: '2026-09',
+    quotaBy: 'ROUTE',
+    routes: [
+      {
+        routeId: 1,
+        routeName: 'Cadenas',
+        compareSales: 100,
+        sales: 150,
+        change: 50,
+        changePct: 0.5,
+        quota: 120,
+        compliance: 1.25,
+        primaryName: 'Ana',
+        people: [
+          { personKey: 'U1', name: 'Ana', isPrimary: true, compareSales: 100, sales: 100, change: 0 },
+          { personKey: 'NONE', name: null, isPrimary: false, compareSales: 0, sales: 50, change: 50 },
+        ],
+      },
+      { routeId: null, routeName: null, compareSales: 0, sales: 10, change: 10, people: [] },
+    ],
+    totals: { compareSales: 100, sales: 160, change: 60, changePct: 0.6, quota: 120, compliance: 1.3333 },
+    reconciliation: { routesTotal: 160, unassigned: 0, shippingAndOther: 5, monthTotal: 165, difference: 0 },
+  }
+  const wb = buildByRouteWorkbook(XLSX, { byRoute: BY_ROUTE, transactions: [{ date: '2026-10-01', routeName: 'Cadenas', repName: 'Ana', amount: 10, quantity: 1 }], t, lang: 'es' })
+  const ws = wb.Sheets['Comparativo por ruta']
+  it('hoja «Comparativo por ruta»: ruta, sus personas (con «Sin vendedor»), totales con fórmula y conciliación', () => {
+    expect(wb.SheetNames).toEqual(['Comparativo por ruta', 'Transacciones'])
+    expect([ws.A3?.v, ws.B3?.v, ws.C3?.v]).toEqual(['Ruta', 'Persona', 'Papel'])
+    expect(ws.A4?.v).toBe('Cadenas')
+    expect(ws.B5?.v).toBe('Ana')
+    expect(ws.C5?.v).toBe('Titular')
+    expect(ws.B6?.v).toBe('Sin vendedor')
+    expect(ws.A7?.v).toBe('Sin ruta')
+    expect(ws.A8?.v).toBe('TOTAL RUTAS')
+    expect(ws.E8?.f).toBe('E4+E7')
+    expect(ws.E8?.v).toBe(160)
   })
 })

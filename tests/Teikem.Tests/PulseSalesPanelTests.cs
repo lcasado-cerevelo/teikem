@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Teikem.Domain.Analytics;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Sales;
+using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Services;
@@ -58,6 +60,33 @@ public sealed class PulseSalesPanelTests
         await using var x = await SalesVendorWorld.CreateAsync();
         x.F.SetPermissions(PermissionCatalog.PulseSales);
         await Assert.ThrowsAsync<ForbiddenException>(() => x.F.Get<SalesPulseService>().GetAsync(default));
+    }
+
+    [Fact]
+    public async Task With_route_quotas_the_month_quota_is_the_sum_of_the_active_route_quotas()
+    {
+        // Lote 244: el Pulso suma las cuotas según el ajuste QuotaBy (REP: representantes activos; ROUTE: rutas activas)
+        await using var x = await SalesVendorWorld.CreateAsync(s =>
+        {
+            s.AddTransient<SalesAnalysisLineReader>();
+            s.AddTransient<SalesAnalysisService>();
+            s.AddTransient<SalesAnalysisSetupService>();
+        });
+        var setup = x.F.Get<SalesAnalysisSetupService>();
+        var norte = await x.F.AddRouteAsync("Norte");
+        var metro = await x.F.AddRouteAsync("Metro");
+        var old = await x.F.AddRouteAsync("Vieja", isActive: false);
+        var rep = await x.F.AddRepAsync("Ana", norte.SalesRouteId, null);
+        var month = SalesAnalysisRules.MonthKey(SalesAnalysisRules.MonthStart(TenantClock.Default.Today));
+        await setup.SetQuotasAsync(month, new SalesQuotaBulkRequest(new[]
+        {
+            new SalesQuotaItemRequest(rep.SalesRepId, 100m), new SalesQuotaItemRequest(null, 300m, norte.SalesRouteId),
+            new SalesQuotaItemRequest(null, 200m, metro.SalesRouteId), new SalesQuotaItemRequest(null, 999m, old.SalesRouteId),
+        }), default);
+        Assert.Equal(100m, (await x.F.Get<SalesAnalysisService>().MonthSalesVsQuotaAsync(default)).Quota);   // REP, lo de siempre
+
+        await setup.UpdateSettingsAsync(new SalesAnalysisSettingsRequest(QuotaBy: SalesRouteCodes.QuotaByRoute), default);
+        Assert.Equal(500m, (await x.F.Get<SalesPulseService>().GetAsync(default)).MonthQuota);   // la ruta inactiva no cuenta
     }
 
     private static (int, decimal, int, int, int) Counts(PulseSalesPanelDto d) => (d.OrdersToday, d.OrdersTodayAmount, d.UrgentOpen, d.ClientsToApprove, d.AwaitingApproval);

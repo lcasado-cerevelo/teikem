@@ -202,4 +202,30 @@ public sealed class SalesAnalysisRulesTests
         Assert.Equal(D(2026, 10), R.LastCompleteMonth(D(2026, 11, 5)));
         Assert.Equal("2026-03", R.MonthKey(D(2026, 3)));
     }
+
+    [Fact]
+    public void Aggregate_groups_by_any_key_and_only_counts_net_sales_of_the_two_months()
+    {
+        // Lote 244: el agregador recibe la clave como función (por ruta, por persona… y, en el Lote B, por cadena) y da los mismos totales con cualquier clave
+        var lines = new[]
+        {
+            new AttributedLine(D(2026, 10, 3), C.ClassProduct, 100m, 1, "R1", "C1"),
+            new AttributedLine(D(2026, 10, 4), C.ClassDiscount, -5m, 1, "R1", "C1"),
+            new AttributedLine(D(2026, 10, 5), C.ClassShipping, 8m, 1, "R1", "C1"),      // envío: no es venta neta
+            new AttributedLine(D(2026, 10, 6), C.ClassProduct, 50m, 2, "U7", "C2"),
+            new AttributedLine(D(2026, 10, 7), C.ClassProduct, 20m, null, R.NoPersonKey, "C3"),
+            new AttributedLine(D(2026, 9, 9), C.ClassProduct, 40m, 1, "R1", "C1"),
+            new AttributedLine(D(2026, 8, 9), C.ClassProduct, 999m, 1, "R1", "C1"),     // ni el mes ni el de comparación
+        };
+        var byRoute = R.Aggregate(lines, l => l.RouteId?.ToString() ?? "-", D(2026, 10), D(2026, 9));
+        Assert.Equal(new SalesGroupSales(95m, 40m), byRoute["1"]);
+        Assert.Equal(new SalesGroupSales(50m, 0m), byRoute["2"]);
+        Assert.Equal(new SalesGroupSales(20m, 0m), byRoute["-"]);
+        var byClient = R.Aggregate(lines, l => l.ClientKey, D(2026, 10), D(2026, 9));   // «por cadena» sería otra clave más
+        Assert.Equal(byRoute.Values.Sum(v => v.Sales), byClient.Values.Sum(v => v.Sales));
+        Assert.Equal(byRoute.Values.Sum(v => v.CompareSales), byClient.Values.Sum(v => v.CompareSales));
+        Assert.Equal(165m, byClient.Values.Sum(v => v.Sales));
+        var same = R.Aggregate(lines, l => l.PersonKey, D(2026, 10), D(2026, 10));     // mismo mes: suma en los dos
+        Assert.Equal(new SalesGroupSales(95m, 95m), same["R1"]);
+    }
 }

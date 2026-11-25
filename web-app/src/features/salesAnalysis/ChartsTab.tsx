@@ -10,7 +10,7 @@ import { pickLogoUrl, useCompanyLogos } from '../../kernel/ui/brandLogos'
 import { Filters } from '../../kernel/ui/Filters'
 import { Spinner } from '../../kernel/ui/Spinner'
 import { useSalesCharts } from './salesAnalysisApi'
-import { collapseShares, coveragePoints, lineShareFromCharts, monthLong, monthOptions, repQuotaFromCharts } from './salesAnalysisRules'
+import { collapseShares, coveragePoints, lineShareFromCharts, monthLong, monthOptions, quotaPointsFromCharts } from './salesAnalysisRules'
 import { MonthSelect, QueryError } from './SaParts'
 import { CoverageChart, LineShareChart, MonthlySalesChart, RepQuotaChart, TopUnitsChart } from './SalesCharts'
 
@@ -30,6 +30,7 @@ export function ChartsTab() {
   const d = q.data
   const options = useMemo(() => monthOptions(f.today(), 36), [f])
   const months = d?.months ?? []
+  const quota = d ? quotaPointsFromCharts(d) : null
   const logo = pickLogoUrl(logos.urls, 'lockup', 'light')
   const company = me?.tenantName ?? ''
 
@@ -69,7 +70,7 @@ export function ChartsTab() {
               <MonthlySalesChart animate={false} months={months} total={d.totalByMonth} byLine={d.byLineByMonth ?? []} />
             </div>
             <div className="sa-block">
-              <RepQuotaChart animate={false} points={repQuotaFromCharts(d.repVsQuota ?? [])} month={d.month} />
+              <RepQuotaChart animate={false} points={quota?.points ?? []} mode={quota?.mode} month={d.month} />
             </div>
             <div className="sa-block">
               <LineShareChart animate={false} points={collapseShares(lineShareFromCharts(d.lineShare ?? []), MAX_SLICES, t('salesAnalysis.charts.others'))} />

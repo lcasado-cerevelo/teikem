@@ -34,6 +34,9 @@ import {
   quotaDraftFrom,
   quotaMonthTotal,
   statusIssues,
+  parseQuotaBy,
+  quotaPointsFromCharts,
+  routeQuotaFromRows,
   statusKey,
   statusTone,
   topProductsBySales,
@@ -224,6 +227,34 @@ describe('aviso de estado', () => {
     expect(statusIssues({ batches: [{ isActive: true }], overlap: true }).map((i) => i.key)).toEqual(['overlap'])
     expect(statusIssues({ batches: [{ isActive: true }], cutoffDate: '2026-11-16', overlap: false })).toEqual([])
     expect(statusIssues(undefined)).toEqual([])
+  })
+})
+
+describe('Lote 244: ruta y cuota por ruta', () => {
+  it('el aviso de estado suma lo nuevo: clientes sin ruta, rutas sin titular o con titular inactivo y representantes sin usuario', () => {
+    const issues = statusIssues({ clientsWithoutRoute: 2, routesWithoutPrimary: 1, routesWithInactivePrimary: 3, repsWithoutUser: 4, batches: [{ isActive: true }], cutoffDate: '2026-11-16' })
+    expect(issues).toEqual([
+      { key: 'clientsWithoutRoute', count: 2, section: 'clients' },
+      { key: 'routesWithoutPrimary', count: 1, section: 'routes' },
+      { key: 'routesWithInactivePrimary', count: 3, section: 'routes' },
+      { key: 'repsWithoutUser', count: 4, section: 'reps' },
+    ])
+  })
+  it('parseQuotaBy: ROUTE o, por omisión, REP', () => {
+    expect(parseQuotaBy('ROUTE')).toBe('ROUTE')
+    expect(parseQuotaBy('REP')).toBe('REP')
+    expect(parseQuotaBy(undefined)).toBe('REP')
+  })
+  it('venta contra cuota según el ajuste: por ruta usa routeVsQuota, por persona repVsQuota', () => {
+    const base = { repVsQuota: [{ repId: 1, rep: 'Ana', route: 'Cadenas', sales: 5, quota: 10, compliance: 0.5 }], routeVsQuota: [{ routeId: 1, route: 'Cadenas', sales: 8, quota: 10, compliance: 0.8 }] }
+    expect(quotaPointsFromCharts({ ...base, quotaBy: 'ROUTE' })).toEqual({ mode: 'ROUTE', points: [{ key: 'R1', rep: 'Cadenas', route: '', sales: 8, quota: 10, compliance: 0.8 }] })
+    expect(quotaPointsFromCharts({ ...base, quotaBy: 'REP' }).points[0]).toMatchObject({ rep: 'Ana', sales: 5 })
+  })
+  it('routeQuotaFromRows: la ruta sin id queda con su propia clave y el titular como segunda línea', () => {
+    expect(routeQuotaFromRows([{ routeId: null, sales: 3 }, { routeId: 2, routeName: 'Norte', primaryName: 'Beto', sales: 4, quota: null }])).toEqual([
+      { key: 'Rnone', rep: '', route: '', sales: 3, quota: null, compliance: null },
+      { key: 'R2', rep: 'Norte', route: 'Beto', sales: 4, quota: null, compliance: null },
+    ])
   })
 })
 

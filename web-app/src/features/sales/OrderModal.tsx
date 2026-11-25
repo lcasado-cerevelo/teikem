@@ -20,10 +20,12 @@ import { offerKitOptions } from './offerKitOptions'
 import { useSalesCatalog } from './wizard/wizardApi'
 import { AUTHORIZED_BY_MAX, authorizerMissing, DELIVERY_MODES, draftError, draftSubtotal, effectivePrice, EXTRA_DEFAULTS, isCreditTerm, lineAmount, parseNumber, paymentChanged, prefillPayment, toRequest, withMethod, type DeliveryMode, type LineDraft, type OrderDraft } from './salesRules'
 import { KitLineBlock, KitComponentsSection } from './KitLineBlock'
-import { useSalesMutations, useSalesOrder, useSalesStock, type SalesAvailabilityDto, type SalesDispatchInfoDto, type SalesDispatchResultDto, type SalesOrderDto, type SalesOrderLineDto } from './salesApi'
+import { useSalesMutations, useSalesOrder, useSalesStock, useSellerOptions, type SalesAvailabilityDto, type SalesDispatchInfoDto, type SalesDispatchResultDto, type SalesOrderDto, type SalesOrderLineDto } from './salesApi'
 import { LinkedDeliveryInfo } from '../integrations/LinkedDeliveryInfo'
 import { StockInfo } from './StockInfo'
 import { orderKitPieces, orderWarehouseId, showWarehouseField, stockWarehouses } from './stockRules'
+
+import './orderSeller.css'
 
 let nextKey = 1
 
@@ -195,12 +197,18 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
   const [, setEntryMode] = useEntryMode()
   const [deleting, setDeleting] = useState(false)
   const [draft, setDraft] = useState<OrderDraft>(() => draftOf(order))
+  // Lote 244: el vendedor de la orden ('' = el que propone la ruta del cliente); se guarda con la orden. Cambiar de cliente vuelve a la propuesta.
+  const [seller, setSeller] = useState<string>(() => (order && order.sellerProposed !== true && order.sellerUserId != null ? String(order.sellerUserId) : ''))
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState<SalesOrderDto | null>(null)
   const [checking, setChecking] = useState<{ order: SalesOrderDto; check: SalesAvailabilityDto } | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const busy = create.isPending || update.isPending || check.isPending
-  const set = (patch: Partial<OrderDraft>) => setDraft((d) => ({ ...d, ...patch }))
+  const set = (patch: Partial<OrderDraft>) => {
+    if (patch.clientPublicId !== undefined && patch.clientPublicId !== draft.clientPublicId) setSeller('')
+    setDraft((d) => ({ ...d, ...patch }))
+  }
+  const sellerOpts = useSellerOptions(draft.clientPublicId)
   const setLine = (key: number, patch: Partial<LineDraft>) => set({ lines: draft.lines.map((l) => (l.key === key ? { ...l, ...patch } : l)) })
   const current = saved ?? order
   // Lote 235: la orden conserva su almacén. Con un solo almacén activo no se pregunta; con varios, el campo viene ya escogido con el PRINCIPAL. De ese almacén sale
@@ -236,7 +244,8 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
     }
     try {
       // con varios almacenes viaja el que se ve escogido (el principal por omisión)
-      const body = toRequest(showWarehouseField(stock.data) && !draft.warehousePublicId ? { ...draft, warehousePublicId: warehouseId } : draft)
+      const base = toRequest(showWarehouseField(stock.data) && !draft.warehousePublicId ? { ...draft, warehousePublicId: warehouseId } : draft)
+      const body = { ...base, ...(seller ? { sellerUserId: Number(seller) } : { clearSeller: true }) }
       const dto = current ? await update.mutateAsync({ id: current.publicId!, body }) : await create.mutateAsync(body)
       setSaved(dto)
       return dto
@@ -337,6 +346,23 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
             </div>
           )}
         </div>
+        {draft.clientPublicId && sellerOpts.data && (
+          <div className="f so-seller">
+            <label htmlFor="so-seller">{t('sales.seller.label')}</label>
+            <select id="so-seller" value={seller || String(sellerOpts.data.proposedUserId ?? '')} onChange={(e) => setSeller(e.target.value)}>
+              {sellerOpts.data.proposedUserId == null && <option value="">{t('sales.seller.none')}</option>}
+              {(sellerOpts.data.options ?? []).map((o) => (
+                <option key={o.userId} value={String(o.userId)}>
+                  {o.name}{o.isProposed ? ` · ${t('sales.seller.proposed')}` : ''}{o.kind ? ` (${t(`clients.sales.kind${o.kind}`)})` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="help so-seller-help">
+              {sellerOpts.data.routeName ? `${t('sales.seller.route')}: ${sellerOpts.data.routeName}. ` : `${t('sales.seller.noRoute')}. `}
+              {(sellerOpts.data.options ?? []).length === 0 ? t('sales.seller.noOptions') : t('sales.seller.help')}
+            </p>
+          </div>
+        )}
         <div className="r2">
           <div className="f">
             <label htmlFor="so-req">{t('sales.requiredDate')}</label>
@@ -752,6 +778,7 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
         <dl className="sales-facts">
           <div><dt>{t('sales.client')}</dt><dd>{order.clientName}</dd></div>
           <div><dt>{t('sales.warehouse')}</dt><dd>{order.warehouseName}</dd></div>
+          {(order.salesRouteName || order.sellerName) && <div className="so-seller-fact"><dt>{t('sales.seller.route')} · {t('sales.seller.label')}</dt><dd>{[order.salesRouteName, order.sellerName].filter(Boolean).join(' · ')}</dd></div>}
           <div><dt>{t('sales.requestedDate')}</dt><dd>{f.date(order.requestedDate)}{order.requestedByName ? ` · ${order.requestedByName}` : ''}</dd></div>
           <div><dt>{t('sales.requiredDate')}</dt><dd>{order.requiredDate ? f.date(order.requiredDate) : '—'}</dd></div>
           {order.notes && <div><dt>{t('sales.notes')}</dt><dd>{order.notes}</dd></div>}

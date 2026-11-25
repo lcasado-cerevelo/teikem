@@ -2,7 +2,7 @@
 // marca → línea, Clientes sin representante (asignación en bloque), Ajustes (fecha de corte, días de entrega y nivel de
 // servicio), Importar historial de QuickBooks y Emparejar a mano. Con `sales.analysis.manage` se edita; sin él, solo lectura.
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useCan } from '../../kernel/access'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { applyProblemDetails } from '../../kernel/api/problem'
@@ -44,10 +44,14 @@ import {
   type ClientRepQuery,
 } from './salesAnalysisApi'
 import { SALES_ANALYSIS_MANAGE, SERVICE_LEVELS, SETUP_SECTIONS, type ProductLine, type SalesBrand, type SalesClientRep, type SalesRep, type SalesRoute, type SalesUnmatched, type SetupSection } from './salesAnalysisRules'
+import { ClientsNoRoutePanel } from './ClientsNoRoutePanel'
 import { ImportHistory, UnmatchedList } from './ImportHistory'
 import { QuotasGrid } from './QuotasGrid'
+import { RoutePeoplePanel, type RouteRef } from './RoutePeoplePanel'
+import { RoutesFromRepsDialog } from './RoutesFromRepsDialog'
 import { QueryError } from './SaParts'
 import { useSaFormat } from './saFormat'
+import './saRouteSetup.css'
 
 const NO_ROWS: never[] = []
 
@@ -76,7 +80,12 @@ export function SetupTab() {
       {sec === 'reps' && <RepsSection />}
       {sec === 'quotas' && <QuotasGrid />}
       {sec === 'lines' && <LinesSection />}
-      {sec === 'clients' && <ClientsSection />}
+      {sec === 'clients' && (
+        <>
+          <ClientsNoRoutePanel />
+          <ClientsSection />
+        </>
+      )}
       {sec === 'settings' && <SettingsSection />}
       {sec === 'import' && canManage && <ImportHistory onLink={() => setSec('link')} />}
       {sec === 'link' && canManage && <LinkSection />}
@@ -155,32 +164,56 @@ function useToggleConfirm<T extends { id?: number; name?: string | null; isActiv
 
 function RoutesSection() {
   const t = useT()
+  const fm = useSaFormat()
   const q = useSalesRoutes()
   const save = useSaveRoute()
   const toggle = useSetRouteActive()
   const [editing, setEditing] = useState<NameSortValue | null>(null)
+  const [peopleOf, setPeopleOf] = useState<RouteRef | null>(null)
+  const [fromReps, setFromReps] = useState(false)
   const confirm = useToggleConfirm<SalesRoute>(toggle.mutateAsync)
   const canManage = useCan(SALES_ANALYSIS_MANAGE)
   const columns = useMemo<DataColumn<SalesRoute>[]>(
     () => [
       { id: 'name', header: t('salesAnalysis.setup.name'), cell: (r) => r.name ?? '', sortValue: (r) => r.name ?? '', card: 'title' },
       { id: 'sortOrder', header: t('salesAnalysis.setup.sortOrder'), cell: (r) => String(r.sortOrder ?? ''), sortValue: (r) => r.sortOrder ?? 0, align: 'end' },
-      { id: 'reps', header: t('salesAnalysis.setup.repCount'), cell: (r) => String(r.repCount ?? 0), sortValue: (r) => r.repCount ?? 0, align: 'end' },
+      {
+        id: 'primary',
+        header: t('salesAnalysis.routes.primary'),
+        cell: (r) =>
+          !r.hasPrimary ? (
+            <Chip tone="warn">{t('salesAnalysis.routes.noPrimary')}</Chip>
+          ) : (
+            <span className="sa-route-primary">{r.primaryName}{r.primaryIsActiveMember === false && <Chip tone="warn">{t('salesAnalysis.routes.inactivePrimary')}</Chip>}</span>
+          ),
+        sortValue: (r) => (r.hasPrimary ? (r.primaryName ?? '') : ''),
+        exportValue: (r) => (r.hasPrimary ? (r.primaryName ?? '') : t('salesAnalysis.routes.noPrimary')),
+      },
+      { id: 'supports', header: t('salesAnalysis.routes.supports'), cell: (r) => String(r.supportCount ?? 0), sortValue: (r) => r.supportCount ?? 0, align: 'end' },
+      { id: 'clients', header: t('salesAnalysis.routes.clientCount'), cell: (r) => String(r.clientCount ?? 0), sortValue: (r) => r.clientCount ?? 0, align: 'end' },
+      { id: 'quota', header: t('salesAnalysis.setup.currentQuota'), cell: (r) => fm.money(r.currentQuota), sortValue: (r) => r.currentQuota ?? null, align: 'end', exportValue: (r) => r.currentQuota ?? null },
       { id: 'active', header: t('salesAnalysis.setup.status'), cell: (r) => <Chip tone={r.isActive ? 'deliv' : 'cap'}>{t(r.isActive ? 'salesAnalysis.setup.active' : 'salesAnalysis.setup.inactive')}</Chip>, sortValue: (r) => (r.isActive ? 0 : 1) },
     ],
-    [t],
+    [t, fm],
   )
   return (
     <Panel
-      title={t('salesAnalysis.setup.sec.routes')}
+      title={t('salesAnalysis.routes.title')}
       subtitle={t('salesAnalysis.setup.routesSub')}
       badge={q.data?.length}
       flush
-      actions={canManage ? <button type="button" className="btn flow sm" onClick={() => setEditing({ name: '', sortOrder: null })}>{t('salesAnalysis.setup.newRoute')}</button> : undefined}
+      actions={
+        canManage ? (
+          <div className="sa-inline">
+            <button type="button" className="btn sm" onClick={() => setFromReps(true)}>{t('salesAnalysis.routes.fromReps.open')}</button>
+            <button type="button" className="btn flow sm" onClick={() => setEditing({ name: '', sortOrder: null })}>{t('salesAnalysis.setup.newRoute')}</button>
+          </div>
+        ) : undefined
+      }
     >
       {q.isError ? <div className="pb"><QueryError error={q.error} /></div> : (
         <DataTable
-          label={t('salesAnalysis.setup.sec.routes')}
+          label={t('salesAnalysis.routes.title')}
           columns={columns}
           rows={q.data ?? NO_ROWS}
           rowKey={(r) => String(r.id)}
@@ -189,6 +222,7 @@ function RoutesSection() {
           rowClassName={(r) => (r.isActive ? undefined : 'dim')}
           empty={t('salesAnalysis.setup.noRoutes')}
           rowActions={[
+            { key: 'people', label: t('salesAnalysis.routes.peopleBtn'), onClick: (r) => setPeopleOf({ id: r.id ?? 0, name: r.name ?? '' }) },
             { key: 'edit', label: t('salesAnalysis.setup.edit'), icon: <IconEdit />, perm: SALES_ANALYSIS_MANAGE, onClick: (r) => setEditing({ id: r.id, name: r.name ?? '', sortOrder: r.sortOrder ?? null }) },
             { key: 'off', label: t('salesAnalysis.setup.deactivate'), icon: <IconPower />, tone: 'danger', perm: SALES_ANALYSIS_MANAGE, visible: (r) => !!r.isActive, onClick: confirm.ask },
             { key: 'on', label: t('salesAnalysis.setup.reactivate'), icon: <IconRotateCcw />, perm: SALES_ANALYSIS_MANAGE, visible: (r) => !r.isActive, onClick: confirm.ask },
@@ -196,6 +230,8 @@ function RoutesSection() {
         />
       )}
       <NameSortModal title={editing?.id ? t('salesAnalysis.setup.editRoute') : t('salesAnalysis.setup.newRoute')} value={editing} onClose={() => setEditing(null)} onSave={(v) => save.mutateAsync({ id: v.id, name: v.name, sortOrder: v.sortOrder })} />
+      <RoutePeoplePanel route={peopleOf} onClose={() => setPeopleOf(null)} />
+      {canManage && <RoutesFromRepsDialog open={fromReps} onClose={() => setFromReps(false)} />}
       <ConfirmDialog
         open={confirm.row !== null}
         title={t(confirm.row?.isActive ? 'salesAnalysis.setup.deactivateTitle' : 'salesAnalysis.setup.reactivateTitle', { name: confirm.row?.name ?? '' })}
@@ -231,24 +267,47 @@ function RepsSection() {
   const confirm = useToggleConfirm<SalesRep>(toggle.mutateAsync)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [noUser, setNoUser] = useState('')
+  const canUsers = useCan('users.view')
+  const repRows = (q.data ?? NO_ROWS).filter((r) => noUser !== 'without' || r.hasUser === false)
+  const withoutUser = (q.data ?? NO_ROWS).filter((r) => r.isActive && r.hasUser === false).length
   const columns = useMemo<DataColumn<SalesRep>[]>(
     () => [
       { id: 'name', header: t('salesAnalysis.setup.name'), cell: (r) => r.name ?? '', sortValue: (r) => r.name ?? '', card: 'title' },
-      { id: 'route', header: t('salesAnalysis.col.route'), cell: (r) => r.routeName || <Chip tone="warn">{t('salesAnalysis.setup.noRoute')}</Chip>, sortValue: (r) => r.routeName ?? '', exportValue: (r) => r.routeName ?? '' },
-      { id: 'user', header: t('salesAnalysis.setup.user'), cell: (r) => r.userName || '—', sortValue: (r) => r.userName ?? '' },
+      { id: 'route', header: t('salesAnalysis.col.route'), cell: (r) => (r.routeName ? <span className="sa-route-primary">{r.routeName}{r.isPrimaryOfRoute && <Chip tone="route">{t('salesAnalysis.routes.primary')}</Chip>}</span> : <Chip tone="warn">{t('salesAnalysis.setup.noRoute')}</Chip>), sortValue: (r) => r.routeName ?? '', exportValue: (r) => r.routeName ?? '' },
+      {
+        id: 'user',
+        header: t('salesAnalysis.setup.user'),
+        cell: (r) =>
+          r.hasUser === false ? (
+            <span className="sa-route-primary">
+              <Chip tone="warn">{t('salesAnalysis.routes.noUserChip')}</Chip>
+              {canUsers && <Link className="sa-route-link" to="/system/users">{t('nav.users.title')}</Link>}
+            </span>
+          ) : (
+            <span className="sa-route-primary">{r.userName || '—'}{r.userIsActiveMember === false && <Chip tone="warn">{t('salesAnalysis.routes.userInactive')}</Chip>}</span>
+          ),
+        sortValue: (r) => r.userName ?? '',
+        exportValue: (r) => r.userName ?? '',
+      },
       { id: 'clients', header: t('salesAnalysis.setup.clientCount'), cell: (r) => String(r.clientCount ?? 0), sortValue: (r) => r.clientCount ?? 0, align: 'end' },
       { id: 'quota', header: t('salesAnalysis.setup.currentQuota'), cell: (r) => fm.money(r.currentQuota), sortValue: (r) => r.currentQuota ?? null, align: 'end', exportValue: (r) => r.currentQuota ?? null },
       { id: 'active', header: t('salesAnalysis.setup.status'), cell: (r) => <Chip tone={r.isActive ? 'deliv' : 'cap'}>{t(r.isActive ? 'salesAnalysis.setup.active' : 'salesAnalysis.setup.inactive')}</Chip>, sortValue: (r) => (r.isActive ? 0 : 1) },
     ],
-    [t, fm],
+    [t, fm, canUsers],
   )
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!editing) return
-    setBusy(true)
     setError(null)
+    if (!editing.id && !editing.userId) {
+      setError(t('salesAnalysis.routes.repUserRequired'))
+      return
+    }
+    setBusy(true)
     try {
-      await save.mutateAsync({ id: editing.id, name: editing.name.trim(), routeId: editing.routeId ? Number(editing.routeId) : null, userId: editing.userId ? Number(editing.userId) : null })
+      const saved = await save.mutateAsync({ id: editing.id, name: editing.name.trim(), routeId: editing.routeId ? Number(editing.routeId) : null, userId: editing.userId ? Number(editing.userId) : null })
+      if (saved.becamePrimary) toast.success(t('salesAnalysis.routes.becamePrimary', { name: saved.name ?? '' }))
       setEditing(null)
     } catch (err) {
       setError(applyProblemDetails(err).title)
@@ -269,7 +328,7 @@ function RepsSection() {
     <Panel
       title={t('salesAnalysis.setup.sec.reps')}
       subtitle={t('salesAnalysis.setup.repsSub')}
-      badge={q.data?.length}
+      badge={repRows.length}
       flush
       actions={
         canManage ? (
@@ -280,11 +339,24 @@ function RepsSection() {
         ) : undefined
       }
     >
+      {withoutUser > 0 && (
+        <div className="pb">
+          <Filters>
+            <SelectFilter
+              label={t('salesAnalysis.routes.filterReps')}
+              value={noUser}
+              allLabel={t('salesAnalysis.routes.filterAllReps')}
+              onChange={setNoUser}
+              options={[{ value: 'without', label: `${t('salesAnalysis.routes.repsWithoutUser')} (${withoutUser})` }]}
+            />
+          </Filters>
+        </div>
+      )}
       {q.isError ? <div className="pb"><QueryError error={q.error} /></div> : (
         <DataTable
           label={t('salesAnalysis.setup.sec.reps')}
           columns={columns}
-          rows={q.data ?? NO_ROWS}
+          rows={repRows}
           rowKey={(r) => String(r.id)}
           loading={q.isPending}
           pagination={false}
@@ -327,14 +399,14 @@ function RepsSection() {
               </select>
             </div>
             <div className="f">
-              <label htmlFor="sa-rep-user">{t('salesAnalysis.setup.userOptional')}</label>
-              <select id="sa-rep-user" value={editing.userId} onChange={(e) => setEditing({ ...editing, userId: e.target.value })} disabled={users.isError}>
-                <option value="">{t('salesAnalysis.setup.noUser')}</option>
+              <label htmlFor="sa-rep-user">{t('salesAnalysis.setup.user')} *</label>
+              <select id="sa-rep-user" aria-required={!editing.id} value={editing.userId} onChange={(e) => setEditing({ ...editing, userId: e.target.value })} disabled={users.isError}>
+                <option value="" disabled={!!editing.id && editing.userId !== ''}>{t('salesAnalysis.routes.pickRepUser')}</option>
                 {(users.data ?? []).filter((u) => u.isActive !== false || String(u.id) === editing.userId).map((u) => (
                   <option key={u.id} value={String(u.id)}>{u.fullName}{u.email ? ` · ${u.email}` : ''}</option>
                 ))}
               </select>
-              <span className="sa-muted">{users.isError ? t('salesAnalysis.setup.usersUnavailable') : t('salesAnalysis.setup.userHelp')}</span>
+              <span className="sa-muted">{users.isError ? t('salesAnalysis.setup.usersUnavailable') : t('salesAnalysis.routes.userRequiredHelp')}</span>
             </div>
           </form>
         )}
@@ -621,9 +693,11 @@ function SettingsSection() {
   const [cutoff, setCutoff] = useState('')
   const [lead, setLead] = useState('')
   const [z, setZ] = useState('')
+  const [quotaBy, setQuotaBy] = useState<'REP' | 'ROUTE'>('REP')
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     if (!q.data) return
+    setQuotaBy(q.data.quotaBy === 'ROUTE' ? 'ROUTE' : 'REP')
     setCutoff(q.data.cutoffDate ?? '')
     setLead(String(q.data.leadTimeDays ?? 5))
     setZ(String(q.data.serviceLevelZ ?? 1.645))
@@ -632,7 +706,7 @@ function SettingsSection() {
     e.preventDefault()
     setError(null)
     try {
-      await save.mutateAsync({ cutoffDate: cutoff || null, clearCutoff: !cutoff, leadTimeDays: lead === '' ? null : Number(lead), serviceLevelZ: z === '' ? null : Number(z) })
+      await save.mutateAsync({ cutoffDate: cutoff || null, clearCutoff: !cutoff, leadTimeDays: lead === '' ? null : Number(lead), serviceLevelZ: z === '' ? null : Number(z), quotaBy })
       toast.success(t('salesAnalysis.setup.settingsSaved'))
     } catch (err) {
       setError(applyProblemDetails(err).title)
@@ -653,6 +727,14 @@ function SettingsSection() {
               </div>
               <p id="sa-set-cutoff-help" className="sa-help">{t('salesAnalysis.setup.cutoffHelp')}</p>
               {!cutoff && <p className="sa-help warn">{t('salesAnalysis.setup.noCutoffWarn')}</p>}
+            </div>
+            <div className="f">
+              <label htmlFor="sa-set-quotaby">{t('salesAnalysis.quotaBy.label')}</label>
+              <select id="sa-set-quotaby" value={quotaBy} onChange={(e) => setQuotaBy(e.target.value === 'ROUTE' ? 'ROUTE' : 'REP')} aria-describedby="sa-set-quotaby-help">
+                <option value="ROUTE">{t('salesAnalysis.quotaBy.ROUTE')}</option>
+                <option value="REP">{t('salesAnalysis.quotaBy.REP')}</option>
+              </select>
+              <p id="sa-set-quotaby-help" className="sa-help">{t('salesAnalysis.quotaBy.help')}</p>
             </div>
             <div className="r2">
               <div className="f">

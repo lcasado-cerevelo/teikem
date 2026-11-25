@@ -1,12 +1,13 @@
 // Lote 241 — Análisis → Análisis de ventas (`/analytics/sales`, `sales.analysis.view|manage` + módulo SALES_ORDERS). Pestañas en
-// `?tab=` (rep = sin parámetro, movement, charts, setup; la sección de Configuración en `?sec=`): «Por representante» (el libro
-// mensual del dueño), «Movimiento de productos» (su segundo libro), «Gráficos» (para presentar) y «Configuración». Arriba, el
+// `?tab=` (route = sin parámetro, rep, movement, charts, setup; la sección de Configuración en `?sec=`): «Por ruta» (la vista por
+// omisión, Lote 244), «Por representante» (el libro mensual del dueño), «Movimiento de productos» (su segundo libro), «Gráficos» (para presentar) y «Configuración». Arriba, el
 // aviso del ESTADO del análisis (clientes sin representante, marcas sin línea, historial sin emparejar, sin fecha de corte o
 // traslape, sin historial) con enlaces a la sección donde se arregla.
 import { Link, useSearchParams } from 'react-router-dom'
 import { useT } from '../../kernel/i18n/useT'
 import { Tabs } from '../../kernel/ui/Tabs'
 import { ByRepTab } from './ByRepTab'
+import { ByRouteTab } from './ByRouteTab'
 import { ChartsTab } from './ChartsTab'
 import { MovementTab } from './MovementTab'
 import { SetupTab } from './SetupTab'
@@ -14,20 +15,20 @@ import { useSalesStatus } from './salesAnalysisApi'
 import { statusIssues } from './salesAnalysisRules'
 import './salesAnalysis.css'
 
-const SA_TABS = ['rep', 'movement', 'charts', 'setup'] as const
+const SA_TABS = ['route', 'rep', 'movement', 'charts', 'setup'] as const
 type SaTab = (typeof SA_TABS)[number]
 
 export default function SalesAnalysisScreen() {
   const t = useT()
   const [params, setParams] = useSearchParams()
   const raw = params.get('tab') as SaTab | null
-  const tab: SaTab = raw && SA_TABS.includes(raw) ? raw : 'rep'
+  const tab: SaTab = raw && SA_TABS.includes(raw) ? raw : 'route'
   const setTab = (k: SaTab) =>
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev)
         next.delete('sec')
-        if (k === 'rep') next.delete('tab')
+        if (k === 'route') next.delete('tab')
         else next.set('tab', k)
         return next
       },
@@ -50,7 +51,7 @@ export default function SalesAnalysisScreen() {
           tabs={SA_TABS.map((k) => ({ key: k, label: t(`salesAnalysis.tabs.${k}`) }))}
         />
       </div>
-      {tab === 'rep' ? <ByRepTab /> : tab === 'movement' ? <MovementTab /> : tab === 'charts' ? <ChartsTab /> : <SetupTab />}
+      {tab === 'route' ? <ByRouteTab /> : tab === 'rep' ? <ByRepTab /> : tab === 'movement' ? <MovementTab /> : tab === 'charts' ? <ChartsTab /> : <SetupTab />}
     </div>
   )
 }
@@ -68,7 +69,7 @@ export function StatusBanner() {
         {issues.map((i) => (
           <li key={i.key}>
             <span>{t(`salesAnalysis.statusBanner.${i.key}`, { n: i.count })}</span>{' '}
-            <Link to={`?tab=setup&sec=${i.section}`}>{t(`salesAnalysis.statusBanner.fix.${i.section}`)}</Link>
+            <Link to={`?tab=setup&sec=${i.section}`}>{t(i.key === 'clientsWithoutRoute' ? 'salesAnalysis.statusBanner.fix.clientsRoute' : `salesAnalysis.statusBanner.fix.${i.section}`)}</Link>
           </li>
         ))}
       </ul>

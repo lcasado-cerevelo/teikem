@@ -10,6 +10,8 @@ using Teikem.Infrastructure.Migration;
 using Teikem.Infrastructure.Persistence;
 using R = Teikem.Domain.Sales.SalesAnalysisRules;
 using C = Teikem.Domain.Sales.SalesAnalysisCodes;
+using RR = Teikem.Domain.Sales.SalesRouteRules;
+using K = Teikem.Domain.Sales.SalesRouteCodes;
 
 namespace Teikem.Infrastructure.Services;
 
@@ -17,6 +19,12 @@ namespace Teikem.Infrastructure.Services;
 /// Lote 241 — lo que se administra del análisis de ventas (sales.analysis.manage; leer con sales.analysis.view): ajustes (fecha de corte, días de entrega, nivel de
 /// servicio), rutas, representantes, cuotas por mes, líneas y sus marcas, el representante de cada cliente, el paso del campo personalizado «Representante» a
 /// representantes y el enlace a mano de nombres del historial sin emparejar. Todo bajo el filtro de tenant (el TenantId sale de la sesión); bajas lógicas (IsActive).
+/// <para>
+/// Lote 244 (Lote A del plan de rutas): el usuario del representante es obligatorio (regla del servicio; un usuario no puede estar en dos representantes activos) y, al
+/// crearlo, ponerle usuario, cambiarle la ruta o reactivarlo, si su ruta está activa y sin titular queda como TITULAR AUTOMÁTICO desde hoy en la misma transacción. La
+/// cuota también puede ser de una ruta (SalesQuota.SalesRouteId) y el ajuste QuotaBy escoge cuál cuenta. Desactivar una ruta con clientes da 409; si pasa, cierra hoy sus
+/// asignaciones vigentes. La lista de clientes trae la ruta propia, la efectiva y el vendedor preferido.
+/// </para>
 /// </summary>
 public sealed class SalesAnalysisSetupService(TeikemDbContext db, ITenantContext tenant, ITenantClock clock, ILookupCache lookups)
 {
@@ -32,17 +40,22 @@ public sealed class SalesAnalysisSetupService(TeikemDbContext db, ITenantContext
 
     // ================================================================ ajustes
 
+    private static SalesAnalysisSettingsDto SettingsDto(SalesAnalysisSetting s)
+        => new(s.CutoffDate, s.LeadTimeDays, s.ServiceLevelZ, RR.ParseQuotaBy(s.QuotaBy) ?? K.QuotaByRep);
+
+    private async Task<string> QuotaByAsync(CancellationToken ct)
+        => RR.ParseQuotaBy(await db.Set<SalesAnalysisSetting>().AsNoTracking().Select(x => x.QuotaBy).FirstOrDefaultAsync(ct)) ?? K.QuotaByRep;
+
     public async Task<SalesAnalysisSettingsDto> GetSettingsAsync(CancellationToken ct)
-    {
-        var s = await db.Set<SalesAnalysisSetting>().AsNoTracking().FirstOrDefaultAsync(ct) ?? new SalesAnalysisSetting();
-        return new SalesAnalysisSettingsDto(s.CutoffDate, s.LeadTimeDays, s.ServiceLevelZ);
-    }
+        => SettingsDto(await db.Set<SalesAnalysisSetting>().AsNoTracking().FirstOrDefaultAsync(ct) ?? new SalesAnalysisSetting());
 
     public async Task<SalesAnalysisSettingsDto> UpdateSettingsAsync(SalesAnalysisSettingsRequest req, CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", R.BodyRequired);
         if (req.LeadTimeDays is int lt && (lt < 1 || lt > R.MaxLeadTimeDays)) throw new ValidationException("leadTimeDays", R.LeadTimeInvalid);
         if (req.ServiceLevelZ is decimal z && (z <= 0m || z > R.MaxServiceLevelZ)) throw new ValidationException("serviceLevelZ", R.ServiceLevelInvalid);
+        string? quotaBy = null;
+        if (req.QuotaBy is not null) quotaBy = RR.ParseQuotaBy(req.QuotaBy) ?? throw new ValidationException("quotaBy", RR.QuotaByInvalid);
         var s = await db.Set<SalesAnalysisSetting>().AsTracking().FirstOrDefaultAsync(ct);
         if (s is null)
         {
@@ -53,21 +66,62 @@ public sealed class SalesAnalysisSetupService(TeikemDbContext db, ITenantContext
         else if (req.CutoffDate is DateOnly d) s.CutoffDate = d;
         if (req.LeadTimeDays is int l) s.LeadTimeDays = l;
         if (req.ServiceLevelZ is decimal zz) s.ServiceLevelZ = Math.Round(zz, 3);
+        if (quotaBy is not null) s.QuotaBy = quotaBy;
         s.UpdatedAtUtc = DateTime.UtcNow;
         s.UpdatedBy = tenant.UserId;
         await db.SaveChangesAsync(ct);
-        return new SalesAnalysisSettingsDto(s.CutoffDate, s.LeadTimeDays, s.ServiceLevelZ);
+        return SettingsDto(s);
     }
 
     // ================================================================ rutas
 
+    /// <summary>Lote 244 — asignaciones VIGENTES (activas y sin cierre) de la compañía, por ruta.</summary>
+    private async Task<Dictionary<int, List<SalesRouteAssignment>>> CurrentPeopleByRouteAsync(CancellationToken ct)
+        => (await db.Set<SalesRouteAssignment>().AsNoTracking().Where(a => a.TenantId == TenantId && a.IsActive && a.ValidTo == null).ToListAsync(ct))
+            .GroupBy(a => a.SalesRouteId).ToDictionary(g => g.Key, g => g.ToList());
+
+    /// <summary>Lote 244 — cuántos clientes activos tiene cada ruta: su ruta propia o, si no tienen, la de su representante.</summary>
+    private async Task<Dictionary<int, int>> ClientsByEffectiveRouteAsync(CancellationToken ct)
+    {
+        var repRoute = await db.Set<SalesRep>().AsNoTracking().Where(r => r.SalesRouteId != null).ToDictionaryAsync(r => r.SalesRepId, r => r.SalesRouteId!.Value, ct);
+        var clients = await db.Clients.AsNoTracking().Where(c => c.IsActive && (c.SalesRouteId != null || c.SalesRepId != null))
+            .Select(c => new { c.SalesRouteId, c.SalesRepId }).ToListAsync(ct);
+        return clients
+            .Select(c => c.SalesRouteId ?? (c.SalesRepId is int r && repRoute.TryGetValue(r, out var rr) ? rr : (int?)null))
+            .Where(r => r is not null).GroupBy(r => r!.Value).ToDictionary(g => g.Key, g => g.Count());
+    }
+
+    /// <summary>Lote 244 — las cuotas de ruta activas hasta ese mes, por ruta (para la herencia mensual).</summary>
+    private async Task<Dictionary<int, List<(DateOnly Month, decimal Amount)>>> RouteQuotaListsAsync(DateOnly upTo, CancellationToken ct)
+        => (await db.Set<SalesQuota>().AsNoTracking().Where(q => q.IsActive && q.SalesRouteId != null && q.Month <= upTo)
+                .Select(q => new { q.SalesRouteId, q.Month, q.Amount }).ToListAsync(ct))
+            .GroupBy(q => q.SalesRouteId!.Value).ToDictionary(g => g.Key, g => g.Select(q => (q.Month, q.Amount)).ToList());
+
+    /// <summary>
+    /// Las rutas con cuántos representantes activos tienen y, Lote 244, su titular vigente (y si sigue siendo persona activa), cuántos apoyos vigentes, cuántos clientes
+    /// activos (ruta propia o la del representante) y su cuota de ruta vigente del mes en curso.
+    /// </summary>
     public async Task<IReadOnlyList<SalesRouteDto>> ListRoutesAsync(bool includeInactive, CancellationToken ct)
     {
         var counts = await db.Set<SalesRep>().AsNoTracking().Where(r => r.IsActive && r.SalesRouteId != null).GroupBy(r => r.SalesRouteId!.Value)
             .Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(g => g.Key, g => g.N, ct);
+        var people = await CurrentPeopleByRouteAsync(ct);
+        var primaryIds = people.Values.SelectMany(l => l.Where(a => a.IsPrimary).Select(a => a.UserId)).Distinct().ToList();
+        var active = await SalesSellerQueries.ActiveMemberIdsAsync(db, TenantId, primaryIds, ct);
+        var names = await AssigneeCheck.NamesAsync(db, primaryIds, ct);
+        var clients = await ClientsByEffectiveRouteAsync(ct);
+        var month = R.MonthStart(clock.Today);
+        var quotas = (await RouteQuotaListsAsync(month, ct)).ToDictionary(kv => kv.Key, kv => R.EffectiveQuota(kv.Value, month));
         return (await db.Set<SalesRoute>().AsNoTracking().Where(r => includeInactive || r.IsActive).ToListAsync(ct))
             .OrderBy(r => r.SortOrder).ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
-            .Select(r => new SalesRouteDto(r.SalesRouteId, r.Name, r.SortOrder, r.IsActive, counts.GetValueOrDefault(r.SalesRouteId))).ToList();
+            .Select(r =>
+            {
+                var list = people.GetValueOrDefault(r.SalesRouteId);
+                var primary = list?.FirstOrDefault(a => a.IsPrimary);
+                return new SalesRouteDto(r.SalesRouteId, r.Name, r.SortOrder, r.IsActive, counts.GetValueOrDefault(r.SalesRouteId),
+                    primary?.UserId, primary is null ? null : names.GetValueOrDefault(primary.UserId), primary is not null && active.Contains(primary.UserId),
+                    primary is not null, list?.Count(a => !a.IsPrimary) ?? 0, clients.GetValueOrDefault(r.SalesRouteId), quotas.GetValueOrDefault(r.SalesRouteId));
+            }).ToList();
     }
 
     private async Task<SalesRouteDto> RouteDtoAsync(int id, CancellationToken ct)
@@ -101,34 +155,69 @@ public sealed class SalesAnalysisSetupService(TeikemDbContext db, ITenantContext
         return await RouteDtoAsync(id, ct);
     }
 
+    /// <summary>
+    /// Baja lógica / reactivación. Desactivar: 409 si tiene representantes activos o, Lote 244, clientes activos con esa ruta propia; si pasa, cierra HOY (día de la
+    /// compañía) sus asignaciones vigentes en la misma transacción. Reactivar no las reabre.
+    /// </summary>
     public async Task<SalesRouteDto> SetRouteActiveAsync(int id, bool active, CancellationToken ct)
     {
-        var route = await db.Set<SalesRoute>().AsTracking().FirstOrDefaultAsync(r => r.SalesRouteId == id, ct) ?? throw new NotFoundException(R.RouteNotFound, feminine: true);
-        if (!active && await db.Set<SalesRep>().AnyAsync(r => r.IsActive && r.SalesRouteId == id, ct)) throw new ConflictException(R.RouteHasReps);
-        if (active && !route.IsActive && await db.Set<SalesRoute>().AnyAsync(r => r.IsActive && r.Name == route.Name && r.SalesRouteId != id, ct))
-            throw new ConflictException(R.RouteNameTaken);
-        route.IsActive = active;
-        await db.SaveGuardedAsync(R.RouteNameTaken, ct);
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var route = await db.Set<SalesRoute>().AsTracking().FirstOrDefaultAsync(r => r.SalesRouteId == id, ct2) ?? throw new NotFoundException(R.RouteNotFound, feminine: true);
+            if (!active && await db.Set<SalesRep>().AnyAsync(r => r.IsActive && r.SalesRouteId == id, ct2)) throw new ConflictException(R.RouteHasReps);
+            if (!active && await db.Clients.AnyAsync(c => c.IsActive && c.SalesRouteId == id, ct2)) throw new ConflictException(RR.RouteHasClients);
+            if (active && !route.IsActive && await db.Set<SalesRoute>().AnyAsync(r => r.IsActive && r.Name == route.Name && r.SalesRouteId != id, ct2))
+                throw new ConflictException(R.RouteNameTaken);
+            route.IsActive = active;
+            await db.SaveGuardedAsync(R.RouteNameTaken, ct2);
+            if (active) return;
+            var today = clock.Today;
+            var open = await db.Set<SalesRouteAssignment>().AsNoTracking()
+                .Where(a => a.TenantId == TenantId && a.SalesRouteId == id && a.IsActive && a.ValidTo == null).Select(a => a.SalesRouteAssignmentId).ToListAsync(ct2);
+            foreach (var assignmentId in open)
+                await SalesRouteAssignmentOps.CloseAsync(db, TenantId, assignmentId, today, today, tenant.UserId, DateTime.UtcNow, ct2);
+        }, ct);
         return await RouteDtoAsync(id, ct);
+    }
+
+    /// <summary>Lote 244 — las cuotas propias de una ruta, mes por mes.</summary>
+    public async Task<SalesRouteQuotaHistoryDto> GetRouteQuotasAsync(int routeId, CancellationToken ct)
+    {
+        var route = await db.Set<SalesRoute>().AsNoTracking().FirstOrDefaultAsync(r => r.SalesRouteId == routeId, ct) ?? throw new NotFoundException(R.RouteNotFound, feminine: true);
+        var quotas = await db.Set<SalesQuota>().AsNoTracking().Where(q => q.SalesRouteId == routeId && q.IsActive).OrderBy(q => q.Month).ToListAsync(ct);
+        return new SalesRouteQuotaHistoryDto(route.SalesRouteId, route.Name, quotas.Select(q => new SalesQuotaPointDto(R.MonthKey(q.Month), q.Amount)).ToList());
     }
 
     // ================================================================ representantes
 
-    public async Task<IReadOnlyList<SalesRepDto>> ListRepsAsync(bool includeInactive, CancellationToken ct)
+    public Task<IReadOnlyList<SalesRepDto>> ListRepsAsync(bool includeInactive, CancellationToken ct) => ListRepsAsync(includeInactive, false, ct);
+
+    /// <summary>
+    /// Representantes (withoutUser = solo los que no tienen usuario) con su ruta, usuario, clientes activos y cuota vigente; Lote 244: si su usuario es persona activa
+    /// y si es el titular vigente de su ruta.
+    /// </summary>
+    public async Task<IReadOnlyList<SalesRepDto>> ListRepsAsync(bool includeInactive, bool withoutUser, CancellationToken ct)
     {
-        var reps = await db.Set<SalesRep>().AsNoTracking().Where(r => includeInactive || r.IsActive).ToListAsync(ct);
+        var reps = await db.Set<SalesRep>().AsNoTracking().Where(r => (includeInactive || r.IsActive) && (!withoutUser || r.UserId == null)).ToListAsync(ct);
         var routes = await db.Set<SalesRoute>().AsNoTracking().ToDictionaryAsync(r => r.SalesRouteId, r => r.Name, ct);
         var clients = await db.Clients.AsNoTracking().Where(c => c.IsActive && c.SalesRepId != null).GroupBy(c => c.SalesRepId!.Value)
             .Select(g => new { g.Key, N = g.Count() }).ToDictionaryAsync(g => g.Key, g => g.N, ct);
         var userIds = reps.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).Distinct().ToList();
         var users = userIds.Count == 0 ? new Dictionary<int, string>()
             : await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.Email ?? string.Empty, ct);
+        var activeUsers = await SalesSellerQueries.ActiveMemberIdsAsync(db, TenantId, userIds, ct);
+        var primaries = (await db.Set<SalesRouteAssignment>().AsNoTracking().Where(a => a.TenantId == TenantId && a.IsActive && a.IsPrimary && a.ValidTo == null)
+                .Select(a => new { a.SalesRouteId, a.UserId }).ToListAsync(ct))
+            .Select(a => (a.SalesRouteId, a.UserId)).ToHashSet();
         var month = R.MonthStart(clock.Today);
-        var quotas = (await db.Set<SalesQuota>().AsNoTracking().Where(q => q.IsActive && q.Month <= month).Select(q => new { q.SalesRepId, q.Month, q.Amount }).ToListAsync(ct))
-            .GroupBy(q => q.SalesRepId).ToDictionary(g => g.Key, g => R.EffectiveQuota(g.Select(q => (q.Month, q.Amount)), month));
+        var quotas = (await db.Set<SalesQuota>().AsNoTracking().Where(q => q.IsActive && q.SalesRepId != null && q.Month <= month)
+                .Select(q => new { q.SalesRepId, q.Month, q.Amount }).ToListAsync(ct))
+            .GroupBy(q => q.SalesRepId!.Value).ToDictionary(g => g.Key, g => R.EffectiveQuota(g.Select(q => (q.Month, q.Amount)), month));
         return reps.OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
             .Select(r => new SalesRepDto(r.SalesRepId, r.Name, r.SalesRouteId, r.SalesRouteId is int ro ? routes.GetValueOrDefault(ro) : null, r.UserId,
-                r.UserId is int u ? users.GetValueOrDefault(u) : null, r.IsActive, clients.GetValueOrDefault(r.SalesRepId), quotas.GetValueOrDefault(r.SalesRepId)))
+                r.UserId is int u ? users.GetValueOrDefault(u) : null, r.IsActive, clients.GetValueOrDefault(r.SalesRepId), quotas.GetValueOrDefault(r.SalesRepId),
+                r.UserId is not null, r.UserId is int au && activeUsers.Contains(au),
+                r.UserId is int pu && r.SalesRouteId is int pr && primaries.Contains((pr, pu))))
             .ToList();
     }
 
@@ -141,67 +230,140 @@ public sealed class SalesAnalysisSetupService(TeikemDbContext db, ITenantContext
         if (!route.IsActive) throw new ValidationException("routeId", R.RouteInactive);
     }
 
-    private async Task CheckUserAsync(int userId, CancellationToken ct)
+    /// <summary>
+    /// Lote 244 — el usuario de un representante: miembro de la compañía (400 UserNotMember), persona activa (400 UserSuspended) y que no sea el usuario de otro
+    /// representante activo (409 RepUserTaken).
+    /// </summary>
+    private async Task CheckRepUserAsync(int userId, int? repId, CancellationToken ct)
     {
-        if (!await db.UserTenants.AsNoTracking().AnyAsync(u => u.UserId == userId, ct)) throw new ValidationException("userId", R.UserNotInCompany);
+        if (!await db.UserTenants.AsNoTracking().AnyAsync(m => m.UserId == userId && m.TenantId == TenantId, ct)) throw new ValidationException("userId", RR.UserNotMember);
+        if (!(await SalesSellerQueries.ActiveMemberIdsAsync(db, TenantId, new[] { userId }, ct)).Contains(userId))
+            throw new ValidationException("userId", RR.UserSuspended);
+        await CheckRepUserFreeAsync(userId, repId, ct);
     }
 
+    /// <summary>Lote 244 — 409 si el usuario ya es el de otro representante activo (el primero que se creó).</summary>
+    private async Task CheckRepUserFreeAsync(int userId, int? repId, CancellationToken ct)
+    {
+        var other = await db.Set<SalesRep>().AsNoTracking().Where(r => r.IsActive && r.UserId == userId && r.SalesRepId != repId)
+            .OrderBy(r => r.SalesRepId).Select(r => r.Name).FirstOrDefaultAsync(ct);
+        if (other is not null) throw new ConflictException(RR.RepUserTaken(other));
+    }
+
+    /// <summary>
+    /// Lote 244 — TITULAR AUTOMÁTICO: si el representante está activo, su usuario es persona activa y su ruta está activa y sin titular vigente, su usuario queda como
+    /// titular desde hoy (día de la compañía), en la transacción de quien llama. Si la ruta ya tiene titular no se hace nada (el administrador decide).
+    /// </summary>
+    private async Task<bool> AutoPrimaryAsync(SalesRep rep, CancellationToken ct)
+    {
+        if (!rep.IsActive || rep.UserId is not int userId || rep.SalesRouteId is not int routeId) return false;
+        if (!(await SalesSellerQueries.ActiveMemberIdsAsync(db, TenantId, new[] { userId }, ct)).Contains(userId)) return false;
+        return await SalesRouteAssignmentOps.OpenPrimaryIfVacantAsync(db, TenantId, routeId, userId, clock.Today, tenant.UserId, DateTime.UtcNow, ct);
+    }
+
+    /// <summary>Alta: nombre, ruta (opcional) y usuario (OBLIGATORIO desde el Lote 244). Puede quedar como titular automático de su ruta (BecamePrimary).</summary>
     public async Task<SalesRepDto> CreateRepAsync(SalesRepRequest req, CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", R.BodyRequired);
         var (name, err) = NormalizeName(req.Name, R.RepNameRequired);
         if (err is not null) throw new ValidationException("name", err);
-        if (req.RouteId is int rid) await CheckRouteAsync(rid, ct);
-        if (req.UserId is int uid) await CheckUserAsync(uid, ct);
-        if (await db.Set<SalesRep>().AnyAsync(r => r.IsActive && r.Name == name, ct)) throw new ConflictException(R.RepNameTaken);
-        var rep = new SalesRep { TenantId = TenantId, Name = name, SalesRouteId = req.RouteId, UserId = req.UserId };
-        db.Set<SalesRep>().Add(rep);
-        await db.SaveGuardedAsync(R.RepNameTaken, ct);
-        return await RepDtoAsync(rep.SalesRepId, ct);
+        if (req.UserId is not int userId) throw new ValidationException("userId", RR.RepUserRequired);
+        var (id, became) = await db.RunInTransactionAsync(async ct2 =>
+        {
+            if (req.RouteId is int rid) await CheckRouteAsync(rid, ct2);
+            await CheckRepUserAsync(userId, null, ct2);
+            if (await db.Set<SalesRep>().AnyAsync(r => r.IsActive && r.Name == name, ct2)) throw new ConflictException(R.RepNameTaken);
+            var rep = new SalesRep { TenantId = TenantId, Name = name, SalesRouteId = req.RouteId, UserId = userId };
+            db.Set<SalesRep>().Add(rep);
+            await db.SaveGuardedAsync(R.RepNameTaken, ct2);
+            return (rep.SalesRepId, await AutoPrimaryAsync(rep, ct2));
+        }, ct);
+        return (await RepDtoAsync(id, ct)) with { BecamePrimary = became };
     }
 
+    /// <summary>
+    /// Cambio: el usuario no se puede quitar (ClearUser = 400); cambiarlo lo vuelve a validar. Un representante heredado sin usuario se puede renombrar o cambiar de ruta
+    /// sin mandarlo. Si cambia el usuario o la ruta, puede quedar como titular automático (BecamePrimary).
+    /// </summary>
     public async Task<SalesRepDto> UpdateRepAsync(int id, SalesRepRequest req, CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", R.BodyRequired);
-        var rep = await db.Set<SalesRep>().AsTracking().FirstOrDefaultAsync(r => r.SalesRepId == id, ct) ?? throw new NotFoundException(R.RepNotFound);
-        if (req.Name is not null)
+        if (req.ClearUser) throw new ValidationException("userId", RR.RepUserRequired);
+        var became = await db.RunInTransactionAsync(async ct2 =>
         {
-            var (name, err) = NormalizeName(req.Name, R.RepNameRequired);
-            if (err is not null) throw new ValidationException("name", err);
-            if (rep.IsActive && await db.Set<SalesRep>().AnyAsync(r => r.IsActive && r.Name == name && r.SalesRepId != id, ct)) throw new ConflictException(R.RepNameTaken);
-            rep.Name = name;
-        }
-        if (req.ClearRoute) rep.SalesRouteId = null;
-        else if (req.RouteId is int rid) { await CheckRouteAsync(rid, ct); rep.SalesRouteId = rid; }
-        if (req.ClearUser) rep.UserId = null;
-        else if (req.UserId is int uid) { await CheckUserAsync(uid, ct); rep.UserId = uid; }
-        await db.SaveGuardedAsync(R.RepNameTaken, ct);
-        return await RepDtoAsync(id, ct);
+            var rep = await db.Set<SalesRep>().AsTracking().FirstOrDefaultAsync(r => r.SalesRepId == id, ct2) ?? throw new NotFoundException(R.RepNotFound);
+            if (req.Name is not null)
+            {
+                var (name, err) = NormalizeName(req.Name, R.RepNameRequired);
+                if (err is not null) throw new ValidationException("name", err);
+                if (rep.IsActive && await db.Set<SalesRep>().AnyAsync(r => r.IsActive && r.Name == name && r.SalesRepId != id, ct2)) throw new ConflictException(R.RepNameTaken);
+                rep.Name = name;
+            }
+            var changed = false;
+            if (req.ClearRoute)
+            {
+                changed = rep.SalesRouteId is not null;
+                rep.SalesRouteId = null;
+            }
+            else if (req.RouteId is int rid)
+            {
+                await CheckRouteAsync(rid, ct2);
+                changed = rep.SalesRouteId != rid;
+                rep.SalesRouteId = rid;
+            }
+            if (req.UserId is int uid && uid != rep.UserId)
+            {
+                await CheckRepUserAsync(uid, rep.SalesRepId, ct2);
+                rep.UserId = uid;
+                changed = true;
+            }
+            await db.SaveGuardedAsync(R.RepNameTaken, ct2);
+            return changed && await AutoPrimaryAsync(rep, ct2);
+        }, ct);
+        return (await RepDtoAsync(id, ct)) with { BecamePrimary = became };
     }
 
+    /// <summary>
+    /// Baja lógica / reactivación. Desactivar: 409 si tiene clientes activos. Reactivar: 409 si el nombre ya lo usa otro activo o, Lote 244, si su usuario ya es el de otro
+    /// representante activo; al reactivarlo puede quedar como titular automático (BecamePrimary).
+    /// </summary>
     public async Task<SalesRepDto> SetRepActiveAsync(int id, bool active, CancellationToken ct)
     {
-        var rep = await db.Set<SalesRep>().AsTracking().FirstOrDefaultAsync(r => r.SalesRepId == id, ct) ?? throw new NotFoundException(R.RepNotFound);
-        if (!active && await db.Clients.AnyAsync(c => c.IsActive && c.SalesRepId == id, ct)) throw new ConflictException(R.RepHasClients);
-        if (active && !rep.IsActive && await db.Set<SalesRep>().AnyAsync(r => r.IsActive && r.Name == rep.Name && r.SalesRepId != id, ct))
-            throw new ConflictException(R.RepNameTaken);
-        rep.IsActive = active;
-        await db.SaveGuardedAsync(R.RepNameTaken, ct);
-        return await RepDtoAsync(id, ct);
+        var became = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var rep = await db.Set<SalesRep>().AsTracking().FirstOrDefaultAsync(r => r.SalesRepId == id, ct2) ?? throw new NotFoundException(R.RepNotFound);
+            if (!active && await db.Clients.AnyAsync(c => c.IsActive && c.SalesRepId == id, ct2)) throw new ConflictException(R.RepHasClients);
+            var reactivated = active && !rep.IsActive;
+            if (reactivated && await db.Set<SalesRep>().AnyAsync(r => r.IsActive && r.Name == rep.Name && r.SalesRepId != id, ct2))
+                throw new ConflictException(R.RepNameTaken);
+            if (reactivated && rep.UserId is int userId) await CheckRepUserFreeAsync(userId, rep.SalesRepId, ct2);
+            rep.IsActive = active;
+            await db.SaveGuardedAsync(R.RepNameTaken, ct2);
+            return reactivated && await AutoPrimaryAsync(rep, ct2);
+        }, ct);
+        return (await RepDtoAsync(id, ct)) with { BecamePrimary = became };
     }
 
     // ================================================================ cuotas
 
     private static DateOnly RequireMonth(string? raw) => R.ParseMonth(raw) ?? throw new ValidationException("month", R.MonthInvalid);
 
-    /// <summary>Las cuotas de un mes: la propia de cada representante y la vigente (la del mes o la anterior más reciente).</summary>
-    public async Task<SalesQuotaMonthDto> GetQuotasAsync(string? month, CancellationToken ct)
+    public Task<SalesQuotaMonthDto> GetQuotasAsync(string? month, CancellationToken ct) => GetQuotasAsync(month, null, ct);
+
+    /// <summary>
+    /// Las cuotas de un mes: la propia de cada representante y la vigente (la del mes o la anterior más reciente). Lote 244: lo mismo por ruta (RouteRows) y el total de la
+    /// clase que cuenta: la pedida en <paramref name="by"/> (REP | ROUTE; otro valor = 400) o, sin ella, la del ajuste QuotaBy.
+    /// </summary>
+    public async Task<SalesQuotaMonthDto> GetQuotasAsync(string? month, string? by, CancellationToken ct)
     {
         var m = string.IsNullOrWhiteSpace(month) ? R.MonthStart(clock.Today) : RequireMonth(month);
+        var quotaBy = string.IsNullOrWhiteSpace(by) ? await QuotaByAsync(ct) : RR.ParseQuotaBy(by) ?? throw new ValidationException("by", RR.QuotaByInvalid);
         var reps = await db.Set<SalesRep>().AsNoTracking().ToListAsync(ct);
-        var routes = await db.Set<SalesRoute>().AsNoTracking().ToDictionaryAsync(r => r.SalesRouteId, r => r.Name, ct);
-        var quotas = (await db.Set<SalesQuota>().AsNoTracking().Where(q => q.IsActive && q.Month <= m).Select(q => new { q.SalesRepId, q.Month, q.Amount }).ToListAsync(ct))
-            .GroupBy(q => q.SalesRepId).ToDictionary(g => g.Key, g => g.OrderByDescending(q => q.Month).ToList());
+        var routeList = await db.Set<SalesRoute>().AsNoTracking().ToListAsync(ct);
+        var routes = routeList.ToDictionary(r => r.SalesRouteId, r => r.Name);
+        var all = await db.Set<SalesQuota>().AsNoTracking().Where(q => q.IsActive && q.Month <= m)
+            .Select(q => new { q.SalesRepId, q.SalesRouteId, q.Month, q.Amount }).ToListAsync(ct);
+        var quotas = all.Where(q => q.SalesRepId != null).GroupBy(q => q.SalesRepId!.Value).ToDictionary(g => g.Key, g => g.OrderByDescending(q => q.Month).ToList());
         var rows = reps.Where(r => r.IsActive || (quotas.TryGetValue(r.SalesRepId, out var q) && q[0].Month == m))
             .OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
             .Select(r =>
@@ -212,33 +374,65 @@ public sealed class SalesAnalysisSetupService(TeikemDbContext db, ITenantContext
                 return new SalesQuotaRowDto(r.SalesRepId, r.Name, r.SalesRouteId is int ro ? routes.GetValueOrDefault(ro) : null, r.IsActive, own, effective?.Amount,
                     effective is null ? null : R.MonthKey(effective.Month));
             }).ToList();
-        return new SalesQuotaMonthDto(R.MonthKey(m), rows, rows.Sum(r => r.Effective ?? 0m));
+        var routeQuotas = all.Where(q => q.SalesRouteId != null).GroupBy(q => q.SalesRouteId!.Value).ToDictionary(g => g.Key, g => g.OrderByDescending(q => q.Month).ToList());
+        var routeRows = routeList.Where(r => r.IsActive || (routeQuotas.TryGetValue(r.SalesRouteId, out var q) && q[0].Month == m))
+            .OrderBy(r => r.SortOrder).ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(r =>
+            {
+                var effective = routeQuotas.GetValueOrDefault(r.SalesRouteId)?.FirstOrDefault();
+                decimal? own = effective is not null && effective.Month == m ? effective.Amount : null;
+                return new SalesRouteQuotaRowDto(r.SalesRouteId, r.Name, r.IsActive, own, effective?.Amount, effective is null ? null : R.MonthKey(effective.Month));
+            }).ToList();
+        var repTotal = rows.Sum(r => r.Effective ?? 0m);
+        var routeTotal = routeRows.Sum(r => r.Effective ?? 0m);
+        return new SalesQuotaMonthDto(R.MonthKey(m), rows, quotaBy == K.QuotaByRoute ? routeTotal : repTotal, routeRows, quotaBy, repTotal, routeTotal);
     }
 
-    /// <summary>Edición en bloque de un mes: cada renglón pone la cuota propia del representante (Amount null = la quita: vuelve a valer la anterior).</summary>
+    /// <summary>
+    /// Edición en bloque de un mes: cada renglón pone la cuota propia del representante o, Lote 244, de la ruta (uno de los dos; si no, 400). Amount null = la quita:
+    /// vuelve a valer la anterior.
+    /// </summary>
     public async Task<SalesQuotaMonthDto> SetQuotasAsync(string? month, SalesQuotaBulkRequest req, CancellationToken ct)
     {
         if (req?.Items is null) throw new ValidationException("body", R.BodyRequired);
         var m = RequireMonth(month);
         if (req.Items.Count > R.MaxBulk) throw new ValidationException("items", R.TooMany);
         foreach (var i in req.Items)
-            if (i.Amount is decimal a && (a < 0m || decimal.Round(a, 2) != a)) throw new ValidationException("items", R.QuotaInvalid);
-        var repIds = req.Items.Select(i => i.RepId).Distinct().ToList();
-        var known = await db.Set<SalesRep>().AsNoTracking().Where(r => repIds.Contains(r.SalesRepId)).Select(r => r.SalesRepId).ToListAsync(ct);
-        if (known.Count != repIds.Count) throw new NotFoundException(R.RepNotFound);
-        var existing = await db.Set<SalesQuota>().AsTracking().Where(q => q.Month == m && repIds.Contains(q.SalesRepId)).ToDictionaryAsync(q => q.SalesRepId, ct);
-        foreach (var item in req.Items.GroupBy(i => i.RepId).Select(g => g.Last()))
         {
-            if (existing.TryGetValue(item.RepId, out var q))
-            {
-                if (item.Amount is decimal a) { q.Amount = a; q.IsActive = true; }
-                else q.IsActive = false;
-            }
-            else if (item.Amount is decimal a2)
-                db.Set<SalesQuota>().Add(new SalesQuota { TenantId = TenantId, SalesRepId = item.RepId, Month = m, Amount = a2 });
+            if (i is null || (i.RepId is null) == (i.RouteId is null)) throw new ValidationException("items", RR.QuotaTargetInvalid);
+            if (i.Amount is decimal a && (a < 0m || decimal.Round(a, 2) != a)) throw new ValidationException("items", R.QuotaInvalid);
         }
+        var repIds = req.Items.Where(i => i.RepId is not null).Select(i => i.RepId!.Value).Distinct().ToList();
+        var routeIds = req.Items.Where(i => i.RouteId is not null).Select(i => i.RouteId!.Value).Distinct().ToList();
+        if (repIds.Count > 0 && await db.Set<SalesRep>().AsNoTracking().CountAsync(r => repIds.Contains(r.SalesRepId), ct) != repIds.Count)
+            throw new NotFoundException(R.RepNotFound);
+        if (routeIds.Count > 0 && await db.Set<SalesRoute>().AsNoTracking().CountAsync(r => routeIds.Contains(r.SalesRouteId), ct) != routeIds.Count)
+            throw new NotFoundException(R.RouteNotFound, feminine: true);
+        var byRep = repIds.Count == 0 ? new Dictionary<int, SalesQuota>()
+            : await db.Set<SalesQuota>().AsTracking().Where(q => q.Month == m && q.SalesRepId != null && repIds.Contains(q.SalesRepId.Value)).ToDictionaryAsync(q => q.SalesRepId!.Value, ct);
+        var byRoute = routeIds.Count == 0 ? new Dictionary<int, SalesQuota>()
+            : await db.Set<SalesQuota>().AsTracking().Where(q => q.Month == m && q.SalesRouteId != null && routeIds.Contains(q.SalesRouteId.Value)).ToDictionaryAsync(q => q.SalesRouteId!.Value, ct);
+        foreach (var item in req.Items.Where(i => i.RepId is not null).GroupBy(i => i.RepId!.Value).Select(g => g.Last()))
+            Upsert(byRep.GetValueOrDefault(item.RepId!.Value), item.Amount, () => new SalesQuota { TenantId = TenantId, SalesRepId = item.RepId, Month = m });
+        foreach (var item in req.Items.Where(i => i.RouteId is not null).GroupBy(i => i.RouteId!.Value).Select(g => g.Last()))
+            Upsert(byRoute.GetValueOrDefault(item.RouteId!.Value), item.Amount, () => new SalesQuota { TenantId = TenantId, SalesRouteId = item.RouteId, Month = m });
         await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
         return await GetQuotasAsync(R.MonthKey(m), ct);
+    }
+
+    /// <summary>Pone la cuota propia del mes (o la reactiva) o, con Amount null, la quita (IsActive 0).</summary>
+    private void Upsert(SalesQuota? existing, decimal? amount, Func<SalesQuota> create)
+    {
+        if (existing is not null)
+        {
+            if (amount is decimal a) { existing.Amount = a; existing.IsActive = true; }
+            else existing.IsActive = false;
+            return;
+        }
+        if (amount is not decimal a2) return;
+        var q = create();
+        q.Amount = a2;
+        db.Set<SalesQuota>().Add(q);
     }
 
     public async Task<SalesQuotaHistoryDto> GetRepQuotasAsync(int repId, CancellationToken ct)
@@ -348,27 +542,52 @@ public sealed class SalesAnalysisSetupService(TeikemDbContext db, ITenantContext
 
     // ================================================================ clientes ↔ representante
 
-    public async Task<PagedResult<SalesClientRepDto>> ListClientsAsync(int? repId, bool unassigned, string? q, int skip, int take, CancellationToken ct)
+    public Task<PagedResult<SalesClientRepDto>> ListClientsAsync(int? repId, bool unassigned, string? q, int skip, int take, CancellationToken ct)
+        => ListClientsAsync(repId, unassigned, null, false, q, skip, take, ct);
+
+    /// <summary>
+    /// Clientes activos con su representante (repId filtra por representante; unassigned = los que no tienen). Lote 244: routeId filtra por la ruta EFECTIVA (la propia
+    /// o, sin ella, la del representante) y noRoute = los que no tienen ninguna; cada fila trae la ruta propia, la efectiva y el vendedor preferido.
+    /// </summary>
+    public async Task<PagedResult<SalesClientRepDto>> ListClientsAsync(int? repId, bool unassigned, int? routeId, bool noRoute, string? q, int skip, int take,
+        CancellationToken ct)
     {
         if (skip < 0) throw new ValidationException("skip", R.PageInvalid);
         if (take < 1 || take > R.MaxPageSize) throw new ValidationException("take", R.PageSizeInvalid);
+        var reps = await db.Set<SalesRep>().AsNoTracking().ToDictionaryAsync(x => x.SalesRepId, x => (x.Name, x.SalesRouteId), ct);
+        var routes = await db.Set<SalesRoute>().AsNoTracking().ToDictionaryAsync(x => x.SalesRouteId, x => x.Name, ct);
         var query = db.Clients.AsNoTracking().Where(c => c.IsActive);
         if (unassigned) query = query.Where(c => c.SalesRepId == null);
         else if (repId is int r) query = query.Where(c => c.SalesRepId == r);
+        if (noRoute)
+        {
+            var routed = reps.Where(kv => kv.Value.SalesRouteId != null).Select(kv => kv.Key).ToList();
+            query = query.Where(c => c.SalesRouteId == null && (c.SalesRepId == null || !routed.Contains(c.SalesRepId.Value)));
+        }
+        else if (routeId is int ro)
+        {
+            var ofRoute = reps.Where(kv => kv.Value.SalesRouteId == ro).Select(kv => kv.Key).ToList();
+            query = query.Where(c => c.SalesRouteId == ro || (c.SalesRouteId == null && c.SalesRepId != null && ofRoute.Contains(c.SalesRepId.Value)));
+        }
         if (!string.IsNullOrWhiteSpace(q))
         {
             var s = q.Trim();
             query = query.Where(c => c.Name.Contains(s) || c.Code.Contains(s));
         }
         var total = await query.CountAsync(ct);
-        var page = await query.OrderBy(c => c.Name).Skip(skip).Take(take).Select(c => new { c.ClientId, c.PublicId, c.Code, c.Name, c.IsActive, c.SalesRepId }).ToListAsync(ct);
-        var reps = await db.Set<SalesRep>().AsNoTracking().ToDictionaryAsync(x => x.SalesRepId, x => (x.Name, x.SalesRouteId), ct);
-        var routes = await db.Set<SalesRoute>().AsNoTracking().ToDictionaryAsync(x => x.SalesRouteId, x => x.Name, ct);
+        var page = await query.OrderBy(c => c.Name).Skip(skip).Take(take)
+            .Select(c => new { c.ClientId, c.PublicId, c.Code, c.Name, c.IsActive, c.SalesRepId, c.SalesRouteId, c.PreferredSalesUserId }).ToListAsync(ct);
+        var preferred = await AssigneeCheck.NamesAsync(db, page.Where(c => c.PreferredSalesUserId != null).Select(c => c.PreferredSalesUserId!.Value), ct);
         var items = page.Select(c =>
         {
             (string Name, int? SalesRouteId)? rep = c.SalesRepId is int id && reps.TryGetValue(id, out var x) ? x : null;
+            var repRoute = rep?.SalesRouteId;
+            var effective = c.SalesRouteId ?? repRoute;
             return new SalesClientRepDto(c.ClientId, c.PublicId, c.Code, c.Name, c.IsActive, c.SalesRepId, rep?.Name,
-                rep?.SalesRouteId is int ro ? routes.GetValueOrDefault(ro) : null);
+                repRoute is int rr ? routes.GetValueOrDefault(rr) : null,
+                c.SalesRouteId, c.SalesRouteId is int dr ? routes.GetValueOrDefault(dr) : null,
+                effective, effective is int er ? routes.GetValueOrDefault(er) : null, c.SalesRouteId is null && repRoute is not null,
+                c.PreferredSalesUserId, c.PreferredSalesUserId is int pu ? preferred.GetValueOrDefault(pu) : null);
         }).ToList();
         return new PagedResult<SalesClientRepDto>(items, total, skip, take);
     }

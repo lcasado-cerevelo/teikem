@@ -24,6 +24,7 @@ namespace Teikem.Tests;
 public sealed class SalesAnalysisServiceTests
 {
     private static readonly DateTime Now = new(2026, 11, 5, 16, 0, 0, DateTimeKind.Utc);
+    private const int AnaUser = 241;
 
     private const string SalesCsv =
         ",\"Type\",\"Date\",\"Num\",\"Memo\",\"Name\",\"Qty\",\"Sales Price\",\"Amount\",\"Balance\"\r\n" +
@@ -92,7 +93,9 @@ public sealed class SalesAnalysisServiceTests
 
         var setup = f.Get<SalesAnalysisSetupService>();
         var norte = await setup.CreateRouteAsync(new SalesRouteRequest("Norte", 1), default);
-        var ana = await setup.CreateRepAsync(new SalesRepRequest("Ana Pérez", norte.Id), default);
+        // Lote 244: el representante siempre lleva usuario (persona activa de la compañía)
+        await f.AddActiveMemberAsync(AnaUser, "Ana Pérez");
+        var ana = await setup.CreateRepAsync(new SalesRepRequest("Ana Pérez", norte.Id, UserId: AnaUser), default);
         await setup.AssignClientAsync(esquina.ClientId, new SalesClientRepRequest(ana.Id), default);
         await setup.SetQuotasAsync("2026-09", new SalesQuotaBulkRequest(new[] { new SalesQuotaItemRequest(ana.Id, 400m) }), default);
         var global = await setup.CreateLineAsync(new ProductLineRequest("Global Imports"), default);
@@ -293,7 +296,8 @@ public sealed class SalesAnalysisServiceTests
     {
         var w = await WorldAsync();
         await using var _ = w.F;
-        var dup = await Assert.ThrowsAsync<ConflictException>(() => w.Setup.CreateRepAsync(new SalesRepRequest("Ana Pérez"), default));
+        await w.F.AddActiveMemberAsync(242, "Otra Ana");
+        var dup = await Assert.ThrowsAsync<ConflictException>(() => w.Setup.CreateRepAsync(new SalesRepRequest("Ana Pérez", UserId: 242), default));
         Assert.Equal(R.RepNameTaken, dup.Message);
         var busy = await Assert.ThrowsAsync<ConflictException>(() => w.Setup.SetRepActiveAsync(w.Ana, false, default));
         Assert.Equal(R.RepHasClients, busy.Message);

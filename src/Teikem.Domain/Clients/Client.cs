@@ -92,6 +92,15 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     /// <summary>Representante de ventas asignado (SalesRep). La venta del cliente (sus facturas y su historial importado) es de este representante. NULL = sin representante.</summary>
     public int? SalesRepId { get; set; }
 
+    // --- Lote 244 (Lote A del plan de rutas) ---
+    /// <summary>Ruta de venta DIRECTA del cliente (SalesRoute). NULL = hereda la de su representante (SalesRepId); sin ninguna de las dos = «Sin ruta».</summary>
+    public int? SalesRouteId { get; set; }
+    /// <summary>
+    /// Vendedor preferido (usuario de Teikem): se propone primero como vendedor de sus órdenes y recibe sus avisos. Al asignarlo debe ser persona activa de la ruta del
+    /// cliente (un cliente sin ruta no admite preferido); si después deja de serlo no se bloquea nada y la ficha lo señala.
+    /// </summary>
+    public int? PreferredSalesUserId { get; set; }
+
     public StatusCode? Status { get; set; }
     public LookupCode? PaymentTerm { get; set; }
     public LookupCode? Currency { get; set; }

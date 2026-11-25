@@ -35,6 +35,8 @@ internal static class SalesDataSourceHelpers
 /// Fuente SALES_ORDER. Actividad de período por CreatedAtUtc. IsOpen = solicitada o despachada parcial; HasBackorder = alguna línea espera inventario; IsLate = abierta con
 /// fecha requerida anterior a hoy (día de la compañía). FillRatePct y DaysToShip solo tienen valor en órdenes despachadas por completo (DaysToShip = de solicitarla al
 /// último cambio a Despachada en el historial de estatus).
+/// Lote 244: SalesRouteId/SalesRouteName y SellerUserId/SellerName salen de la COPIA congelada al solicitar la orden (SalesCopyAtUtc); vacíos en los borradores (la
+/// elección del borrador no es la copia) y en las órdenes solicitadas antes del lote.
 /// </summary>
 public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant, ITenantClock? clock = null) : IDataSource
 {
@@ -77,12 +79,17 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
         new DataField("TaxAmount", "Impuesto", "Tax", DataFieldType.Number, IsMoney: true),
         new DataField("Total", "Total", "Total", DataFieldType.Number, IsMoney: true),
         new DataField("CreatedAtUtc", "Creada el", "Created at", DataFieldType.Date),
+        new DataField("SalesRouteId", "Id de la ruta de venta", "Sales route id", DataFieldType.Number),   // Lote 244: de la copia al solicitar
+        new DataField("SalesRouteName", "Ruta de venta", "Sales route", DataFieldType.Text),
+        new DataField("SellerUserId", "Id del vendedor", "Seller id", DataFieldType.Number),
+        new DataField("SellerName", "Vendedor", "Seller", DataFieldType.Text),
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = new[]
     {
         new DataRelation("Client", EntityTypes.Client, "ClientId", "Cliente", "Client"),
         new DataRelation("Warehouse", EntityTypes.Warehouse, "WarehouseId", "Almacén", "Warehouse"),
+        // Lote 244: sin relación a SALES_ROUTE a propósito: el motor no revisa el permiso de la fuente relacionada y esa pide sales.analysis.view (esta, sales.view).
     };
 
     public async Task<List<DataRow>> LoadAsync(DataQuery q, CancellationToken ct)
@@ -122,6 +129,12 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
                 .GroupBy(h => h.EntityId).Select(g => new { Id = g.Key, At = g.Max(h => h.ChangedAtUtc) }).ToDictionaryAsync(x => x.Id, x => x.At, ct);
         var today = ClientDataSourceHelpers.Today(clock);
         var lang = tenant.Lang;
+        // Lote 244: ruta y vendedor de la copia (solo órdenes con SalesCopyAtUtc)
+        var copied = orders.Where(o => o.SalesCopyAtUtc != null).ToList();
+        var copyRouteIds = copied.Where(o => o.SalesRouteId != null).Select(o => o.SalesRouteId!.Value).Distinct().ToList();
+        var routeNames = copyRouteIds.Count == 0 ? new Dictionary<int, string>()
+            : await db.Set<SalesRoute>().AsNoTracking().Where(r => copyRouteIds.Contains(r.SalesRouteId)).ToDictionaryAsync(r => r.SalesRouteId, r => r.Name, ct);
+        var sellerNames = await Services.AssigneeCheck.NamesAsync(db, copied.Where(o => o.SellerUserId != null).Select(o => o.SellerUserId!.Value), ct);
 
         var rows = new List<DataRow>(orders.Count);
         foreach (var o in orders)
@@ -130,6 +143,7 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
             var l = lines.GetValueOrDefault(o.SalesOrderId);
             var done = code == SalesOrderStatuses.Shipped;
             DateTime? shipped = done && shippedAt.TryGetValue(o.SalesOrderId, out var at) ? at : null;
+            var copy = o.SalesCopyAtUtc != null;
             rows.Add(new DataRow
             {
                 ["Id"] = o.SalesOrderId,
@@ -160,6 +174,10 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
                 ["TaxAmount"] = o.TaxAmount,
                 ["Total"] = o.Subtotal + o.TaxAmount,
                 ["CreatedAtUtc"] = o.CreatedAtUtc,
+                ["SalesRouteId"] = copy ? o.SalesRouteId : null,
+                ["SalesRouteName"] = copy && o.SalesRouteId is int rid ? routeNames.GetValueOrDefault(rid) : null,
+                ["SellerUserId"] = copy ? o.SellerUserId : null,
+                ["SellerName"] = copy && o.SellerUserId is int su ? sellerNames.GetValueOrDefault(su) : null,
             });
         }
         return rows;

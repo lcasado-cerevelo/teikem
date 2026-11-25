@@ -38,8 +38,12 @@ public sealed class SalesQuotaConfiguration : IEntityTypeConfiguration<SalesQuot
         b.ToTable("SalesQuota");
         b.HasKey(x => x.SalesQuotaId);
         b.Property(x => x.Amount).HasColumnType("decimal(18,2)");
-        b.HasIndex(x => new { x.TenantId, x.SalesRepId, x.Month }).HasDatabaseName("UX_SalesQuota_RepMonth").IsUnique();
+        // Lote 244: cada fila es de un representante o de una ruta (CK_SalesQuota_Target); los dos índices únicos van filtrados
+        b.HasIndex(x => new { x.TenantId, x.SalesRepId, x.Month }).HasDatabaseName("UX_SalesQuota_RepMonth").IsUnique().HasFilter("[SalesRepId] IS NOT NULL");
+        b.HasIndex(x => new { x.TenantId, x.SalesRouteId, x.Month }).HasDatabaseName("UX_SalesQuota_RouteMonth").IsUnique().HasFilter("[SalesRouteId] IS NOT NULL");
         b.HasOne<SalesRep>().WithMany().HasForeignKey(x => x.SalesRepId);
+        // en la base la FK es compuesta (SalesRouteId, TenantId) → UQ_SalesRoute_IdTenant; aquí basta la simple
+        b.HasOne<SalesRoute>().WithMany().HasForeignKey(x => x.SalesRouteId);
     }
 }
 
@@ -74,6 +78,7 @@ public sealed class SalesAnalysisSettingConfiguration : IEntityTypeConfiguration
         b.HasKey(x => x.TenantId);
         b.Property(x => x.TenantId).ValueGeneratedNever();
         b.Property(x => x.ServiceLevelZ).HasColumnType("decimal(6,3)");
+        b.Property(x => x.QuotaBy).HasColumnType("varchar(10)").HasMaxLength(10).IsRequired();   // Lote 244: REP | ROUTE (CK_SalesAnalysisSetting_QuotaBy)
     }
 }
 

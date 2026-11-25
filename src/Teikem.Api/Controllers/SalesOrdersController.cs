@@ -31,9 +31,18 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     public Task<PagedResult<SalesOrderListItemDto>> List([FromQuery] string[]? status, [FromQuery] Guid[]? clientPublicId, [FromQuery] string? q, [FromQuery] bool backorderOnly,
         [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct,
         [FromQuery] bool assignedToMe = false, [FromQuery] int? assignedUserId = null, [FromQuery] bool urgent = false,
-        [FromQuery] Guid[]? productPublicId = null, [FromQuery] string? dateField = null)
+        [FromQuery] Guid[]? productPublicId = null, [FromQuery] string? dateField = null, [FromQuery] int? routeId = null, [FromQuery] int? sellerUserId = null)
         => sales.ListAsync(null, null, q, backorderOnly, from, to, skip, take, ct, assignedToMe, assignedUserId, urgent,   // Lote 222: urgent = solo urgentes
-            statuses: status, clientPublicIds: clientPublicId, productPublicIds: productPublicId, dateField: dateField);
+            statuses: status, clientPublicIds: clientPublicId, productPublicIds: productPublicId, dateField: dateField,
+            routeId: routeId, sellerUserId: sellerUserId);   // Lote 244: por la ruta de venta y el vendedor guardados en la orden
+
+    /// <summary>
+    /// Lote 244 — para el campo «Vendedor» del borrador: la ruta de venta efectiva del cliente, el vendedor propuesto y las opciones que se pueden escoger
+    /// (el preferido del cliente y las personas vigentes y activas de su ruta; con nombre, sin correo; primero las de la ruta). 400 sin cliente; 404 si no existe.
+    /// </summary>
+    [HttpGet("seller-options"), RequirePermission(PermissionCatalog.SalesCreate)]
+    [ProducesResponseType(typeof(SalesSellerOptionsDto), StatusCodes.Status200OK), ProducesResponseType(StatusCodes.Status400BadRequest), ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<SalesSellerOptionsDto> SellerOptions([FromQuery] Guid? client, CancellationToken ct) => sales.SellerOptionsAsync(client, ct);
 
     /// <summary>Lote 195: asigna (o desasigna con userId null) una orden de venta solicitada o despachada en parte a quien la va a despachar. Supervisión.</summary>
     [HttpPost("{publicId:guid}/assign"), RequirePermission(PermissionCatalog.WarehouseManage + "|" + PermissionCatalog.WarehouseAppReassign)]

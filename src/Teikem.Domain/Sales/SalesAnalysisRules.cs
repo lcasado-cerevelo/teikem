@@ -21,6 +21,16 @@ public sealed record SalesKitShare(int ProductId, decimal Quantity, decimal Amou
 /// <summary>Conciliación del mes: total de rutas + sin representante + envío y otros = total del mes (Difference = lo que no cuadra; debería ser 0).</summary>
 public sealed record SalesReconciliation(decimal RoutesTotal, decimal Unassigned, decimal ShippingAndOther, decimal MonthTotal, decimal Difference);
 
+/// <summary>
+/// Lote 244 — una línea de venta ya ATRIBUIDA (ruta y persona resueltas con <see cref="SalesRouteRules.Attribute"/>), lo que necesita el agregador genérico
+/// <see cref="SalesAnalysisRules.Aggregate"/>. PersonKey = «R{id}» / «U{id}» o <see cref="SalesAnalysisRules.NoPersonKey"/>; ClientKey = el cliente (para agrupar
+/// por cliente o, en el Lote B, por cadena).
+/// </summary>
+public sealed record AttributedLine(DateOnly Date, string LineClass, decimal Amount, int? RouteId, string PersonKey, string ClientKey);
+
+/// <summary>Lote 244 — la venta neta de un grupo en el mes y en el mes de comparación (sin redondear).</summary>
+public sealed record SalesGroupSales(decimal Sales, decimal CompareSales);
+
 /// <summary>Una fila de compra del historial vista por la regla de duplicados (Item Receipt y su Bill).</summary>
 public sealed record PurchaseDupRow(string Type, string? Number, string Supplier, string ItemKey, decimal Quantity);
 
@@ -78,6 +88,10 @@ public static class SalesAnalysisRules
     public const string NoBrandLine = "Sin marca";
     public const string DiscountsLine = "Descuentos sin línea";
     public const string UnmatchedLine = "Producto sin emparejar";
+    /// <summary>Lote 244 — grupo de la vista por ruta con las líneas sin ruta y sin vendedor (lo que no se atribuye a nadie).</summary>
+    public const string UnassignedName = "Sin ruta ni vendedor";
+    /// <summary>Lote 244 — clave de persona de una venta sin vendedor («Sin vendedor»).</summary>
+    public const string NoPersonKey = "NONE";
 
     // ---------------------------------------------------------------- mensajes exactos (el manual y la FAQ los citan)
     public const string BodyRequired = "El cuerpo de la solicitud es obligatorio.";
@@ -332,6 +346,31 @@ public static class SalesAnalysisRules
 
     public static SalesReconciliation Reconcile(decimal routesTotal, decimal unassigned, decimal shippingAndOther, decimal monthTotal)
         => new(routesTotal, unassigned, shippingAndOther, monthTotal, Math.Round(monthTotal - (routesTotal + unassigned + shippingAndOther), 2, MidpointRounding.AwayFromZero));
+
+    /// <summary>
+    /// Lote 244 — agregador GENÉRICO de la venta neta (producto + descuentos; envío y otros no cuentan) del mes y del mes de comparación, con la clave de agrupación
+    /// como función: por ruta, por ruta y persona, por persona… y, en el Lote B, por cadena, sin reescribirlo. Una línea de un mes que no es ninguno de los dos no cuenta;
+    /// si los dos meses son el mismo, la línea suma en los dos. Montos sin redondear (quien muestra redondea).
+    /// </summary>
+    public static IReadOnlyDictionary<string, SalesGroupSales> Aggregate(IEnumerable<AttributedLine> lines, Func<AttributedLine, string> keyOf, DateOnly month,
+        DateOnly compareMonth)
+    {
+        var m = MonthStart(month);
+        var cm = MonthStart(compareMonth);
+        var sums = new Dictionary<string, (decimal Sales, decimal Compare)>(StringComparer.Ordinal);
+        foreach (var l in lines)
+        {
+            if (!CountsForRep(l.LineClass)) continue;
+            var lm = MonthStart(l.Date);
+            var inM = lm == m;
+            var inC = lm == cm;
+            if (!inM && !inC) continue;
+            var key = keyOf(l);
+            var cur = sums.GetValueOrDefault(key);
+            sums[key] = (cur.Sales + (inM ? l.Amount : 0m), cur.Compare + (inC ? l.Amount : 0m));
+        }
+        return sums.ToDictionary(kv => kv.Key, kv => new SalesGroupSales(kv.Value.Sales, kv.Value.Compare), StringComparer.Ordinal);
+    }
 
     // ---------------------------------------------------------------- kits
 

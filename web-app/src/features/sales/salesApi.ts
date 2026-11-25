@@ -36,6 +36,9 @@ export interface SalesOrderFilters {
   productPublicIds?: readonly string[]
   statuses?: readonly string[]
   mine?: boolean
+  /** Lote 244: ruta de venta (0 = sin ruta) y vendedor guardados en la orden. */
+  routeId?: number
+  sellerUserId?: number
 }
 
 const many = (v: readonly string[] | undefined) => (v && v.length > 0 ? [...v] : undefined)
@@ -53,6 +56,8 @@ export function salesOrderListQuery(f: SalesOrderFilters): SalesOrderListQuery {
     // la fecha requerida solo viaja si hay rango (sin rango no filtra nada)
     dateField: hasRange && f.dateField === 'REQUIRED' ? 'REQUIRED' : undefined,
     assignedToMe: f.mine || undefined,
+    routeId: f.routeId,
+    sellerUserId: f.sellerUserId,
   }
 }
 
@@ -63,6 +68,7 @@ export const salesKeys = {
   backorders: (q: string) => ['sales', '/api/v1/sales-orders/backorders', q] as const,
   /** Bajo 'sales': guardar, solicitar o despachar una orden lo vuelve a pedir (cambia lo reservado). */
   stock: ['sales', '/api/v1/sales-orders/stock'] as const,
+  sellerOptions: (client: string) => ['sales', '/api/v1/sales-orders/seller-options', client] as const,
 }
 
 /**
@@ -75,6 +81,17 @@ export function useSalesStock(enabled = true) {
     queryFn: () => unwrap(api.GET('/api/v1/sales-orders/stock')),
     enabled,
     staleTime: 30_000,
+    retry: false,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/** Lote 244 — para el campo «Vendedor» del borrador: la ruta de venta del cliente, el vendedor propuesto y las opciones (preferido y personas de la ruta). */
+export function useSellerOptions(clientPublicId: string | null | undefined) {
+  return useQuery({
+    queryKey: salesKeys.sellerOptions(clientPublicId ?? ''),
+    queryFn: () => unwrap(api.GET('/api/v1/sales-orders/seller-options', { params: { query: { client: clientPublicId ?? undefined } } })),
+    enabled: Boolean(clientPublicId),
     retry: false,
     meta: { handleAccessDenied: false },
   })

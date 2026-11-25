@@ -24,10 +24,21 @@ namespace Teikem.Infrastructure.Notifications;
 public sealed record SalesOrderSellerInfo(string? Name, string? CapturedByName, IReadOnlyList<NotificationContextPerson> Users);
 
 /// <summary>
-/// Lote 243 — el vendedor de una orden de venta, en UN solo lugar (el Lote A lo cambiará cuando la orden guarde su vendedor):
-/// - Nombre: el representante del cliente (Client.SalesRepId → SalesRep activo) si existe; si no, quien la solicitó (RequestedBy, o CreatedBy).
+/// El vendedor de una orden de venta para el correo, en UN solo lugar.
+/// <para>
+/// Lote 244 (Lote A, contrato con el Lote G) — orden CON copia (SalesCopyAtUtc no nulo, solicitada desde el Lote 244):
+/// - el vendedor es SalesOrder.SellerUserId (la copia congelada al solicitar); Name = el nombre del usuario (FullName; si no hay, el correo), aunque ya no esté activo;
+/// - «Capturó: X» = quien la solicitó (RequestedBy, o CreatedBy), cuando es otra persona que el vendedor (o la orden quedó «Sin vendedor»);
+/// - Users de «Vendedor de la orden» = [el vendedor], SOLO si es persona activa (<see cref="SalesSellerQueries.ActiveMemberIdsAsync"/>); si no hay, el
+///   proveedor devuelve Empty(NoSellerReason) y el envío queda SKIPPED. El preferido y las personas de la ruta NO entran aquí (son del Lote D:
+///   <see cref="SalesSellerQueries.NoticeUsersAsync"/>).
+/// </para>
+/// <para>
+/// Orden SIN copia (solicitada antes del Lote 244): la regla provisional del Lote 243, con la MISMA regla de persona activa:
+/// - Nombre: el representante del cliente (Client.SalesRepId → SalesRep activo) si existe; si no, quien la solicitó.
 /// - «Capturó: X»: quien la solicitó, cuando es otra persona que el representante.
-/// - Usuarios de «Vendedor de la orden»: quien la solicitó y el usuario del representante si es otro; solo ACTIVOS y MIEMBROS de la compañía.
+/// - Usuarios: quien la solicitó y el usuario del representante si es otro; solo personas activas.
+/// </para>
 /// Solo lectura (AsNoTracking) y con TenantId explícito además del filtro global.
 /// </summary>
 public static class SalesOrderSeller
@@ -35,28 +46,43 @@ public static class SalesOrderSeller
     public static async Task<SalesOrderSellerInfo> ResolveAsync(TeikemDbContext db, int tenantId, SalesOrder order, CancellationToken ct)
     {
         var requester = order.RequestedBy ?? order.CreatedBy;
-        var repId = await db.Clients.AsNoTracking().Where(c => c.ClientId == order.ClientId && c.TenantId == tenantId).Select(c => c.SalesRepId).FirstOrDefaultAsync(ct);
+        return order.SalesCopyAtUtc is not null
+            ? await FromCopyAsync(db, tenantId, order.SellerUserId, requester, ct)
+            : await ProvisionalAsync(db, tenantId, order.ClientId, requester, ct);
+    }
+
+    /// <summary>Lote 244: el vendedor copiado en la orden al solicitar.</summary>
+    private static async Task<SalesOrderSellerInfo> FromCopyAsync(TeikemDbContext db, int tenantId, int? sellerId, int? requester, CancellationToken ct)
+    {
+        var ids = new List<int>();
+        if (sellerId is int s) ids.Add(s);
+        if (requester is int q && q != sellerId) ids.Add(q);
+        var users = await UsersAsync(db, ids, ct);
+        var active = await SalesSellerQueries.ActiveMemberIdsAsync(db, tenantId, ids, ct);
+
+        var name = NameOf(users, sellerId);
+        var captured = requester is int rq && rq != sellerId ? NameOf(users, rq) : null;
+        var people = sellerId is int seller && active.Contains(seller) && users.TryGetValue(seller, out var u)
+            ? new List<NotificationContextPerson> { Person(u) }
+            : new List<NotificationContextPerson>();
+        return new SalesOrderSellerInfo(name, captured, people);
+    }
+
+    /// <summary>Lote 243 (provisional, órdenes sin copia): el representante del cliente y quien la solicitó.</summary>
+    private static async Task<SalesOrderSellerInfo> ProvisionalAsync(TeikemDbContext db, int tenantId, int clientId, int? requester, CancellationToken ct)
+    {
+        var repId = await db.Clients.AsNoTracking().Where(c => c.ClientId == clientId && c.TenantId == tenantId).Select(c => c.SalesRepId).FirstOrDefaultAsync(ct);
         var rep = repId is int r
             ? await db.Set<SalesRep>().AsNoTracking().FirstOrDefaultAsync(x => x.SalesRepId == r && x.TenantId == tenantId && x.IsActive, ct)
             : null;
         var ids = new List<int>();
         if (requester is int q) ids.Add(q);
         if (rep?.UserId is int ru && ru != requester) ids.Add(ru);
-        var users = ids.Count == 0 ? new()
-            : await db.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).Select(u => new { u.Id, u.FullName, u.Email, u.PhoneNumber, u.IsActive }).ToListAsync(ct);
-        var members = ids.Count == 0 ? new List<int>()
-            : await db.UserTenants.AsNoTracking()
-                .Where(m => m.TenantId == tenantId && ids.Contains(m.UserId)
-                    // solo la membresía ACTIVE: un suspendido en la compañía conserva la fila y el usuario activo, pero ya no tiene acceso
-                    && db.StatusCodes.Any(s => s.StatusCodeId == m.StatusCodeId && s.Entity == StatusDomains.MembershipStatus && s.InternalCode == MembershipStatuses.Active))
-                .Select(m => m.UserId).Distinct().ToListAsync(ct);
+        var users = await UsersAsync(db, ids, ct);
+        // persona activa = usuario activo + membresía ACTIVE en la compañía (la misma regla que el vendedor propuesto del Lote 244)
+        var active = await SalesSellerQueries.ActiveMemberIdsAsync(db, tenantId, ids, ct);
 
-        string? NameOf(int? id)
-        {
-            var u = id is int x ? users.FirstOrDefault(y => y.Id == x) : null;
-            return u is null ? null : string.IsNullOrWhiteSpace(u.FullName) ? u.Email : u.FullName;
-        }
-        var requesterName = NameOf(requester);
+        var requesterName = NameOf(users, requester);
         var name = string.IsNullOrWhiteSpace(rep?.Name) ? requesterName : rep!.Name.Trim();
         string? captured = null;
         if (rep is not null && !string.IsNullOrWhiteSpace(requesterName))
@@ -64,12 +90,24 @@ public static class SalesOrderSeller
             var other = rep.UserId is int repUser ? repUser != requester : !string.Equals(rep.Name?.Trim(), requesterName, StringComparison.OrdinalIgnoreCase);
             if (other) captured = requesterName;
         }
-        var people = ids.Select(id => users.FirstOrDefault(u => u.Id == id))
-            .Where(u => u is not null && u.IsActive && members.Contains(u.Id))
-            .Select(u => new NotificationContextPerson(u!.Id, string.IsNullOrWhiteSpace(u.FullName) ? u.Email : u.FullName, u.Email, u.PhoneNumber, NotificationAudience.Staff, null))
-            .ToList();
+        var people = ids.Where(active.Contains).Where(users.ContainsKey).Select(id => Person(users[id])).ToList();
         return new SalesOrderSellerInfo(name, captured, people);
     }
+
+    private sealed record SellerUser(int Id, string? FullName, string? Email, string? PhoneNumber);
+
+    private static async Task<Dictionary<int, SellerUser>> UsersAsync(TeikemDbContext db, IReadOnlyCollection<int> ids, CancellationToken ct)
+        => ids.Count == 0 ? new()
+            : await db.Users.AsNoTracking().Where(u => ids.Contains(u.Id))
+                .Select(u => new SellerUser(u.Id, u.FullName, u.Email, u.PhoneNumber)).ToDictionaryAsync(u => u.Id, ct);
+
+    private static string? DisplayName(SellerUser u) => string.IsNullOrWhiteSpace(u.FullName) ? u.Email : u.FullName.Trim();
+
+    private static string? NameOf(Dictionary<int, SellerUser> users, int? id)
+        => id is int x && users.TryGetValue(x, out var u) ? DisplayName(u) : null;
+
+    private static NotificationContextPerson Person(SellerUser u)
+        => new(u.Id, DisplayName(u), u.Email, u.PhoneNumber, NotificationAudience.Staff, null);
 }
 
 /// <summary>

@@ -41,4 +41,10 @@ describe('filtros de Órdenes de venta', () => {
     const requested = { ...EMPTY_ORDERS_FILTERS, range: { from: '2026-11-01', to: '2026-11-30' } }
     expect(salesOrderListQuery(ordersApiFilters(requested, ''))).toMatchObject({ from: '2026-11-01', to: '2026-11-30', dateField: undefined })
   })
+
+  it('lote 244: ruta y vendedor viajan como números (0 = sin ruta) y cuentan como filtro', () => {
+    const f = { ...EMPTY_ORDERS_FILTERS, route: '0', seller: '8' }
+    expect(hasOrdersFilters(f)).toBe(true)
+    expect(salesOrderListQuery(ordersApiFilters(f, ''))).toMatchObject({ routeId: 0, sellerUserId: 8 })
+  })
 })

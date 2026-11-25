@@ -14,6 +14,7 @@ const mock = vi.hoisted(() => ({
   requests: [] as { method: string; path: string; body: unknown; search?: URLSearchParams }[],
   client: null as unknown,
   catalog: null as unknown,
+  sellers: null as unknown,
 }))
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
@@ -33,6 +34,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (m === 'GET' && p === '/api/v1/clients') return json([{ id: 1, publicId: CLIENT, code: 'FARM', name: 'Farmacia Central', isActive: true }])
     if (m === 'GET' && p === '/api/v1/products') return json({ items: [{ id: 1, publicId: PROD, sku: 'MED', name: 'Medidor', isActive: true, isOwn: true, salePrice: 12.5 }], total: 1, skip: 0, take: 50 })
     if (m === 'GET' && p === '/api/v1/sales-orders/catalog') return json(mock.catalog ?? { brands: [] })
+    if (m === 'GET' && p === '/api/v1/sales-orders/seller-options') return mock.sellers ? json(mock.sellers) : new Response('{}', { status: 404 })
     if (m === 'GET' && p === '/api/v1/warehouses') return json([{ id: 1, publicId: WH, code: 'ALM-01', name: 'Principal', isActive: true }])
     if (p === '/api/v1/catalogs/SalesPaymentMethod') {
       return json(
@@ -113,6 +115,7 @@ describe('OrderModal — Lote 222', () => {
     mock.requests.length = 0
     mock.client = null
     mock.catalog = null
+    mock.sellers = null
     DRAFT_ORDER = BASE
     REQUESTED_ORDER = BASE
   })
@@ -263,5 +266,30 @@ describe('OrderModal — Lote 222', () => {
     expect(within(dialog).getByLabelText('Precio de la línea 1')).toHaveAttribute('placeholder', expect.stringContaining('41.94'))
     // el buscador de productos ya no pide los kits de oferta al servidor
     expect(sent('GET', '/api/v1/products').every((r) => !r.search?.has('includeOfferKits'))).toBe(true)
+  })
+
+  it('lote 244: el borrador ofrece el campo Vendedor con el propuesto y guarda el que se escoge', async () => {
+    mock.sellers = {
+      routeId: 5, routeName: 'Norte', routeFromRep: false, proposedUserId: 7, proposedName: 'Ana Titular', proposedKind: 'PRIMARY',
+      options: [{ userId: 7, name: 'Ana Titular', kind: 'PRIMARY', isPreferred: false, isProposed: true }, { userId: 8, name: 'Beto Apoyo', kind: 'SUPPORT', isPreferred: false, isProposed: false }],
+    }
+    const user = userEvent.setup()
+    wrap(DRAFT)
+    const dialog = await screen.findByRole('dialog', { name: /Orden OV-00001/ })
+    const select = await within(dialog).findByLabelText('Vendedor')
+    expect(select).toHaveValue('7')
+    expect(within(dialog).getByRole('option', { name: /Ana Titular · Propuesto/ })).toBeInTheDocument()
+    await user.selectOptions(select, '8')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar borrador' }))
+    await waitFor(() => expect(sent('PATCH', `/api/v1/sales-orders/${DRAFT}`)).toHaveLength(1))
+    expect(sent('PATCH', `/api/v1/sales-orders/${DRAFT}`)[0].body).toMatchObject({ sellerUserId: 8 })
+  })
+
+  it('lote 244: una orden solicitada muestra «Ruta de venta · Vendedor» de su copia, sin poder cambiarlo', async () => {
+    REQUESTED_ORDER = { ...BASE, publicId: REQ, number: 'OV-00002', status: 'REQUESTED', statusLabel: 'Solicitada', salesRouteName: 'Norte', sellerName: 'Ana Titular' }
+    wrap(REQ)
+    const dialog = await screen.findByRole('dialog', { name: /Orden OV-00002/ })
+    expect(within(dialog).getByText('Norte · Ana Titular')).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Vendedor')).toBeNull()
   })
 })

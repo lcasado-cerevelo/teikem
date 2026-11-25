@@ -122,6 +122,7 @@ public sealed partial class SalesOrderService
                     await RecalculateShippingAsync(order, ct2);   // Lote 222: el envío final, con la regla de hoy
                     order.AwaitingClientApproval = clientStatus == ClientStatuses.Prospect;   // Lote 222: se reserva, pero no se despacha hasta aprobar al cliente
                     if (submittedWithAuth is not null) order.SubmittedWithAuth = submittedWithAuth;   // Lote 223: la «firma» del vendedor al enviar el pedido
+                    await FreezeSellerAsync(order, ct2);   // Lote 244: copia congelada de la ruta y el vendedor, antes de la transición y del aviso (que la lee)
                     var to = await statuses.TransitionAsync(SalesCodes.StatusDomain, SalesCodes.EntityType, order.SalesOrderId, order.StatusCodeId, SalesOrderStatuses.Requested, comment, ct2);
                     order.StatusCodeId = to.StatusCodeId;
                     order.RequestedAtUtc = DateTime.UtcNow;

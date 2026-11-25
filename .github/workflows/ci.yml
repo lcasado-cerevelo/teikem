@@ -38,6 +38,10 @@ jobs:
         run: dotnet run --project src/Teikem.Api -c Release --no-build -- db-init
       - name: db-init de nuevo (idempotencia — rama 'ya existe' de DemoTenantSeeder, seeders por nombre, 0 permisos propagados)
         run: dotnet run --project src/Teikem.Api -c Release --no-build -- db-init
+      - name: db-update dos veces (idempotencia de la sección del Lote 244: la segunda no cambia nada)
+        run: |
+          dotnet run --project src/Teikem.Api -c Release --no-build -- db-update
+          dotnet run --project src/Teikem.Api -c Release --no-build -- db-update
       - name: Smoke test contra el API
         run: |
           sudo apt-get install -y jq >/dev/null
@@ -60,6 +64,8 @@ jobs:
           scripts/smoke-recepcion-maestra.sh http://localhost:5000
           # Lote 243: correo con la orden de venta al solicitarla (vista previa, validaciones, destinatarios del evento y canal APP). Este API va SIN correo: nunca Brevo.
           scripts/smoke-correo-orden-venta.sh http://localhost:5000
+          # Lote 244: rutas de venta (personas de la ruta, titular automático, cuota por ruta, vendedor de la orden, aislamiento). Sin correo: nunca Brevo.
+          scripts/smoke-rutas.sh http://localhost:5000
           # scripts/smoke.sh retirado del CI (decidido por Luis, 2026-10-21): sigue el modelo viejo de estatus de órdenes (DRIVER → INBOUND, etc.); los humos de arriba cubren lo reciente.
       # Recorrido Playwright del frontend (Lote F1) contra el mismo API, que sigue arriba desde el paso anterior
       # (los procesos en segundo plano viven hasta el fin del job). Vite sirve la app en :5173 (CORS permitido en appsettings).

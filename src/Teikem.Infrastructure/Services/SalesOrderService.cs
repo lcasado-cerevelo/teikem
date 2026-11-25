@@ -45,7 +45,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
     public async Task<PagedResult<SalesOrderListItemDto>> ListAsync(string? status, Guid? clientPublicId, string? q, bool backorderOnly, DateOnly? from, DateOnly? to,
         int skip, int take, CancellationToken ct, bool assignedToMe = false, int? assignedUserId = null, bool urgentOnly = false,
         IReadOnlyCollection<string>? statuses = null, IReadOnlyCollection<Guid>? clientPublicIds = null, IReadOnlyCollection<Guid>? productPublicIds = null,
-        string? dateField = null)
+        string? dateField = null, int? routeId = null, int? sellerUserId = null)
     {
         skip = Math.Max(0, skip);
         take = Math.Clamp(take <= 0 ? 50 : take, 1, MaxPageSize);
@@ -70,6 +70,9 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         if (assignedToMe && tenant.UserId is int me) query = query.Where(o => o.AssignedToUserId == me);
         else if (assignedUserId is int assignedUser) query = query.Where(o => o.AssignedToUserId == assignedUser);
         if (urgentOnly) query = query.Where(o => o.IsUrgent);   // Lote 222
+        // Lote 244: por la ruta de venta y el vendedor GUARDADOS en la orden (la copia de las solicitadas; en un borrador, la elección explícita del vendedor)
+        if (routeId is int rid) query = query.Where(o => o.SalesRouteId == rid);
+        if (sellerUserId is int sid) query = query.Where(o => o.SellerUserId == sid);
         if (byRequired)
         {
             if (from is DateOnly f) query = query.Where(o => o.RequiredDate != null && o.RequiredDate >= f);
@@ -127,6 +130,9 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var priced = await PriceAsync(planned, client.ClientId, today, ct);
         var terms = await PlanTermsAsync(req, client, null, false, ct);   // Lote 222: urgente, entrega, forma de pago (prellenada con la del cliente), consignación
         EnsureStep(step, planned.Count, terms.DeliveryMode, consigneeId is not null);
+        // Lote 244: el vendedor escogido (si no viene, NULL = vale la propuesta)
+        if (req.SellerUserId is int chosenSeller && req.ClearSeller != true) await ValidateSellerChoiceAsync(client.ClientId, chosenSeller, ct);
+        var sellerUserId = req.ClearSeller == true ? null : req.SellerUserId;
 
         await numbers.EnsureAsync(SalesCodes.NumberKind, null, ct);
         var id = await db.RunInTransactionAsync(async ct2 =>
@@ -137,7 +143,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             {
                 PublicId = Guid.NewGuid(), TenantId = tenantId, Number = NumberFormat.Resolve(SalesCodes.NumberPattern, seq), WarehouseId = warehouse.WarehouseId,
                 ClientId = client.ClientId, ConsigneeId = consigneeId, RequestedBy = tenant.UserId, RequestedDate = today, RequiredDate = req.RequiredDate, Notes = notes,
-                StatusCodeId = initial.StatusCodeId,
+                StatusCodeId = initial.StatusCodeId, SellerUserId = sellerUserId,
             };
             ApplyLines(order, priced);
             ApplyTerms(order, terms);   // Lote 222
@@ -184,12 +190,23 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             var finalConsignee = req.ClearConsignee == true ? null : consigneeId ?? currentOrder.ConsigneeId;
             EnsureStep(step, lineCount, terms.DeliveryModeGiven ? terms.DeliveryMode : currentOrder.DeliveryMode, finalConsignee is not null);
         }
+        // Lote 244: el vendedor del borrador. ClearSeller = volver a la propuesta; uno nuevo se valida contra el cliente final; si cambió el cliente y la
+        // elección que había ya no vale, vuelve a la propuesta sin error (la respuesta lo refleja).
+        var sellerUserId = currentOrder.SellerUserId;
+        if (req.ClearSeller == true) sellerUserId = null;
+        else if (req.SellerUserId is int chosenSeller)
+        {
+            await ValidateSellerChoiceAsync(clientId, chosenSeller, ct);
+            sellerUserId = chosenSeller;
+        }
+        else if (clientId != peek.ClientId && !await SellerChoiceStillValidAsync(clientId, sellerUserId, ct)) sellerUserId = null;
 
         await db.RunInTransactionAsync(async ct2 =>
         {
             var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).ThenInclude(l => l.Components).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
             await EnsureDraftAsync(order.StatusCodeId, ct2);
             order.ClientId = clientId;
+            order.SellerUserId = sellerUserId;   // Lote 244: solo en borrador (la copia de una solicitada no se toca: arriba ya dio 422)
             if (warehouse is not null) order.WarehouseId = warehouse.WarehouseId;
             if (req.ClearConsignee == true) order.ConsigneeId = null;
             else if (consigneeId is int c) order.ConsigneeId = c;
@@ -463,6 +480,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var warehouses = await db.Set<Warehouse>().Where(w => orders.Select(o => o.WarehouseId).Contains(w.WarehouseId)).ToDictionaryAsync(w => w.WarehouseId, ct);
         var users = await UserNamesAsync(orders.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value), ct);
         var assignees = await UserNamesAsync(orders.Where(o => o.AssignedToUserId is not null).Select(o => o.AssignedToUserId!.Value), ct);
+        var sellers = await UserNamesAsync(orders.Where(o => o.SellerUserId is not null).Select(o => o.SellerUserId!.Value), ct);   // Lote 244: solo de las columnas
+        var routes = await RouteNamesAsync(orders.Where(o => o.SalesRouteId is not null).Select(o => o.SalesRouteId!.Value), ct);
         return orders.Select(o =>
         {
             var s = map[o.StatusCodeId];
@@ -472,7 +491,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             return new SalesOrderListItemDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, w.PublicId, w.Name, o.RequestedDate, o.RequiredDate,
                 o.Subtotal, o.TaxAmount, TotalOf(o), st?.Count ?? 0, st?.Back ?? false, o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.CreatedAtUtc,
                 o.AssignedToUserId, o.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null,
-                o.IsUrgent, o.AwaitingClientApproval, o.IsConsignment, o.PaymentChanged, ShippingRules.EffectiveMode(o.DeliveryMode, o.ConsigneeId is not null), o.ShippingCharge);   // Lote 222
+                o.IsUrgent, o.AwaitingClientApproval, o.IsConsignment, o.PaymentChanged, ShippingRules.EffectiveMode(o.DeliveryMode, o.ConsigneeId is not null), o.ShippingCharge,   // Lote 222
+                o.SalesRouteId is int sr ? routes.GetValueOrDefault(sr) : null, o.SellerUserId is int su ? sellers.GetValueOrDefault(su) : null);   // Lote 244
         }).ToList();
     }
 
@@ -491,6 +511,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             .Concat(orders.Where(o => o.AssignedToUserId is not null).Select(o => o.AssignedToUserId!.Value)), ct);
         var dispatchInfo = await DispatchesOfAsync(orders.Select(o => o.SalesOrderId).ToList(), ct);
         var terms = await TermsOfAsync(orders, clients, ct);   // Lote 222
+        var draftIds = orders.Where(o => map[o.StatusCodeId].Code == SalesOrderStatuses.Draft).Select(o => o.SalesOrderId).ToHashSet();
+        var sellerViews = await SellerViewsAsync(orders, draftIds, ct);   // Lote 244: la copia o, en borrador, la elección / la propuesta
         // Lote 69: kits — la foto de componentes de cada línea y lo reservado de cada componente
         var allLineIds = orders.SelectMany(o => o.Lines.Select(l => l.SalesOrderLineId)).ToList();
         var snapshots = (await db.Set<SalesOrderLineComponent>().AsNoTracking().Where(c => allLineIds.Contains(c.SalesOrderLineId)).ToListAsync(ct))
@@ -511,6 +533,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             var c = clients[o.ClientId];
             var w = warehouses[o.WarehouseId];
             var cons = o.ConsigneeId is int ci ? consignees.GetValueOrDefault(ci) : null;
+            var sv = sellerViews.GetValueOrDefault(o.SalesOrderId);
             var lines = o.Lines.OrderBy(l => l.LineNo).Select(l =>
             {
                 var p = products[l.ProductId];
@@ -528,7 +551,12 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             return new SalesOrderDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, cons?.PublicId, cons?.Name, w.PublicId, w.Name, o.RequestedDate, o.RequiredDate,
                 o.Notes, o.Subtotal, o.TaxAmount, TotalOf(o), o.Lines.Any(l => SalesRules.IsBackordered(l.QtyBackordered, l.IsClosed)),
                 o.RequestedBy is int u ? users.GetValueOrDefault(u) : null, o.RequestedAtUtc, o.CreatedAtUtc, lines, dispatchInfo.GetValueOrDefault(o.SalesOrderId) ?? new List<SalesDispatchInfoDto>(),
-                o.AssignedToUserId, o.AssignedToUserId is int au ? users.GetValueOrDefault(au) : null, terms.GetValueOrDefault(o.SalesOrderId));   // Lote 222
+                o.AssignedToUserId, o.AssignedToUserId is int au ? users.GetValueOrDefault(au) : null, terms.GetValueOrDefault(o.SalesOrderId))   // Lote 222
+            {
+                // Lote 244: ruta de venta y vendedor
+                SalesRouteId = sv?.RouteId, SalesRouteName = sv?.RouteName, SellerUserId = sv?.SellerUserId, SellerName = sv?.SellerName,
+                SellerProposed = sv?.Proposed ?? false, SalesCopyAtUtc = o.SalesCopyAtUtc,
+            };
         }).ToList();
     }
 

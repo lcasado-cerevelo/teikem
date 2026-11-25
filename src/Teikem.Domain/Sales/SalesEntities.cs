@@ -86,6 +86,14 @@ public class SalesOrder : ITenantScoped, IHasStatus, IAuditStamped
     /// <summary>El cliente es un prospecto sin aprobar: la orden se solicita y reserva, pero NO se despacha hasta que lo aprueben.</summary>
     public bool AwaitingClientApproval { get; set; }
 
+    // --- Lote 244 (Lote A del plan de rutas): ruta y vendedor de la orden ---
+    // En BORRADOR, SellerUserId es la elección explícita del vendedor (NULL = vale la propuesta) y SalesRouteId queda NULL. Con SalesCopyAtUtc puesto, las tres
+    // columnas son la copia CONGELADA al solicitar (DRAFT → REQUESTED): ruta efectiva del cliente, vendedor (la elección si sigue valiendo, si no la propuesta; NULL =
+    // «Sin vendedor») y el momento. Las órdenes solicitadas antes del lote quedan con las tres en NULL (no se rellenan).
+    public int? SalesRouteId { get; set; }
+    public int? SellerUserId { get; set; }
+    public DateTime? SalesCopyAtUtc { get; set; }
+
     public List<SalesOrderLine> Lines { get; set; } = new();
 }
 

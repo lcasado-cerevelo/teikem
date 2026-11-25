@@ -8144,3 +8144,222 @@ GO
 IF COL_LENGTH(N'dbo.ClientContact', N'ReceivesEmailNotifications') IS NULL
     ALTER TABLE dbo.ClientContact ADD ReceivesEmailNotifications BIT NOT NULL CONSTRAINT DF_ClientContact_ReceivesEmailNotifications DEFAULT 0;
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-25 — Lote 244 (Lote A del plan de rutas): rutas de venta, titular y apoyos, vendedor preferido, cuota por ruta o persona, copia en la orden (docs/lote244-decisiones.md).
+   - dbo.SalesRoute: UQ_SalesRoute_IdTenant (SalesRouteId, TenantId), destino de las FK compuestas (como UQ_Client_IdTenant): una ruta de otra compañía no se
+     puede colgar de nada.
+   - Tabla nueva dbo.SalesRouteAssignment (personas de la ruta): un usuario de Teikem como titular (IsPrimary) o apoyo, con vigencia [ValidFrom, ValidTo) en días.
+     Nunca se borra: cerrar = ValidTo; anular = IsActive 0 con ValidTo (CK_SalesRouteAssignment_Void), así una anulada no ocupa los índices de vigentes.
+     UX_SalesRouteAssignment_Primary: un solo titular vigente por ruta; UX_SalesRouteAssignment_Open: una sola fila vigente por persona y ruta.
+   - dbo.SalesQuota: cuota por ruta además de por representante. UX_SalesQuota_RepMonth se rehace FILTRADO con el MISMO nombre (la guarda del Lote 241 lo salta en
+     cada corrida; el índice viejo, sin filtro, se quita solo si has_filter = 0), SalesRepId pasa a NULL (solo si sigue NOT NULL), SalesRouteId nueva con
+     FK_SalesQuota_Route compuesta, CK_SalesQuota_Target (representante o ruta, uno de los dos) y UX_SalesQuota_RouteMonth filtrado.
+   - dbo.Client: SalesRouteId (ruta directa; NULL = la de su representante) con FK compuesta y PreferredSalesUserId (vendedor preferido, usuario de Teikem).
+   - dbo.SalesOrder: SalesRouteId, SellerUserId y SalesCopyAtUtc (la copia congelada al solicitar). Las órdenes de antes quedan en NULL: no se rellenan.
+   - dbo.SalesAnalysisSetting.QuotaBy: REP (por persona, lo de siempre) o ROUTE (por ruta), REP por omisión.
+   - dbo.SalesRep: UX_SalesRep_User (un usuario en UN solo representante activo por compañía), SOLO si hoy no hay repetidos; si los hay, un aviso (PRINT) y se
+     crea en la siguiente corrida, cuando se corrijan.
+   - EntityType SALES_ROUTE_ASSIGNMENT (auditoría y fuente de datos «Personas de la ruta»). Sin permisos nuevos.
+   - Migración de datos, UNA sola vez (marca L244_SALES_ROUTES_FROM_REPS): cada cliente sin ruta toma la de su representante activo (si la ruta está activa);
+     en cada ruta activa sin titular vigente con EXACTAMENTE un representante activo cuyo usuario es persona activa de la compañía (usuario activo + membresía
+     ACTIVE), ese usuario queda de titular; con dos o más, todos de apoyo (el administrador escoge al titular). Vigentes desde el primer día del mes más antiguo
+     con historial, facturas o cuotas de la compañía (sin datos: desde ayer). Avisa (PRINT) cuántos clientes, titulares y apoyos quedaron y qué representantes
+     activos no tienen usuario. No crea rutas ni toca órdenes, representantes ni Client.SalesRepId.
+   Solo AGREGA (el único índice que se quita se vuelve a crear con el mismo nombre). Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_SalesRoute_IdTenant' AND parent_object_id = OBJECT_ID('dbo.SalesRoute'))
+    ALTER TABLE dbo.SalesRoute ADD CONSTRAINT UQ_SalesRoute_IdTenant UNIQUE (SalesRouteId, TenantId);
+GO
+IF OBJECT_ID(N'dbo.SalesRouteAssignment', N'U') IS NULL CREATE TABLE dbo.SalesRouteAssignment (
+    SalesRouteAssignmentId INT IDENTITY(1,1) CONSTRAINT PK_SalesRouteAssignment PRIMARY KEY,
+    TenantId               INT NOT NULL CONSTRAINT FK_SalesRouteAssignment_Tenant REFERENCES dbo.Tenant(TenantId),
+    SalesRouteId           INT NOT NULL,
+    UserId                 INT NOT NULL CONSTRAINT FK_SalesRouteAssignment_User REFERENCES dbo.AspNetUsers(Id),
+    IsPrimary              BIT NOT NULL,
+    ValidFrom              DATE NOT NULL,
+    ValidTo                DATE NULL,
+    IsActive               BIT NOT NULL CONSTRAINT DF_SalesRouteAssignment_IsActive DEFAULT 1,
+    CreatedAtUtc           DATETIME2 NOT NULL CONSTRAINT DF_SalesRouteAssignment_At DEFAULT SYSUTCDATETIME(),
+    CreatedBy              INT NULL,
+    ClosedAtUtc            DATETIME2 NULL,
+    ClosedBy               INT NULL,
+    VoidedAtUtc            DATETIME2 NULL,
+    VoidedBy               INT NULL,
+    RowVersion             ROWVERSION NOT NULL,
+    CONSTRAINT FK_SalesRouteAssignment_Route FOREIGN KEY (SalesRouteId, TenantId) REFERENCES dbo.SalesRoute(SalesRouteId, TenantId),
+    CONSTRAINT CK_SalesRouteAssignment_Dates CHECK (ValidTo IS NULL OR ValidTo >= ValidFrom),
+    CONSTRAINT CK_SalesRouteAssignment_Void CHECK (IsActive = 1 OR ValidTo IS NOT NULL)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesRouteAssignment_Primary' AND object_id = OBJECT_ID('dbo.SalesRouteAssignment'))
+    EXEC(N'CREATE UNIQUE INDEX UX_SalesRouteAssignment_Primary ON dbo.SalesRouteAssignment(TenantId, SalesRouteId) WHERE IsPrimary = 1 AND ValidTo IS NULL;');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesRouteAssignment_Open' AND object_id = OBJECT_ID('dbo.SalesRouteAssignment'))
+    EXEC(N'CREATE UNIQUE INDEX UX_SalesRouteAssignment_Open ON dbo.SalesRouteAssignment(TenantId, SalesRouteId, UserId) WHERE ValidTo IS NULL;');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesRouteAssignment_User' AND object_id = OBJECT_ID('dbo.SalesRouteAssignment'))
+    CREATE INDEX IX_SalesRouteAssignment_User ON dbo.SalesRouteAssignment(TenantId, UserId) WHERE ValidTo IS NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesRouteAssignment_Route' AND object_id = OBJECT_ID('dbo.SalesRouteAssignment'))
+    CREATE INDEX IX_SalesRouteAssignment_Route ON dbo.SalesRouteAssignment(TenantId, SalesRouteId, ValidFrom) INCLUDE (UserId, IsPrimary, ValidTo, IsActive);
+GO
+-- cuota por ruta: (1) el índice único del 241 (sin filtro) se quita solo mientras no tenga filtro; (3) vuelve con el MISMO nombre, filtrado
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesQuota_RepMonth' AND object_id = OBJECT_ID('dbo.SalesQuota') AND has_filter = 0)
+    DROP INDEX UX_SalesQuota_RepMonth ON dbo.SalesQuota;
+GO
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.SalesQuota') AND name = 'SalesRepId' AND is_nullable = 0)
+    ALTER TABLE dbo.SalesQuota ALTER COLUMN SalesRepId INT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesQuota_RepMonth' AND object_id = OBJECT_ID('dbo.SalesQuota'))
+    EXEC(N'CREATE UNIQUE INDEX UX_SalesQuota_RepMonth ON dbo.SalesQuota(TenantId, SalesRepId, [Month]) WHERE SalesRepId IS NOT NULL;');
+GO
+IF COL_LENGTH(N'dbo.SalesQuota', N'SalesRouteId') IS NULL
+    ALTER TABLE dbo.SalesQuota ADD SalesRouteId INT NULL;
+GO
+IF OBJECT_ID(N'dbo.FK_SalesQuota_Route', N'F') IS NULL
+    ALTER TABLE dbo.SalesQuota ADD CONSTRAINT FK_SalesQuota_Route FOREIGN KEY (SalesRouteId, TenantId) REFERENCES dbo.SalesRoute(SalesRouteId, TenantId);
+GO
+IF OBJECT_ID(N'dbo.CK_SalesQuota_Target', N'C') IS NULL
+    ALTER TABLE dbo.SalesQuota ADD CONSTRAINT CK_SalesQuota_Target CHECK ((SalesRepId IS NOT NULL AND SalesRouteId IS NULL) OR (SalesRepId IS NULL AND SalesRouteId IS NOT NULL));
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesQuota_RouteMonth' AND object_id = OBJECT_ID('dbo.SalesQuota'))
+    EXEC(N'CREATE UNIQUE INDEX UX_SalesQuota_RouteMonth ON dbo.SalesQuota(TenantId, SalesRouteId, [Month]) WHERE SalesRouteId IS NOT NULL;');
+GO
+IF COL_LENGTH(N'dbo.Client', N'SalesRouteId') IS NULL
+    ALTER TABLE dbo.Client ADD SalesRouteId INT NULL;
+GO
+IF OBJECT_ID(N'dbo.FK_Client_SalesRoute', N'F') IS NULL
+    ALTER TABLE dbo.Client ADD CONSTRAINT FK_Client_SalesRoute FOREIGN KEY (SalesRouteId, TenantId) REFERENCES dbo.SalesRoute(SalesRouteId, TenantId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Client_SalesRoute' AND object_id = OBJECT_ID('dbo.Client'))
+    CREATE INDEX IX_Client_SalesRoute ON dbo.Client(TenantId, SalesRouteId) WHERE SalesRouteId IS NOT NULL;
+GO
+IF COL_LENGTH(N'dbo.Client', N'PreferredSalesUserId') IS NULL
+    ALTER TABLE dbo.Client ADD PreferredSalesUserId INT NULL CONSTRAINT FK_Client_PreferredSalesUser REFERENCES dbo.AspNetUsers(Id);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Client_PreferredSalesUser' AND object_id = OBJECT_ID('dbo.Client'))
+    CREATE INDEX IX_Client_PreferredSalesUser ON dbo.Client(TenantId, PreferredSalesUserId) WHERE PreferredSalesUserId IS NOT NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'SalesRouteId') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD SalesRouteId INT NULL;
+GO
+IF OBJECT_ID(N'dbo.FK_SalesOrder_SalesRoute', N'F') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD CONSTRAINT FK_SalesOrder_SalesRoute FOREIGN KEY (SalesRouteId, TenantId) REFERENCES dbo.SalesRoute(SalesRouteId, TenantId);
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'SellerUserId') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD SellerUserId INT NULL CONSTRAINT FK_SalesOrder_Seller REFERENCES dbo.AspNetUsers(Id);
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'SalesCopyAtUtc') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD SalesCopyAtUtc DATETIME2 NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrder_SalesRoute' AND object_id = OBJECT_ID('dbo.SalesOrder'))
+    CREATE INDEX IX_SalesOrder_SalesRoute ON dbo.SalesOrder(TenantId, SalesRouteId) WHERE SalesRouteId IS NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrder_Seller' AND object_id = OBJECT_ID('dbo.SalesOrder'))
+    CREATE INDEX IX_SalesOrder_Seller ON dbo.SalesOrder(TenantId, SellerUserId) WHERE SellerUserId IS NOT NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesAnalysisSetting', N'QuotaBy') IS NULL
+    ALTER TABLE dbo.SalesAnalysisSetting ADD QuotaBy VARCHAR(10) NOT NULL CONSTRAINT DF_SalesAnalysisSetting_QuotaBy DEFAULT 'REP';
+GO
+IF OBJECT_ID(N'dbo.CK_SalesAnalysisSetting_QuotaBy', N'C') IS NULL
+    ALTER TABLE dbo.SalesAnalysisSetting ADD CONSTRAINT CK_SalesAnalysisSetting_QuotaBy CHECK (QuotaBy IN ('REP', 'ROUTE'));
+GO
+-- un usuario en UN solo representante activo por compañía: solo si hoy no hay repetidos (si los hay, se avisa y se crea en la siguiente corrida)
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesRep_User' AND object_id = OBJECT_ID('dbo.SalesRep'))
+BEGIN
+    IF NOT EXISTS (SELECT TenantId, UserId FROM dbo.SalesRep WHERE UserId IS NOT NULL AND IsActive = 1 GROUP BY TenantId, UserId HAVING COUNT(*) > 1)
+        EXEC(N'CREATE UNIQUE INDEX UX_SalesRep_User ON dbo.SalesRep(TenantId, UserId) WHERE UserId IS NOT NULL AND IsActive = 1;');
+    ELSE
+        PRINT N'Lote 244: hay representantes activos que comparten el mismo usuario en una compañía; UX_SalesRep_User se creará en la siguiente corrida, cuando se corrijan.';
+END
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SALES_ROUTE_ASSIGNMENT', N'{"es":"Personas de la ruta (titular y apoyo)","en":"Route people (primary and support)"}', 197)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L244_SALES_ROUTES_FROM_REPS')
+BEGIN
+    DECLARE @xactAbortWasOn BIT = CASE WHEN (@@OPTIONS & 16384) = 16384 THEN 1 ELSE 0 END;
+    SET XACT_ABORT ON;
+    BEGIN TRAN;
+
+    DECLARE @yesterday DATE = CAST(DATEADD(DAY, -1, SYSUTCDATETIME()) AS DATE);
+    DECLARE @routed INT = 0, @primaries INT = 0, @supports INT = 0, @noUser NVARCHAR(MAX);
+
+    -- 1) cada cliente sin ruta toma la de su representante activo, si la ruta está activa (siempre dentro de la misma compañía)
+    UPDATE c SET c.SalesRouteId = r.SalesRouteId
+    FROM dbo.Client c
+    JOIN dbo.SalesRep r ON r.SalesRepId = c.SalesRepId AND r.TenantId = c.TenantId AND r.IsActive = 1
+    JOIN dbo.SalesRoute ro ON ro.SalesRouteId = r.SalesRouteId AND ro.TenantId = c.TenantId AND ro.IsActive = 1
+    WHERE c.SalesRouteId IS NULL;
+    SET @routed = @@ROWCOUNT;
+
+    -- 2) desde cuándo valen las asignaciones de cada compañía: el primer día del mes más antiguo con historial (lotes activos), facturas activas o cuotas
+    --    activas; sin datos, ayer; nunca después de ayer
+    DECLARE @from TABLE (TenantId INT NOT NULL PRIMARY KEY, ValidFrom DATE NOT NULL);
+    INSERT INTO @from (TenantId, ValidFrom)
+    SELECT t.TenantId,
+           CASE WHEN m.D IS NULL OR DATEFROMPARTS(YEAR(m.D), MONTH(m.D), 1) > @yesterday THEN @yesterday
+                ELSE DATEFROMPARTS(YEAR(m.D), MONTH(m.D), 1) END
+    FROM (SELECT DISTINCT TenantId FROM dbo.SalesRoute WHERE IsActive = 1) t
+    OUTER APPLY (
+        SELECT MIN(x.D) AS D FROM (
+            SELECT MIN(l.TxnDate) FROM dbo.SalesHistoryLine l
+            JOIN dbo.SalesHistoryBatch b ON b.SalesHistoryBatchId = l.SalesHistoryBatchId AND b.TenantId = l.TenantId AND b.IsActive = 1
+            WHERE l.TenantId = t.TenantId
+            UNION ALL
+            SELECT MIN(i.IssueDate) FROM dbo.Invoice i WHERE i.TenantId = t.TenantId AND i.IsActive = 1
+            UNION ALL
+            SELECT MIN(q.[Month]) FROM dbo.SalesQuota q WHERE q.TenantId = t.TenantId AND q.IsActive = 1
+        ) x (D)
+    ) m;
+
+    -- 3) candidatos: representantes activos de rutas activas cuyo usuario es persona activa de la compañía (usuario activo + membresía ACTIVE)
+    DECLARE @cand TABLE (TenantId INT NOT NULL, SalesRouteId INT NOT NULL, UserId INT NOT NULL, PRIMARY KEY (TenantId, SalesRouteId, UserId));
+    INSERT INTO @cand (TenantId, SalesRouteId, UserId)
+    SELECT DISTINCT r.TenantId, r.SalesRouteId, r.UserId
+    FROM dbo.SalesRep r
+    JOIN dbo.SalesRoute ro ON ro.SalesRouteId = r.SalesRouteId AND ro.TenantId = r.TenantId AND ro.IsActive = 1
+    JOIN dbo.AspNetUsers u ON u.Id = r.UserId AND u.IsActive = 1
+    JOIN dbo.UserTenant ut ON ut.UserId = r.UserId AND ut.TenantId = r.TenantId
+    WHERE r.IsActive = 1 AND r.UserId IS NOT NULL
+      AND ut.StatusCodeId IN (SELECT s.StatusCodeId FROM dbo.StatusCode s WHERE s.Entity = N'MembershipStatus' AND s.InternalCode = N'ACTIVE');
+
+    -- 4) ruta sin titular vigente con EXACTAMENTE un candidato: ese es el titular
+    INSERT INTO dbo.SalesRouteAssignment (TenantId, SalesRouteId, UserId, IsPrimary, ValidFrom, IsActive)
+    SELECT c.TenantId, c.SalesRouteId, c.UserId, 1, f.ValidFrom, 1
+    FROM @cand c
+    JOIN @from f ON f.TenantId = c.TenantId
+    WHERE (SELECT COUNT(*) FROM @cand o WHERE o.TenantId = c.TenantId AND o.SalesRouteId = c.SalesRouteId) = 1
+      AND NOT EXISTS (SELECT 1 FROM dbo.SalesRouteAssignment a WHERE a.TenantId = c.TenantId AND a.SalesRouteId = c.SalesRouteId AND a.ValidTo IS NULL
+                      AND (a.IsPrimary = 1 OR a.UserId = c.UserId));
+    SET @primaries = @@ROWCOUNT;
+
+    -- 5) ruta con dos o más candidatos: todos de apoyo (el administrador escoge al titular)
+    INSERT INTO dbo.SalesRouteAssignment (TenantId, SalesRouteId, UserId, IsPrimary, ValidFrom, IsActive)
+    SELECT c.TenantId, c.SalesRouteId, c.UserId, 0, f.ValidFrom, 1
+    FROM @cand c
+    JOIN @from f ON f.TenantId = c.TenantId
+    WHERE (SELECT COUNT(*) FROM @cand o WHERE o.TenantId = c.TenantId AND o.SalesRouteId = c.SalesRouteId) >= 2
+      AND NOT EXISTS (SELECT 1 FROM dbo.SalesRouteAssignment a WHERE a.TenantId = c.TenantId AND a.SalesRouteId = c.SalesRouteId AND a.UserId = c.UserId
+                      AND a.ValidTo IS NULL);
+    SET @supports = @@ROWCOUNT;
+
+    -- 6) el aviso para el administrador
+    SELECT @noUser = STRING_AGG(CAST(CONCAT(N'[', r.TenantId, N'] ', r.Name) AS NVARCHAR(MAX)), N', ')
+    FROM dbo.SalesRep r WHERE r.IsActive = 1 AND r.UserId IS NULL;
+    PRINT CONCAT(N'Lote 244: ', @routed, N' clientes tomaron la ruta de su representante; ', @primaries, N' titulares y ', @supports, N' apoyos.');
+    IF @noUser IS NOT NULL
+        PRINT CONCAT(N'Lote 244: representantes activos sin usuario (asígnenles uno para que cuenten como personas de la ruta): ', @noUser);
+
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L244_SALES_ROUTES_FROM_REPS');
+    COMMIT;
+    IF @xactAbortWasOn = 0 SET XACT_ABORT OFF;
+END
+GO

@@ -14,7 +14,7 @@ export type AttentionGroupDto = components['schemas']['AttentionGroupDto']
 type Translate = (key: string, params?: TParams) => string
 
 /** Tipos de aviso que esta web sabe describir (el resto se pinta con su código y su "Revisar"). */
-export const ATTENTION_CODES = ['DELIVERY_FAR', 'INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'SALES_CLIENT_PENDING', 'SALES_ORDER_URGENT', 'SALES_QUICKBOOKS_PENDING', 'EXIT_NOTICE_BACKORDER', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE'] as const
+export const ATTENTION_CODES = ['DELIVERY_FAR', 'INVENTORY_DISCREPANCY', 'RENTAL_DUE', 'SALES_BACKORDER_READY', 'SALES_CLIENT_PENDING', 'SALES_ORDER_URGENT', 'SALES_QUICKBOOKS_PENDING', 'EXIT_NOTICE_BACKORDER', 'ORDERS_NO_DRIVER', 'COD_UNRECONCILED', 'SLA_AT_RISK', 'ORDERS_FAILED', 'CLAIMS_OPEN', 'FLEET_DOCS_DUE', 'INVOICES_OVERDUE', 'SALES_ROUTE_NO_PRIMARY'] as const
 export type AttentionCode = (typeof ATTENTION_CODES)[number]
 
 export function isKnownAttention(code: string | null | undefined): code is AttentionCode {
@@ -109,6 +109,7 @@ export function attentionRowText(item: AttentionItemDto, t: Translate, lang: str
   if (item.code === 'SALES_BACKORDER_READY') return salesBackorderText(p, t, lang, since)
   if (item.code === 'SALES_CLIENT_PENDING') return salesClientPendingText(p, t, since)
   if (item.code === 'SALES_ORDER_URGENT') return salesUrgentText(p, t, since)
+  if (item.code === 'SALES_ROUTE_NO_PRIMARY') return salesRouteNoPrimaryText(p, t, since)
   if (item.code === 'SALES_QUICKBOOKS_PENDING') return salesQuickBooksText(p, t, since)
   if (item.code === 'EXIT_NOTICE_BACKORDER') return exitNoticeBackorderText(p, t, lang, since)
   if (item.code === 'ORDERS_NO_DRIVER') return noDriverText(p, t, since)
@@ -192,6 +193,25 @@ function salesClientPendingText(p: Record<string, string>, t: Translate, since: 
   return {
     title: t(`${base}.title`, { name }),
     detail: p.seller ? t(`${base}.seller`, { seller: p.seller }) : t(`${base}.noSeller`),
+    figures,
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { name }),
+  }
+}
+
+/**
+ * Lote 244 — ruta de venta sin titular vigente o con titular inactivo (SALES_ROUTE_NO_PRIMARY, sales.analysis.manage). Params: routeId, name, clients y reason
+ * (NO_PRIMARY | INACTIVE_PRIMARY). «Revisar» abre Configuración › Rutas del análisis de ventas.
+ */
+function salesRouteNoPrimaryText(p: Record<string, string>, t: Translate, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.SALES_ROUTE_NO_PRIMARY'
+  const name = p.name ?? ''
+  const clients = Number(p.clients ?? '0')
+  const figures: AttentionFigure[] = []
+  if (Number.isFinite(clients) && clients > 0) figures.push({ label: t(`${base}.clients`), value: formatNumber(clients), emphasis: true })
+  return {
+    title: t(`${base}.title`, { name }),
+    detail: p.reason === 'NO_PRIMARY' || p.reason === 'INACTIVE_PRIMARY' ? t(`${base}.${p.reason}`) : t(`${base}.noReason`),
     figures,
     since,
     reviewLabel: t(`${base}.reviewLabel`, { name }),

@@ -15,7 +15,7 @@ using Xunit;
 namespace Teikem.Tests;
 
 /// <summary>
-/// Lote 243 (Lote G del plan de Solutions) — la sección de logistica-db-update.sql: es la ÚLTIMA, solo AGREGA (sin DELETE, sin permisos, sin datos),
+/// Lote 243 (Lote G del plan de Solutions) — la sección de logistica-db-update.sql (después de la del 241; se lee solo hasta la siguiente): solo AGREGA (sin DELETE, sin permisos, sin datos),
 /// amplía CK_NotificationRuleRecipient_Kind para el Kind CONTEXT con el patrón de CK_NumberSequence_Kind (DROP protegido con NOT LIKE '%CONTEXT%',
 /// ADD con IF NOT EXISTS) y agrega ClientContact.ReceivesEmailNotifications con COL_LENGTH y DEFAULT 0. Contra SQL Server real (si hay
 /// TEIKEM_TEST_SQLSERVER) la sección corre DOS veces sobre una base desechable con el CHECK viejo y sin la columna, y el CHECK nuevo admite
@@ -28,14 +28,17 @@ public sealed class Lote243SqlTests(NotificationSqlFixture fx) : IClassFixture<N
     private static string UpdateSql()
         => File.ReadAllText(Path.Combine(DatabaseInitializer.ResolveRepoRoot(null), "Diseño", "logistica-db-update.sql")).Replace("\r\n", "\n");
 
-    /// <summary>La sección completa: desde su comentario de encabezado hasta el final del archivo.</summary>
+    /// <summary>
+    /// La sección completa: desde su comentario de encabezado hasta el de la siguiente (Lote 244 en adelante) o el final del archivo. Así el fixture contra
+    /// SQL Server solo corre los lotes de G.
+    /// </summary>
     private static string Section()
     {
         var sql = UpdateSql();
         var at = sql.IndexOf(Marker, StringComparison.Ordinal);
         Assert.True(at > 0, "Falta la sección del Lote 243 en logistica-db-update.sql.");
         var header = sql.LastIndexOf("/* ----", at, StringComparison.Ordinal);
-        return sql[header..];
+        return SqlSections.From(sql, header);
     }
 
     /// <summary>Las sentencias de la sección sin los comentarios (lo que de verdad corre).</summary>
@@ -47,12 +50,12 @@ public sealed class Lote243SqlTests(NotificationSqlFixture fx) : IClassFixture<N
         => Regex.Split(section, @"^\s*GO\s*$", RegexOptions.Multiline).Select(b => b.Trim()).Where(b => Statements(b).Trim().Length > 0);
 
     [Fact]
-    public void The_section_is_the_last_one_after_lote_241_and_says_it_only_adds_and_is_idempotent()
+    public void The_section_goes_after_lote_241_and_says_it_only_adds_and_is_idempotent()
     {
         var sql = UpdateSql();
         var at = sql.IndexOf(Marker, StringComparison.Ordinal);
         Assert.True(at > sql.IndexOf("2026-11-12 — Lote 241: «Análisis de ventas»", StringComparison.Ordinal));
-        Assert.Equal(-1, sql.IndexOf("/* ----", at, StringComparison.Ordinal));   // ninguna sección después
+        // Lote 244: ya no es la última; la sección se acota a su propio encabezado (Section)
         var section = Section();
         Assert.Contains("(docs/lote243-decisiones.md)", section);
         Assert.Contains("Solo AGREGA. Idempotente.", section);

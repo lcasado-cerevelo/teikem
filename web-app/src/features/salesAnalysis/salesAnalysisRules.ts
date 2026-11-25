@@ -7,6 +7,10 @@ import { matchesQ } from '../../kernel/ui/matchesQ'
 type S = components['schemas']
 export type SalesByRep = S['SalesByRepDto']
 export type SalesRepRow = S['SalesRepRowDto']
+export type SalesByRoute = S['SalesByRouteDto']
+export type SalesRouteRow = S['SalesRouteRowDto']
+export type SalesPersonRow = S['SalesPersonRowDto']
+export type SalesPersonTotal = S['SalesPersonTotalDto']
 export type SalesLineShare = S['SalesLineShareDto']
 export type SalesRepLine = S['SalesRepLineDto']
 export type SalesRepProduct = S['SalesRepProductDto']
@@ -396,6 +400,29 @@ export function repQuotaFromCharts(points: readonly S['SalesRepQuotaPointDto'][]
   return points.map((p) => ({ key: repKey(p.repId), rep: p.rep ?? '', route: p.route ?? '', sales: p.sales ?? 0, quota: p.quota ?? null, compliance: p.compliance ?? null }))
 }
 
+/** Cómo se mide la cuota (ajuste del servidor): por ruta de venta o por persona (representante). */
+export type QuotaBy = 'REP' | 'ROUTE'
+export const parseQuotaBy = (v: string | null | undefined): QuotaBy => (v === 'ROUTE' ? 'ROUTE' : 'REP')
+
+/** Clave de ruta para los filtros (`routeId` o «sin ruta»). */
+export const routeKey = (routeId: number | null | undefined) => (routeId === null || routeId === undefined ? 'none' : String(routeId))
+
+/** Venta contra cuota por ruta de venta (misma forma que el punto por representante: `rep` lleva el nombre de la ruta y `route` el titular). */
+export function routeQuotaFromRows(rows: readonly SalesRouteRow[]): RepQuotaPoint[] {
+  return rows.map((r) => ({ key: `R${routeKey(r.routeId)}`, rep: r.routeName ?? '', route: r.primaryName ?? '', sales: r.sales ?? 0, quota: r.quota ?? null, compliance: r.compliance ?? null }))
+}
+
+export function routeQuotaFromCharts(points: readonly S['SalesRouteQuotaPointDto'][]): RepQuotaPoint[] {
+  return points.map((p) => ({ key: `R${routeKey(p.routeId)}`, rep: p.route ?? '', route: '', sales: p.sales ?? 0, quota: p.quota ?? null, compliance: p.compliance ?? null }))
+}
+
+/** Venta contra cuota para los gráficos según el ajuste: por ruta (`routeVsQuota`) o por persona (`repVsQuota`). */
+export function quotaPointsFromCharts(d: SalesCharts): { mode: QuotaBy; points: RepQuotaPoint[] } {
+  return parseQuotaBy(d.quotaBy) === 'ROUTE'
+    ? { mode: 'ROUTE', points: routeQuotaFromCharts(d.routeVsQuota ?? []) }
+    : { mode: 'REP', points: repQuotaFromCharts(d.repVsQuota ?? []) }
+}
+
 export interface SharePoint {
   name: string
   value: number
@@ -468,7 +495,7 @@ export type SetupSection = 'routes' | 'reps' | 'quotas' | 'lines' | 'clients' | 
 export const SETUP_SECTIONS: readonly SetupSection[] = ['routes', 'reps', 'quotas', 'lines', 'clients', 'settings', 'import', 'link']
 
 export interface StatusIssue {
-  key: 'clientsWithoutRep' | 'brandsWithoutLine' | 'unmatched' | 'noCutoff' | 'overlap' | 'noHistory'
+  key: 'clientsWithoutRep' | 'clientsWithoutRoute' | 'routesWithoutPrimary' | 'routesWithInactivePrimary' | 'repsWithoutUser' | 'brandsWithoutLine' | 'unmatched' | 'noCutoff' | 'overlap' | 'noHistory'
   count: number
   section: SetupSection
 }
@@ -479,6 +506,10 @@ export function statusIssues(s: SalesStatus | null | undefined): StatusIssue[] {
   const out: StatusIssue[] = []
   const unmatched = (s.unmatchedClients?.length ?? 0) + (s.unmatchedItems?.length ?? 0) + (s.unmatchedPurchaseItems?.length ?? 0)
   if ((s.clientsWithoutRep ?? 0) > 0) out.push({ key: 'clientsWithoutRep', count: s.clientsWithoutRep ?? 0, section: 'clients' })
+  if ((s.clientsWithoutRoute ?? 0) > 0) out.push({ key: 'clientsWithoutRoute', count: s.clientsWithoutRoute ?? 0, section: 'clients' })
+  if ((s.routesWithoutPrimary ?? 0) > 0) out.push({ key: 'routesWithoutPrimary', count: s.routesWithoutPrimary ?? 0, section: 'routes' })
+  if ((s.routesWithInactivePrimary ?? 0) > 0) out.push({ key: 'routesWithInactivePrimary', count: s.routesWithInactivePrimary ?? 0, section: 'routes' })
+  if ((s.repsWithoutUser ?? 0) > 0) out.push({ key: 'repsWithoutUser', count: s.repsWithoutUser ?? 0, section: 'reps' })
   if ((s.brandsWithoutLine?.length ?? 0) > 0) out.push({ key: 'brandsWithoutLine', count: s.brandsWithoutLine?.length ?? 0, section: 'lines' })
   if (unmatched > 0) out.push({ key: 'unmatched', count: unmatched, section: 'link' })
   const hasHistory = (s.batches ?? []).some((b) => b.isActive)

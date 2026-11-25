@@ -26,7 +26,9 @@ public sealed record SalesOrderLineRequest(Guid? ProductPublicId = null, decimal
 public sealed record SalesOrderRequest(Guid? WarehousePublicId = null, Guid? ClientPublicId = null, Guid? ConsigneePublicId = null, bool? ClearConsignee = null,
     DateOnly? RequiredDate = null, bool? ClearRequiredDate = null, string? Notes = null, IReadOnlyList<SalesOrderLineRequest>? Lines = null,
     bool? IsUrgent = null, string? DeliveryMode = null, string? PaymentMethod = null, string? PaymentTerm = null, bool? IsConsignment = null, string? AuthorizedByName = null,
-    string? Step = null);
+    string? Step = null,
+    // Lote 244: el vendedor escogido en el BORRADOR (el preferido del cliente o una persona vigente de su ruta; 400 si no). ClearSeller = volver a la propuesta.
+    int? SellerUserId = null, bool? ClearSeller = null);
 
 public sealed record SalesOrderLineDto(int Id, int LineNo, Guid ProductPublicId, string Sku, string ProductName, int? LotId, decimal QtyOrdered, decimal QtyReserved,
     decimal QtyBackordered, decimal QtyShipped, bool IsClosed, decimal UnitPrice, decimal LineSubtotal, decimal TaxRatePct, decimal TaxAmount, bool IsTaxExempt,
@@ -41,13 +43,31 @@ public sealed record SalesOrderListItemDto(Guid PublicId, string Number, string 
     Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, decimal Subtotal, decimal TaxAmount, decimal Total,
     int LineCount, bool HasBackorder, string? RequestedByName, DateTime CreatedAtUtc, int? AssignedToUserId = null, string? AssignedToName = null,
     // Lote 222: distintivos de la lista (urgente, cliente nuevo por aprobar, consignación, forma de pago cambiada), entrega efectiva y cargo de envío
-    bool IsUrgent = false, bool AwaitingClientApproval = false, bool IsConsignment = false, bool PaymentChanged = false, string? DeliveryMode = null, decimal ShippingCharge = 0m);
+    bool IsUrgent = false, bool AwaitingClientApproval = false, bool IsConsignment = false, bool PaymentChanged = false, string? DeliveryMode = null, decimal ShippingCharge = 0m,
+    // Lote 244: ruta de venta y vendedor guardados en la orden (la copia congelada al solicitar; en borrador, la elección explícita y sin ruta)
+    string? SalesRouteName = null, string? SellerName = null);
 
 public sealed record SalesOrderDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid? ConsigneePublicId, string? ConsigneeName, Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, string? Notes,
     decimal Subtotal, decimal TaxAmount, decimal Total, bool HasBackorder, string? RequestedByName, DateTime? RequestedAtUtc, DateTime CreatedAtUtc,
     IReadOnlyList<SalesOrderLineDto> Lines, IReadOnlyList<SalesDispatchInfoDto>? Dispatches = null, int? AssignedToUserId = null, string? AssignedToName = null,
-    SalesOrderTermsDto? Terms = null, IReadOnlyList<SalesLinePriceDto>? LinePrices = null);
+    SalesOrderTermsDto? Terms = null, IReadOnlyList<SalesLinePriceDto>? LinePrices = null,
+    // Lote 244: ruta de venta y vendedor. Solicitada: la copia congelada (SalesCopyAtUtc puesto; NULL = «Sin vendedor» / «Sin ruta»). Borrador: la ruta efectiva
+    // del cliente hoy y la elección del vendedor o, sin elección válida, el vendedor PROPUESTO (SellerProposed = true). Órdenes anteriores al lote: todo NULL.
+    int? SalesRouteId = null, string? SalesRouteName = null, int? SellerUserId = null, string? SellerName = null, bool SellerProposed = false, DateTime? SalesCopyAtUtc = null);
+
+/// <summary>
+/// Lote 244 — una opción de vendedor para el borrador: el usuario (con nombre, sin correo), de dónde sale (PRIMARY = titular de la ruta, SUPPORT = apoyo,
+/// PREFERRED = el preferido del cliente cuando no es persona de la ruta), si es el preferido del cliente y si es el propuesto.
+/// </summary>
+public sealed record SalesSellerOptionDto(int UserId, string Name, string Kind, bool IsPreferred, bool IsProposed);
+
+/// <summary>
+/// Lote 244 — GET /sales-orders/seller-options?client=: la ruta de venta efectiva del cliente (RouteFromRep = heredada de su representante), el vendedor
+/// propuesto (ProposedKind = PREFERRED | PRIMARY | SUPPORT; NULL = «Sin vendedor») y las opciones que se pueden escoger (solo personas activas; primero las de la ruta).
+/// </summary>
+public sealed record SalesSellerOptionsDto(int? RouteId, string? RouteName, bool RouteFromRep, int? ProposedUserId, string? ProposedName, string? ProposedKind,
+    IReadOnlyList<SalesSellerOptionDto> Options);
 
 /// <summary>
 /// Lote 222 — los datos nuevos de la orden (pedido de vendedores). DeliveryMode = la entrega efectiva (DELIVERY | PICKUP) y DeliveryModeSet = si la orden la dice (o se dedujo

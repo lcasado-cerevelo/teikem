@@ -1,0 +1,5 @@
+/* Lote 244 — campo «Vendedor» de la orden. Prefijo propio `so-seller`; colores solo de la paleta del tema. */
+.so-seller{min-width:0;margin:0 0 12px}
+.so-seller select{max-width:100%;width:100%}
+.so-seller-help{overflow-wrap:anywhere}
+.so-seller-fact dd{overflow-wrap:anywhere}

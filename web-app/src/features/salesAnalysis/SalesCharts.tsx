@@ -194,7 +194,8 @@ function QuotaMark(props: { cx?: number; cy?: number; payload?: RepQuotaPoint })
 }
 
 /** Venta del mes contra la cuota de cada representante: barra (color por cumplimiento) y la marca vertical de la cuota. */
-export function RepQuotaChart({ points, month, title, animate = true }: { points: readonly RepQuotaPoint[]; month?: string | null; title?: string; animate?: boolean }) {
+/** `mode` = cómo se mide la cuota: REP (por persona, por omisión) o ROUTE (por ruta de venta). */
+export function RepQuotaChart({ points, month, title, animate = true, mode = 'REP' }: { points: readonly RepQuotaPoint[]; month?: string | null; title?: string; animate?: boolean; mode?: 'REP' | 'ROUTE' }) {
   const t = useT()
   const lang = useLang()
   const fm = useSaFormat()
@@ -202,7 +203,7 @@ export function RepQuotaChart({ points, month, title, animate = true }: { points
   const summary = points.map((p) => t('salesAnalysis.charts.repQuotaPoint', { rep: p.rep, sales: fm.money(p.sales), quota: p.quota === null ? '—' : fm.money(p.quota), pct: fm.pct(p.compliance) })).join('; ')
   return (
     <ChartFrame
-      title={title ?? t('salesAnalysis.charts.repQuota')}
+      title={title ?? t(mode === 'ROUTE' ? 'salesAnalysis.charts.routeQuota' : 'salesAnalysis.charts.repQuota')}
       subtitle={month ? monthShort(month, lang) : undefined}
       summary={summary}
       height={Math.max(180, points.length * 40 + 40)}
@@ -214,7 +215,7 @@ export function RepQuotaChart({ points, month, title, animate = true }: { points
         { label: t('salesAnalysis.charts.quotaMark'), color: 'var(--text)', kind: 'mark' },
       ]}
       table={{
-        headers: [t('salesAnalysis.col.rep'), t('salesAnalysis.col.route'), t('salesAnalysis.col.sales'), t('salesAnalysis.col.quota'), t('salesAnalysis.col.compliance')],
+        headers: [mode === 'ROUTE' ? t('salesAnalysis.col.route') : t('salesAnalysis.col.rep'), mode === 'ROUTE' ? t('salesAnalysis.byRoute.primary') : t('salesAnalysis.col.route'), t('salesAnalysis.col.sales'), t('salesAnalysis.col.quota'), t('salesAnalysis.col.compliance')],
         rows: points.map((p) => [p.rep, p.route, fm.money(p.sales), p.quota === null ? '—' : fm.money(p.quota), fm.pct(p.compliance)]),
       }}
     >
