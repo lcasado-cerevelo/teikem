@@ -620,6 +620,7 @@ public static class DependencyInjection
         services.AddScoped<SalesRouteService>();   // Lote 244: personas de la ruta (titular y apoyo) y ventas del cliente
         services.AddScoped<IAttentionItemProvider, SalesQuickBooksAttentionProvider>();   // Lote 225: facturas por pasar a QuickBooks (sales.quickbooks.view)
         services.AddScoped<IAttentionItemProvider, ExitNoticeBackorderAttentionProvider>();   // Lote 194: avisos de salida con pendiente
+        services.AddScoped<IAttentionItemProvider, SalesRouteNoPrimaryAttentionProvider>();   // Lote 244: ruta de venta sin titular
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();

@@ -240,7 +240,7 @@ function RoutesPanel({ data }: { data: SalesByRoute }) {
                         <tr key={p.personKey} className="sa-rt-person">
                           <th scope="row">
                             <span className="sa-rt-pname">{p.name ?? t('salesAnalysis.byRoute.noSeller')}</span>
-                            {p.name != null && <Chip tone={p.isPrimary ? 'deliv' : 'cap'}>{p.isPrimary ? t('salesAnalysis.byRoute.rolePrimary') : t('salesAnalysis.byRoute.roleSupport')}</Chip>}
+                            {p.name != null && p.personKey !== 'NONE' && <Chip tone={p.isPrimary ? 'deliv' : 'cap'}>{p.isPrimary ? t('salesAnalysis.byRoute.rolePrimary') : t('salesAnalysis.byRoute.roleSupport')}</Chip>}
                           </th>
                           <td>{fm.money(p.compareSales)}</td>
                           <td>{fm.money(p.sales)}</td>

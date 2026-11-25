@@ -47,6 +47,19 @@ test.beforeAll(async ({ request }) => {
   await ensureRep('Representante Metro', metro, u3.id)
   // un apoyo en Cadenas (si ya lo hay, el servidor responde 409 y se sigue)
   await request.post(`${SA}/routes/${cadenas}/people`, { headers, data: { userId: u2.id, role: 'SUPPORT' } })
+  // las personas de la ruta empiezan el 1 de septiembre de 2026 (la venta es de septiembre y octubre y la atribución usa el titular vigente al cierre del mes)
+  type Person = { id: number; userId: number; role: string; validFrom: string }
+  const restart = async (routeId: number, userId: number, role: 'PRIMARY' | 'SUPPORT', from = '2026-09-01') => {
+    const cur = await ok<{ primary?: Person; supports: Person[] }>(request.get(`${SA}/routes/${routeId}/people`, { headers }), 'personas')
+    const mine = role === 'PRIMARY' ? cur.primary : cur.supports.find((x) => x.userId === userId)
+    if (mine && mine.userId === userId && mine.validFrom === from) return
+    if (mine && mine.userId === userId) await ok(request.post(`${SA}/routes/${routeId}/people/${mine.id}/void`, { headers }), 'anular asignación de hoy')
+    await ok(request.post(`${SA}/routes/${routeId}/people`, { headers, data: { userId, role, validFrom: from } }), `asignación ${role}`)
+  }
+  await restart(cadenas, u1.id, 'PRIMARY')
+  await restart(cadenas, u2.id, 'SUPPORT')
+  // Metro: su titular entra el 20 de octubre; la venta anterior sale en «Sin vendedor» (fila sin etiqueta de papel)
+  await restart(metro, u3.id, 'PRIMARY', '2026-10-20')
   // clientes: dos con ruta propia y uno sin ruta
   const clients: { name: string; route: number | null }[] = [
     { name: 'FARMACIA P7C CADENAS', route: cadenas },
@@ -60,7 +73,8 @@ test.beforeAll(async ({ request }) => {
       await ok(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: c.name } }), `cliente ${c.name}`)
       found = await find()
     }
-    if (found && c.route) await ok(request.put(`${SA}/clients/${found.clientId}/sales`, { headers, data: { routeId: c.route } }), `ruta de ${c.name}`)
+    // el cliente de Cadenas tiene al apoyo como vendedor preferido (su venta sale a nombre de esa persona); el de Metro no tiene (sale en «Sin vendedor»)
+    if (found && c.route) await ok(request.put(`${SA}/clients/${found.clientId}/sales`, { headers, data: { routeId: c.route, preferredUserId: c.route === cadenas ? u2.id : null } }), `ruta de ${c.name}`)
   }
   // historial de ventas (septiembre y octubre de 2026) solo si todavía no hay venta
   const before = await ok<{ totals: { sales: number } }>(request.get(`${SA}/by-route?month=2026-10`, { headers }), 'by-route')

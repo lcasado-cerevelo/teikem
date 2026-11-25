@@ -2,7 +2,7 @@
 
 Lote 244 (2026-11-25). Cuatro pantallas cambian: **Análisis → Análisis de ventas** (la pestaña **«Por ruta»** pasa a ser la de por omisión y «Gráficos» mide contra la cuota por ruta), la **ficha del cliente** (panel **«Venta»**), la **orden de venta** (campo **«Vendedor»**, columnas y filtros) y **Configuración → Rutas** (personas de la ruta, «Pasar rutas desde representantes»). Reglas, permisos y mensajes: [capítulo 52](../52-rutas-de-venta.md). Cada mensaje de error: [FAQ](../faq.md).
 
-Capturas del recorrido de `web-app/e2e` (`lote244-*.spec.ts`) con el API de pruebas **sin correo**; están en `img/l244-*.png`. La base de pruebas tiene decenas de rutas «E2E» y «P7D» creadas por los propios recorridos, por eso las listas salen largas.
+Capturas del recorrido de `web-app/e2e` (`lote244-*.spec.ts`) con el API de pruebas **sin correo**; están en `img/l244-*.png`, tomadas contra una base limpia creada solo para las capturas (las rutas «E2E», «P7D» y «aviso» son las que crean los propios recorridos).
 
 ## 1. Análisis de ventas → «Por ruta»
 
@@ -14,8 +14,8 @@ Capturas del recorrido de `web-app/e2e` (`lote244-*.spec.ts`) con el API de prue
 
 Qué se ve, de arriba abajo:
 - El aviso **«Para que el análisis cuadre falta:»** con enlaces («Asignar rutas de venta», «Rutas», …).
-- Tres tarjetas: **Venta de octubre de 2026**, **Cambio contra septiembre de 2026** y **Cumplimiento de la cuota** (en la captura, 15.9 % de una cuota de $9,800.00), y la línea «La cuota se mide por ruta de venta».
-- **Comparativo por ruta de venta**: una fila por ruta con su **Titular** (la etiqueta ámbar «Sin titular» cuando no hay), septiembre, octubre, Cambio $, Cambio %, Cuota $ y Cumplimiento. El triángulo de la izquierda despliega a las personas de la ruta; **«Desplegar todas» / «Plegar todas»** lo hace de una vez. «Cadenas» y «Metro» aparecen como cualquier otra ruta.
+- Tres tarjetas: **Venta de octubre de 2026**, **Cambio contra septiembre de 2026** y **Cumplimiento de la cuota** (en la captura, 67.8 % de una cuota de $2,300.00), y la línea «La cuota se mide por ruta de venta».
+- **Comparativo por ruta de venta**: una fila por ruta con su **Titular** (la etiqueta ámbar «Sin titular» cuando no hay), septiembre, octubre, Cambio $, Cambio %, Cuota $ y Cumplimiento. El triángulo de la izquierda despliega a las personas de la ruta; **«Desplegar todas» / «Plegar todas»** lo hace de una vez. «Cadenas» y «Metro» traen a sus personas: el titular lleva la etiqueta «Titular» y la venta que no tiene persona sale en «Sin vendedor» **sin etiqueta de papel** (en «Metro»: el titular entra el 20 de octubre, la venta anterior no es de nadie).
 - **Totales y conciliación**: Total de las rutas + «Sin ruta ni vendedor» + «Envío y otros cargos» = Total del mes (en la captura $1,560.00 + $100.00 + $0.00 = $1,660.00).
 - Más abajo: «Venta contra cuota por ruta de venta».
 
@@ -23,9 +23,11 @@ Qué se ve, de arriba abajo:
 
 En **inglés** y **tema oscuro** son las mismas pantallas («By route», «Sales route», «No primary», «Comparison by sales route», «Totals and reconciliation»). Plegadas, cada ruta ocupa **una sola fila** (el recorrido exige que no pase de 48 px) y no hay scroll horizontal de página.
 
-**Qué mirar en las capturas** (defectos conocidos, ver las [decisiones del lote](../../lote244-decisiones.md)):
-- En la captura desplegada, la fila **«Sin vendedor»** dentro de «Cadenas» y «Metro» lleva la etiqueta **«Apoyo»**. El dinero está bien; la etiqueta no debería salir en esa fila.
-- Con cuota por ruta, las filas de personas no muestran cuota (la tiene la ruta), por eso salen «—».
+En **celular (360 px)** la página no tiene scroll horizontal; la tabla se desplaza dentro de su propio recuadro.
+
+![Por ruta en celular, español, tema claro, con las rutas desplegadas](img/l244-movil-por-ruta-es-light.png)
+
+Con cuota por ruta, las filas de personas no muestran cuota (la tiene la ruta), por eso salen «—».
 
 ## 2. Gráficos
 
@@ -43,7 +45,17 @@ La pestaña **Gráficos** conserva su hoja para imprimir («Imprimir presentaci�
 
 - **Ruta de venta** («Es la ruta de venta del cliente, no la de entrega. Sin ruta propia, usa la de su representante.») y **Vendedor preferido** («Debe ser una persona activa de la ruta del cliente; es el vendedor que se propone en sus órdenes.»).
 - Sin ruta, el preferido no se puede asignar: «El cliente necesita una ruta antes de asignarle un vendedor preferido.». Con una persona que no es de la ruta: «El vendedor preferido debe ser una persona activa de la ruta del cliente.».
-- Si el preferido ya no es de la ruta, el panel no se bloquea: muestra la etiqueta **«El vendedor preferido ya no pertenece a la ruta del cliente.»** y la ayuda «No se bloquea nada: elija otro vendedor o déjelo así.». Esa etiqueta **no está en las capturas**: el cliente de la captura tiene un preferido que sí es de su ruta.
+- Si el preferido ya no es de la ruta, el panel no se bloquea: muestra la etiqueta **«El vendedor preferido ya no pertenece a la ruta del cliente.»** y la ayuda «No se bloquea nada: elija otro vendedor o déjelo así.». Así se ve cuando la persona preferida ya no está en la ruta (se anuló su asignación):
+
+![Ficha con el aviso de preferido fuera de la ruta, español, tema claro](img/l244-ficha-aviso-es-light.png)
+
+![La misma ficha en inglés y tema oscuro](img/l244-ficha-aviso-en-dark.png)
+
+En celular el panel queda en una sola columna:
+
+![Panel Venta en celular, español, tema claro, con el aviso](img/l244-movil-ficha-aviso-es-light.png)
+
+![Panel Venta en celular, inglés, tema oscuro](img/l244-movil-ficha-aviso-en-dark.png)
 - «Quitar la ruta propia» y «Quitar el vendedor preferido» deshacen cada campo. Al guardar: «Se guardó la venta del cliente.».
 
 ## 4. Orden de venta: campo «Vendedor», columnas y filtros
@@ -71,7 +83,21 @@ La pestaña **Gráficos** conserva su hoja para imprimir («Imprimir presentaci�
 - Configuración → **Representantes**: el usuario es obligatorio, hay un filtro «Representantes sin usuario» y una etiqueta «Sin usuario» en las filas.
 - Configuración → **Ajustes**: **«La cuota se mide por»**. Configuración → **Cuotas**: «Cuotas por ruta de venta» / «Cuotas por persona».
 
-> **Sin capturas por ahora.** Las pantallas de este apartado y la fila de «Necesita tu atención» («Ruta de venta sin titular: {ruta}») no tienen captura copiada a `img/`. Las comprobó el recorrido `lote244-rutas-configuracion.spec.ts`, cuyas capturas no se copiaron al manual. Pendiente.
+![Configuración → Rutas, español, tema claro: titular, apoyos, clientes, cuota vigente, «Sin titular» en ámbar](img/l244-rutas-es-light.png)
+
+![Configuración → Rutas en inglés y tema oscuro («Primary», «No primary», «Pass routes from representatives»)](img/l244-rutas-en-dark.png)
+
+![«Personas de {ruta}»: titular vigente, formulario para agregar persona y «Mostrar el historial»](img/l244-personas-es-light.png)
+
+![«Crear las rutas desde los representantes» después de «Simular»: «Clientes con ruta propia: 1»; no se guardó nada](img/l244-desde-representantes-es-light.png)
+
+![Panel «Clientes sin ruta de venta» con un cliente elegido y la ruta escogida para asignar en bloque](img/l244-clientes-sin-ruta-es-light.png)
+
+![«Nuevo representante»: el usuario es obligatorio («El usuario es obligatorio.»)](img/l244-representante-es-light.png)
+
+![Cuotas por ruta de venta, español, tema oscuro](img/l244-cuotas-es-dark.png)
+
+![Necesita tu atención: ruta de venta sin titular](img/l244-atencion-es-light.png)
 
 ## 6. Mensajes que se ven aquí
 
@@ -90,4 +116,4 @@ La lista completa, con su causa y qué hacer, está en la [FAQ](../faq.md) (secc
 
 ## 7. Cómo se revisó
 
-Recorridos Playwright con el API de pruebas sin correo y sin Brevo, en tema claro y oscuro y en español e inglés. Comprueban: fila de ruta ≤ 48 px, personas plegables sin desbordar, sin scroll horizontal de página, el campo «Vendedor» dentro de la ventana y la fila de orden ≤ 64 px. Las capturas de esta página son de escritorio; **las de celular no se copiaron al manual**.
+Recorridos Playwright con el API de pruebas sin correo y sin Brevo, en tema claro y oscuro y en español e inglés. Comprueban: fila de ruta ≤ 48 px, personas plegables sin desbordar, sin scroll horizontal de página, el campo «Vendedor» dentro de la ventana y la fila de orden ≤ 64 px. Las capturas son de escritorio, salvo las marcadas «celular» (360 px). Se miró cada una y se midió que no haya scroll horizontal de página.

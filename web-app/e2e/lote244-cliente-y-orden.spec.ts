@@ -34,7 +34,15 @@ test.beforeAll(async ({ request }) => {
   ctx.clientPublicId = client.publicId
   await ok(request.put(`${SA}/clients/${client.id}/sales`, { headers, data: { routeId: route.id, preferredUserId: support.userId } }), 'venta del cliente')
   const products = await ok<{ items: { publicId: string; salePrice?: number }[] }>(request.get(`${API_URL}/api/v1/products?take=20`, { headers }), 'productos')
+  // base limpia: sin tasa de impuesto por omisión no se puede crear el borrador
+  const tax = await ok<{ defaultRateCode?: string | null }>(request.get(`${API_URL}/api/v1/tax/settings`, { headers }), 'impuestos')
+  if (!tax.defaultRateCode) {
+    await ok(request.post(`${API_URL}/api/v1/tax/rates`, { headers, data: { code: `IVU244${LETTERS}`, name: 'IVU', effectiveFrom: '2020-01-01', components: [{ code: 'STATE', name: 'Estatal', percent: 10.5 }, { code: 'CITY', name: 'Municipal', percent: 1 }] } }), 'tasa')
+    await ok(request.patch(`${API_URL}/api/v1/tax/settings`, { headers, data: { defaultRateCode: `IVU244${LETTERS}` } }), 'tasa por omisión')
+  }
+  // base limpia (sin catálogo): se crea un producto vendible de prueba
   const product = products.items.find((p) => (p.salePrice ?? 0) > 0) ?? products.items[0]
+    ?? (await ok<{ product: { publicId: string } }>(request.post(`${API_URL}/api/v1/products`, { headers, data: { sku: `P7D-${LETTERS}`, name: `Producto P7D ${LETTERS}`, trackingType: 'NONE' } }), 'producto')).product
   const order = await ok<{ number: string; publicId: string }>(
     request.post(`${API_URL}/api/v1/sales-orders`, { headers, data: { clientPublicId: client.publicId, lines: [{ productPublicId: product.publicId, quantity: 1, unitPrice: 10 }] } }),
     'borrador',
@@ -106,5 +114,42 @@ test('Ficha del cliente y orden: panel Venta, campo Vendedor y columnas, sin des
     expect(sb!.x + sb!.width, 'el campo Vendedor cabe en la ventana').toBeLessThanOrEqual(db!.x + db!.width + 1)
     await noHScroll(page, `orden ${tag} ${lang} ${theme}`)
     await page.screenshot({ path: join(SHOTS, `orden-${tag}-${lang}-${theme}.png`), fullPage: true })
+  }
+})
+
+test('Ficha del cliente con el aviso «El vendedor preferido ya no pertenece a la ruta del cliente.» (claro/oscuro, es/en)', async ({ page, request, isMobile }) => {
+  mkdirSync(SHOTS, { recursive: true })
+  const tag = isMobile ? 'movil' : 'escritorio'
+  const headers = await apiHeaders(request)
+  const cands = await ok<{ userId: number; name: string }[]>(request.get(`${SA}/sellers/candidates?take=5`, { headers }), 'candidatos')
+  const [primary, support] = cands
+  const route = await ok<{ id: number }>(request.post(`${SA}/routes`, { headers, data: { name: `Ruta aviso ${LETTERS}`, sortOrder: 951 } }), 'ruta')
+  await ok(request.post(`${SA}/routes/${route.id}/people`, { headers, data: { userId: primary.userId, role: 'PRIMARY' } }), 'titular')
+  const people = await ok<{ supports: { id?: number; assignmentId?: number }[] }>(request.post(`${SA}/routes/${route.id}/people`, { headers, data: { userId: support.userId, role: 'SUPPORT' } }), 'apoyo')
+  const client = await ok<{ id: number; publicId: string }>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `FARMACIA AVISO ${LETTERS}` } }), 'cliente')
+  await ok(request.put(`${SA}/clients/${client.id}/sales`, { headers, data: { routeId: route.id, preferredUserId: support.userId } }), 'venta del cliente')
+  // el apoyo se anula (registrado por error): el cliente conserva su preferido, que ya no pertenece a la ruta
+  const a = people.supports[0]
+  await ok(request.post(`${SA}/routes/${route.id}/people/${a.id ?? a.assignmentId}/void`, { headers }), 'anular apoyo')
+
+  await login(page)
+  const size = page.viewportSize()!
+  await page.setViewportSize({ width: size.width, height: 1800 })
+  for (const [lang, theme] of [['es', 'light'], ['en', 'dark']] as const) {
+    const es = lang === 'es'
+    await page.goto(`/catalog/clients?client=${client.publicId}`)
+    await setLook(page, lang, theme)
+    const header = page.getByRole('heading', { name: es ? 'Venta' : 'Sales', exact: true }).first()
+    await expect(header).toBeVisible({ timeout: 30_000 })
+    await header.click()
+    await expect(page.getByText(es ? 'El vendedor preferido ya no pertenece a la ruta del cliente.' : 'The preferred seller no longer belongs to the client\'s route.').first()).toBeVisible()
+    await noHScroll(page, `ficha aviso ${tag} ${lang} ${theme}`)
+    await page.mouse.move(0, 0)
+    if (isMobile) {
+      // a 360 px la página lleva su propio desplazamiento y la captura entera se corta: se captura el panel «Venta» completo
+      const panel = page.locator('section, .panel, .card').filter({ has: header }).last()
+      await panel.scrollIntoViewIfNeeded()
+      await panel.screenshot({ path: join(SHOTS, `ficha-aviso-${tag}-${lang}-${theme}.png`) })
+    } else await page.screenshot({ path: join(SHOTS, `ficha-aviso-${tag}-${lang}-${theme}.png`), fullPage: true })
   }
 })

@@ -20,6 +20,9 @@ async function snap(page: Page, name: string) {
   if (!SHOTS) return
   mkdirSync(SHOTS, { recursive: true })
   await page.waitForLoadState('networkidle')
+  // sin avisos emergentes ni cursor encima: la captura va limpia
+  await expect(page.locator('.toast.on')).toHaveCount(0, { timeout: 15_000 })
+  await page.mouse.move(0, 0)
   await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: false })
 }
 
@@ -140,19 +143,29 @@ test('Configuración de rutas de venta', async ({ page, request, isMobile }) => 
   await page.waitForLoadState('networkidle')
   await panel.getByRole('checkbox', { name: new RegExp(`Elegir Cliente sin ruta ${LETTERS}`) }).or(panel.getByRole('checkbox', { name: new RegExp(`Cliente sin ruta ${LETTERS}`) })).first().check()
   await panel.locator('#sa-route-bulk').selectOption({ label: routeB.name })
+  await noHScroll(page)
+  await snap(page, `clientes-${isMobile ? 'movil' : 'escritorio'}-es-claro`)
   await panel.getByRole('button', { name: 'Asignar ruta' }).click()
   await expect(page.locator('.toast.on')).toContainText('Se asignó la ruta a 1 clientes')
   await noHScroll(page)
-  await snap(page, `clientes-${isMobile ? 'movil' : 'escritorio'}-es-claro`)
+
+  // un representante de antes con ruta y un cliente que aún no la tiene: la simulación lo pasa a la ruta y deja a su usuario como titular
+  const sur = await ok<{ id: number }>(request.post(`${SA}/reps`, { headers, data: { name: `Representante Sur ${LETTERS}`, userId: free!.userId, routeId: routeB.id } }), 'representante Sur')
+  const cs = await ok<{ id: number }>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Cliente del representante Sur ${LETTERS}` } }), 'cliente del representante')
+  await ok(request.put(`${SA}/clients/${cs.id}/rep`, { headers, data: { repId: sur.id } }), 'representante del cliente')
 
   // pasar rutas desde representantes: simula y se queda sin escribir
   await page.goto('/analytics/sales?tab=setup')
   await page.getByRole('button', { name: 'Pasar rutas desde representantes' }).click()
   const sim = page.getByRole('dialog', { name: /Crear las rutas desde los representantes/ })
+  await sim.getByRole('button', { name: 'Simular' }).click()
   await expect(sim.getByText('Simulación: no se guardó nada.')).toBeVisible()
+  await page.waitForLoadState('networkidle')
   await noHScroll(page)
   await snap(page, `desde-representantes-${isMobile ? 'movil' : 'escritorio'}-es-claro`)
   await sim.getByRole('button', { name: 'Cerrar', exact: true }).last().click()
+  await ok(request.put(`${SA}/clients/${cs.id}/rep`, { headers, data: { repId: null } }), 'quitar representante del cliente')
+  await ok(request.post(`${SA}/reps/${sur.id}/deactivate`, { headers }), 'desactivar representante Sur')   // libera el usuario para el paso siguiente
 
   // representantes: el usuario es obligatorio
   await page.goto('/analytics/sales?tab=setup&sec=reps')
@@ -187,4 +200,20 @@ test('Configuración de rutas de venta', async ({ page, request, isMobile }) => 
   const after = await ok<{ id: number; name: string }[]>(request.get(`${SA}/reps?includeInactive=true`, { headers }), 'representantes')
   const mine = after.find((r) => r.name === `Rep E2E ${LETTERS}`)
   if (mine) await ok(request.post(`${SA}/reps/${mine.id}/deactivate`, { headers }), 'desactivar representante')
+})
+
+// «Necesita tu atención» (Pulso): la ruta sin titular que ya tiene clientes sale como fila de peligro con «Revisar» hacia Configuración → Rutas.
+test('Necesita tu atención: ruta de venta sin titular con clientes', async ({ page, request, isMobile }) => {
+  test.setTimeout(120_000)
+  const headers = await apiHeaders(request)
+  const route = await ok<{ id: number; name: string }>(request.post(`${SA}/routes`, { headers, data: { name: `Ruta atención ${LETTERS}`, sortOrder: 902 } }), 'ruta')
+  const cl = await ok<{ id: number }>(request.post(`${API_URL}/api/v1/clients`, { headers, data: { name: `Cliente atención ${LETTERS}` } }), 'cliente')
+  await ok(request.put(`${SA}/clients/${cl.id}/sales`, { headers, data: { routeId: route.id } }), 'ruta del cliente')
+  await login(page)
+  await page.goto('/')
+  const att = page.locator('section.inbox', { has: page.getByRole('heading', { name: 'Necesita tu atención' }) })
+  await expect(att).toBeVisible({ timeout: 30_000 })
+  await expect(att.getByText(route.name).first(), 'la fila de la ruta sin titular debe salir en Necesita tu atención').toBeVisible({ timeout: 30_000 })
+  await noHScroll(page)
+  await snap(page, `atencion-${isMobile ? 'movil' : 'escritorio'}-es-claro`)
 })
