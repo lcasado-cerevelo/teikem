@@ -4,14 +4,17 @@ import { describe, expect, it } from 'vitest'
 import { badgeText, internalLink } from './NotificationBell'
 import { bubbleKey, decideBubble, readAsleep, writeAsleep } from './kemiState'
 import {
+  blockInSubject,
   buildRequest,
   defaultChannels,
+  defaultContextRecipients,
   emptyForm,
   formOfRule,
   insertVariable,
   isValidEmail,
   isValidPhone,
   recipientKey,
+  recipientsForEvent,
   validateForm,
 } from './ruleForm'
 import { filterPeople, matchingPeople, MAX_SUGGESTIONS, type PersonOption } from './UserPicker'
@@ -109,6 +112,62 @@ describe('formulario de reglas', () => {
     expect(insertVariable('Hola ', 'user', null, null)).toEqual({ text: 'Hola {user}', caret: 11 })
     expect(insertVariable('Hola XX fin', 'user', 5, 7)).toEqual({ text: 'Hola {user} fin', caret: 11 })
     expect(insertVariable('ab', 'm', 1, 1)).toEqual({ text: 'a{m}b', caret: 4 })
+  })
+})
+
+// Lote 243: destinatarios «Del evento», plantilla por canal y variables bloque
+const ORDER_EVENT: NotificationEventDto = {
+  ...EVENT,
+  code: 'SALES_ORDER_REQUESTED',
+  variables: [
+    { name: 'orderNumber', label: 'Número', labelEn: 'Number', sample: 'OV-1' },
+    { name: 'orderDetail', label: 'La orden completa (tabla)', labelEn: 'Full order', sample: '', isBlock: true },
+  ],
+  contextRecipients: [
+    { key: 'SELLER', label: 'Vendedor de la orden', labelEn: "Order's sales rep", isDefault: true, audience: 'STAFF' },
+    { key: 'CLIENT', label: 'Cliente de la orden', labelEn: "Order's customer", isDefault: false, audience: 'CUSTOMER' },
+  ],
+  channelDefaults: [{ channel: 'EMAIL', subject: 'Orden {orderNumber}', subjectEn: 'Order {orderNumber}', body: 'Detalle\n\n{orderDetail}', bodyEn: 'Detail\n\n{orderDetail}' }],
+}
+
+describe('Lote 243: avisos con destinatarios del evento y bloques', () => {
+  it('cada canal usa su plantilla propia y los demás la del evento', () => {
+    const channels = defaultChannels(ORDER_EVENT)
+    expect(channels.find((c) => c.channel === 'EMAIL')).toMatchObject({ subjectEs: 'Orden {orderNumber}', bodyEn: 'Detail\n\n{orderDetail}' })
+    expect(channels.find((c) => c.channel === 'APP')).toMatchObject({ subjectEs: 'Asunto {message}', bodyEs: 'Texto {message}' })
+  })
+  it('solo se prellenan los destinatarios marcados por omisión, con la etiqueta del idioma', () => {
+    expect(defaultContextRecipients(ORDER_EVENT)).toEqual([{ kind: 'CONTEXT', value: 'SELLER', label: 'Vendedor de la orden' }])
+    expect(defaultContextRecipients(ORDER_EVENT, 'en')[0].label).toBe("Order's sales rep")
+    expect(defaultContextRecipients(EVENT)).toEqual([])
+    expect(defaultContextRecipients(undefined)).toEqual([])
+  })
+  it('al cambiar a un evento sin esos destinatarios se quitan los «Del evento» y se conservan los demás', () => {
+    const seller = defaultContextRecipients(ORDER_EVENT)
+    const mail = { kind: 'EMAIL' as const, value: 'almacen@x.test', label: 'almacen@x.test' }
+    // de «Orden de venta solicitada» a un evento sin contextRecipients: el vendedor de la orden se va (el servidor daría 400)
+    expect(recipientsForEvent(seller, EVENT)).toEqual([])
+    expect(recipientsForEvent([...seller, mail], EVENT)).toEqual([mail])
+    // al volver al evento de la orden, sin destinatarios se prellenan los marcados; con un CONTEXT declarado se conserva tal cual
+    expect(recipientsForEvent([], ORDER_EVENT)).toEqual(seller)
+    expect(recipientsForEvent([mail], ORDER_EVENT)).toEqual([mail])
+    const client = { kind: 'CONTEXT' as const, value: 'CLIENT', label: 'Cliente de la orden' }
+    expect(recipientsForEvent([client], ORDER_EVENT)).toEqual([client])
+  })
+  it('la clave de un destinatario del evento es C{valor} y el request lo manda como CONTEXT', () => {
+    expect(recipientKey({ kind: 'CONTEXT', value: 'SELLER' })).toBe('CSELLER')
+    expect(recipientKey({ kind: 'CONTEXT', value: 'SELLER' })).not.toBe(recipientKey({ kind: 'CONTEXT', value: 'CLIENT' }))
+    const form = { ...emptyForm(), eventCode: 'SALES_ORDER_REQUESTED', name: 'Correo', recipients: defaultContextRecipients(ORDER_EVENT) }
+    expect(buildRequest(form, null).recipients).toEqual([{ kind: 'CONTEXT', roleId: undefined, userId: undefined, value: 'SELLER' }])
+  })
+  it('un bloque en el asunto se rechaza con el mismo mensaje del servidor', () => {
+    const channels = defaultChannels(ORDER_EVENT).map((c) => (c.channel === 'EMAIL' ? { ...c, subjectEn: 'Order {orderDetail}' } : c))
+    const form = { ...emptyForm(), eventCode: 'SALES_ORDER_REQUESTED', name: 'Correo', channels }
+    expect(blockInSubject(form, ORDER_EVENT)).toBe('orderDetail')
+    expect(validateForm(form, true, t, ORDER_EVENT)).toEqual({ channels: 'notifications.rules.errors.blockInSubject:{"name":"{orderDetail}"}' })
+    // el bloque en el texto sí es válido, y sin evento no hay nada que comparar
+    expect(validateForm({ ...form, channels: defaultChannels(ORDER_EVENT) }, true, t, ORDER_EVENT)).toEqual({})
+    expect(blockInSubject(form, undefined)).toBeUndefined()
   })
 })
 

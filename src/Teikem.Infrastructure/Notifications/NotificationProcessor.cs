@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Teikem.Domain.Constants;
 using Teikem.Domain.Notifications;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Persistence;
@@ -24,6 +25,10 @@ public sealed class NotificationsOptions
 /// 4. cada envío queda en NotificationLog (único por cola × regla × canal × destinatario: un reintento no repite lo ya enviado).
 /// Si algún envío FALLA, el aviso se reintenta a 1, 5 y 30 minutos y después queda FAILED; SKIPPED (canal no configurado, sin correo,
 /// silenciado) no es una falla. Una falla de un destinatario no detiene a los demás.
+/// Lote 243: destinatarios «del evento» (Kind CONTEXT) que resuelve el INotificationContentProvider del evento; el texto se arma una vez
+/// por grupo (personal o cliente × idioma) y canal; el correo lleva las variables bloque en HTML y los adjuntos (solo si el texto usó un
+/// bloque). Un destinatario del evento que no deja a nadie alcanzable anota una fila SKIPPED «(etiqueta)» con el motivo; un contenido
+/// con SkipReason (p. ej. la orden se canceló) deja SKIPPED a cada destinatario de la regla; un error del proveedor reintenta el aviso.
 /// Los métodos son públicos para las pruebas (xunit los llama sin esperar al ciclo del worker).
 /// </summary>
 public sealed class NotificationProcessor(IServiceScopeFactory scopes, NotificationEventCatalog catalog, ILogger<NotificationProcessor> logger)
@@ -99,7 +104,12 @@ public sealed class NotificationProcessor(IServiceScopeFactory scopes, Notificat
         return true;
     }
 
-    /// <summary>Envía el aviso por todas las reglas activas del evento. Devuelve true si algún envío FALLÓ (y hay que reintentar).</summary>
+    /// <summary>
+    /// Envía el aviso por todas las reglas activas del evento. Devuelve true si algún envío FALLÓ (y hay que reintentar).
+    /// Lote 243: destinatarios del evento (Kind CONTEXT) y contenido armado al enviar (variables bloque, adjuntos) que se le piden
+    /// al <see cref="INotificationContentProvider"/> del evento, de forma PEREZOSA: solo si la regla tiene CONTEXT o su plantilla usa
+    /// un bloque o una variable que el aviso no trae. Una regla sin nada de eso sale idéntica a como salía y nunca resuelve el proveedor.
+    /// </summary>
     private async Task<bool> DeliverAsync(IServiceProvider sp, TeikemDbContext db, NotificationOutbox outbox, CancellationToken ct)
     {
         var def = catalog.Find(outbox.EventCode);
@@ -116,54 +126,164 @@ public sealed class NotificationProcessor(IServiceScopeFactory scopes, Notificat
         rules = rules.Where(r => r.ScopeKey is null || string.Equals(r.ScopeKey, scopeKey, StringComparison.Ordinal)).ToList();
         if (rules.Count == 0) return false;
         var senders = sp.GetServices<INotificationChannelSender>().ToDictionary(s => s.Channel, StringComparer.Ordinal);
-        var link = def.LinkTemplate is null ? null : NotificationRules.Render(def.LinkTemplate, values);
+        var companyLang = NormalizeLang(tenant.DefaultLangCode) ?? tenant.DefaultLangCode;
+        var blockNames = def.BlockNames;
         var anyFailed = false;
+
+        // Lote 243: el proveedor se resuelve UNA vez por aviso y solo si alguna regla lo necesita; el contenido se arma una vez por (Audience, Lang)
+        var providerResolved = false;
+        INotificationContentProvider? provider = null;
+        INotificationContentProvider? Provider()
+        {
+            if (providerResolved) return provider;
+            providerResolved = true;
+            provider = sp.GetServices<INotificationContentProvider>().FirstOrDefault(p => p.EventCodes.Contains(outbox.EventCode, StringComparer.Ordinal));
+            return provider;
+        }
+        var contentCache = new Dictionary<(NotificationAudience, string), NotificationContent?>();
+        async Task<NotificationContent?> ContentAsync(NotificationAudience audience, string lang)
+        {
+            if (contentCache.TryGetValue((audience, lang), out var cached)) return cached;
+            var p = Provider();
+            // una excepción del proveedor es una falla transitoria: sube y el aviso se reintenta a 1, 5 y 30 minutos
+            var built = p is null ? null : await p.BuildAsync(new NotificationContentRequest(outbox.TenantId, outbox.EventCode, values, audience, lang), ct);
+            contentCache[(audience, lang)] = built;
+            return built;
+        }
 
         foreach (var rule in rules)
         {
-            var people = await ResolveAsync(db, rule, ct);
+            // destinatarios fijos (ROLE, USER, EMAIL, PHONE): personal, en el idioma de la compañía
+            var people = (await ResolveAsync(db, rule, ct)).Select(p => p with { Audience = NotificationAudience.Staff, Lang = companyLang }).ToList();
+            var contextKeys = rule.Recipients.Where(r => r.Kind == NotificationRecipientKinds.Context && !string.IsNullOrWhiteSpace(r.Value))
+                .OrderBy(r => r.NotificationRuleRecipientId).Select(r => r.Value!.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var contexts = new List<(NotificationContextRecipientDef Def, string Label, List<Person> People, string? EmptyReason)>();
+            if (contextKeys.Count > 0)
+            {
+                var p = Provider();
+                if (p is null)
+                    logger.LogWarning("La regla de aviso {RuleId} tiene destinatarios del evento pero el evento {EventCode} no tiene proveedor de contenido; se omiten.", rule.NotificationRuleId, outbox.EventCode);
+                else
+                    foreach (var key in contextKeys)
+                    {
+                        var cdef = def.ContextRecipient(key);
+                        if (cdef is null)
+                        {
+                            logger.LogWarning("La regla de aviso {RuleId} tiene el destinatario del evento {Key}, que el evento {EventCode} ya no declara; se omite.", rule.NotificationRuleId, key, outbox.EventCode);
+                            continue;
+                        }
+                        var resolution = await p.RecipientsAsync(outbox.TenantId, outbox.EventCode, cdef.Key, values, ct);
+                        var label = companyLang == "en" ? cdef.LabelEn : cdef.LabelEs;
+                        var persons = (resolution?.People ?? Array.Empty<NotificationContextPerson>())
+                            .Select(x => new Person(x.UserId, x.Name, x.Email?.Trim(), x.Phone?.Trim(), x.Audience, NormalizeLang(x.Lang) ?? companyLang)).ToList();
+                        contexts.Add((cdef, label, persons, resolution?.EmptyReason));
+                    }
+            }
+
             foreach (var channel in rule.Channels.Where(c => c.IsEnabled).OrderBy(c => c.Channel))
             {
                 if (!senders.TryGetValue(channel.Channel, out var sender)) continue;
-                var subject = NotificationRules.Render(NotificationRules.Pick(channel.SubjectJson, tenant.DefaultLangCode), values);
-                var body = NotificationRules.Render(NotificationRules.Pick(channel.BodyJson, tenant.DefaultLangCode), values);
-                foreach (var person in people.Where(p => p.Reaches(channel.Channel)).DistinctBy(p => p.LogKey(channel.Channel), StringComparer.OrdinalIgnoreCase))
+                var isEmail = channel.Channel == NotificationChannels.Email;
+                var customerChannel = channel.Channel is NotificationChannels.Email or NotificationChannels.Sms;   // el cliente solo por correo o SMS
+
+                // DIAGNÓSTICO: un destinatario del evento que no deja a nadie alcanzable en el canal anota UNA fila SKIPPED con el motivo
+                foreach (var c in contexts)
                 {
-                    var recipient = person.LogKey(channel.Channel);
-                    var log = await db.NotificationLogs.FirstOrDefaultAsync(l => l.NotificationOutboxId == outbox.NotificationOutboxId && l.NotificationRuleId == rule.NotificationRuleId
-                        && l.Channel == channel.Channel && l.Recipient == recipient, ct);
-                    if (log is not null && log.Status is NotificationLogStatuses.Sent or NotificationLogStatuses.Skipped) continue;   // ya resuelto en un intento anterior
-                    if (log is null)
+                    if (c.Def.Audience == NotificationAudience.Customer && !customerChannel) continue;
+                    if (c.People.Any(x => x.Reaches(channel.Channel))) continue;
+                    var reason = !string.IsNullOrWhiteSpace(c.EmptyReason) ? c.EmptyReason! : NotificationRules.ContextUnreachableMessage(NotificationRules.ShortContextLabel(c.Label), channel.Channel);
+                    await WriteSkippedAsync(db, outbox, rule, channel.Channel, NotificationRules.ContextLogRecipient(c.Label), reason, ct);
+                }
+
+                // todos los que alcanza el canal, sin repetir por la clave del registro: gana el primero (los fijos, luego los del evento en orden)
+                var reach = people.Concat(contexts.SelectMany(c => c.People))
+                    .Where(x => x.Reaches(channel.Channel) && (x.Audience == NotificationAudience.Staff || customerChannel))
+                    .DistinctBy(x => x.LogKey(channel.Channel), StringComparer.OrdinalIgnoreCase).ToList();
+                if (reach.Count == 0) continue;
+
+                foreach (var group in reach.GroupBy(x => (x.Audience, Lang: x.Lang ?? companyLang)))
+                {
+                    var lang = group.Key.Lang;
+                    var subjectTpl = NotificationRules.Pick(channel.SubjectJson, lang);
+                    var bodyTpl = NotificationRules.Pick(channel.BodyJson, lang);
+                    var usesBlock = NotificationRules.UsesAny(bodyTpl, blockNames);
+                    var needsContent = contextKeys.Count > 0 || usesBlock || NotificationRules.UsesAny(subjectTpl, blockNames)
+                        || NotificationRules.VariablesOf(subjectTpl).Concat(NotificationRules.VariablesOf(bodyTpl)).Any(v => !values.ContainsKey(v));
+                    var content = needsContent ? await ContentAsync(group.Key.Audience, lang) : null;
+                    var vals = content is null ? values : NotificationRules.Merge(values, content.Values);
+                    var blocks = content?.Blocks;
+                    var subject = NotificationRules.Render(subjectTpl, vals);
+                    var text = NotificationRules.RenderText(bodyTpl, vals, blocks);
+                    var html = isEmail ? NotificationHtml.Compose(bodyTpl, vals, blocks) : NotificationHtml.Paragraphs(text);
+                    var attachments = isEmail && usesBlock && content is { Attachments.Count: > 0 } ? content.Attachments : null;
+                    var link = def.LinkTemplate is null ? null : NotificationRules.Render(def.LinkTemplate, vals);
+
+                    foreach (var person in group)
                     {
-                        log = new NotificationLog
+                        var recipient = person.LogKey(channel.Channel);
+                        var log = await db.NotificationLogs.FirstOrDefaultAsync(l => l.NotificationOutboxId == outbox.NotificationOutboxId && l.NotificationRuleId == rule.NotificationRuleId
+                            && l.Channel == channel.Channel && l.Recipient == recipient, ct);
+                        if (log is not null && log.Status is NotificationLogStatuses.Sent or NotificationLogStatuses.Skipped) continue;   // ya resuelto en un intento anterior
+                        if (log is null)
                         {
-                            TenantId = outbox.TenantId, NotificationOutboxId = outbox.NotificationOutboxId, NotificationRuleId = rule.NotificationRuleId,
-                            EventCode = outbox.EventCode, Channel = channel.Channel, Recipient = recipient, CreatedAtUtc = DateTime.UtcNow,
-                        };
-                        db.NotificationLogs.Add(log);
+                            log = NewLog(outbox, rule, channel.Channel, recipient);
+                            db.NotificationLogs.Add(log);
+                        }
+                        SendOutcome outcome;
+                        if (content?.SkipReason is { } skip) outcome = SendOutcome.Skipped(skip);   // p. ej. la orden se canceló antes de enviar el aviso
+                        else
+                            try
+                            {
+                                outcome = await sender.SendAsync(new NotificationDelivery(outbox.TenantId, tenant.Name, outbox.EventCode, outbox.NotificationOutboxId, rule.NotificationRuleId,
+                                    person.UserId, person.Email, person.Phone, subject, text, html, link, def.IsOptional, attachments), ct);
+                            }
+                            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                            catch (Exception ex) { outcome = SendOutcome.Failed(ex.Message); }
+                        log.Attempts++;
+                        log.Status = outcome.Status;
+                        log.Error = outcome.Message is { Length: > 1000 } m ? m[..1000] : outcome.Message;
+                        log.SentAtUtc = outcome.Status == NotificationLogStatuses.Sent ? DateTime.UtcNow : null;
+                        await db.SaveChangesAsync(ct);
+                        if (outcome.Status == NotificationLogStatuses.Failed) anyFailed = true;
                     }
-                    SendOutcome outcome;
-                    try
-                    {
-                        outcome = await sender.SendAsync(new NotificationDelivery(outbox.TenantId, tenant.Name, outbox.EventCode, outbox.NotificationOutboxId, rule.NotificationRuleId,
-                            person.UserId, person.Email, person.Phone, subject, body, NotificationHtml.Paragraphs(body), link, def.IsOptional), ct);
-                    }
-                    catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-                    catch (Exception ex) { outcome = SendOutcome.Failed(ex.Message); }
-                    log.Attempts++;
-                    log.Status = outcome.Status;
-                    log.Error = outcome.Message is { Length: > 1000 } m ? m[..1000] : outcome.Message;
-                    log.SentAtUtc = outcome.Status == NotificationLogStatuses.Sent ? DateTime.UtcNow : null;
-                    await db.SaveChangesAsync(ct);
-                    if (outcome.Status == NotificationLogStatuses.Failed) anyFailed = true;
                 }
             }
         }
         return anyFailed;
     }
 
-    /// <summary>Un destinatario resuelto: un usuario de la compañía (con su correo y teléfono) o un correo o teléfono suelto.</summary>
-    public sealed record Person(int? UserId, string? Name, string? Email, string? Phone)
+    private static NotificationLog NewLog(NotificationOutbox outbox, NotificationRule rule, string channel, string recipient) => new()
+    {
+        TenantId = outbox.TenantId, NotificationOutboxId = outbox.NotificationOutboxId, NotificationRuleId = rule.NotificationRuleId,
+        EventCode = outbox.EventCode, Channel = channel, Recipient = recipient.Length <= 200 ? recipient : recipient[..200], CreatedAtUtc = DateTime.UtcNow,
+    };
+
+    /// <summary>Lote 243: anota (una sola vez) una fila SKIPPED con su motivo, p. ej. «(Vendedor de la orden)» sin usuario activo.</summary>
+    private static async Task WriteSkippedAsync(TeikemDbContext db, NotificationOutbox outbox, NotificationRule rule, string channel, string recipient, string reason, CancellationToken ct)
+    {
+        var key = recipient.Length <= 200 ? recipient : recipient[..200];
+        if (await db.NotificationLogs.AnyAsync(l => l.NotificationOutboxId == outbox.NotificationOutboxId && l.NotificationRuleId == rule.NotificationRuleId
+            && l.Channel == channel && l.Recipient == key, ct)) return;
+        var log = NewLog(outbox, rule, channel, key);
+        log.Attempts = 1;
+        log.Status = NotificationLogStatuses.Skipped;
+        log.Error = reason.Length <= 1000 ? reason : reason[..1000];
+        db.NotificationLogs.Add(log);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>«es» o «en» (sin distinguir mayúsculas); cualquier otro valor = null (se usa el de la compañía).</summary>
+    private static string? NormalizeLang(string? lang)
+    {
+        var l = (lang ?? string.Empty).Trim().ToLowerInvariant();
+        return l is "es" or "en" ? l : null;
+    }
+
+    /// <summary>
+    /// Un destinatario resuelto: un usuario de la compañía (con su correo y teléfono) o un correo o teléfono suelto. Lote 243: Audience
+    /// (personal o cliente) y Lang (idioma del texto; null = el de la compañía) para armar el texto por grupo.
+    /// </summary>
+    public sealed record Person(int? UserId, string? Name, string? Email, string? Phone, NotificationAudience Audience = NotificationAudience.Staff, string? Lang = null)
     {
         public bool Reaches(string channel) => channel switch
         {
@@ -192,7 +312,11 @@ public sealed class NotificationProcessor(IServiceScopeFactory scopes, Notificat
         userIds = userIds.Distinct().ToList();
         if (userIds.Count > 0)
         {
-            var members = await db.UserTenants.AsNoTracking().Where(m => userIds.Contains(m.UserId)).Select(m => m.UserId).ToListAsync(ct);
+            // Lote 243: solo la membresía ACTIVE (un suspendido en la compañía conserva su fila y su usuario activo, pero ya no tiene acceso)
+            var members = await db.UserTenants.AsNoTracking()
+                .Where(m => userIds.Contains(m.UserId)
+                    && db.StatusCodes.Any(s => s.StatusCodeId == m.StatusCodeId && s.Entity == StatusDomains.MembershipStatus && s.InternalCode == MembershipStatuses.Active))
+                .Select(m => m.UserId).ToListAsync(ct);
             var users = await db.Users.AsNoTracking().Where(u => members.Contains(u.Id) && u.IsActive).Select(u => new { u.Id, u.FullName, u.Email, u.PhoneNumber }).ToListAsync(ct);
             people.AddRange(users.OrderBy(u => u.Id).Select(u => new Person(u.Id, u.FullName, u.Email, u.PhoneNumber)));
         }

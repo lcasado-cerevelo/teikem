@@ -365,6 +365,8 @@ export interface PersonValues {
   fullName: string
   role: string
   isPrimary: boolean
+  /** Lote 243: «Recibe avisos por correo» (ClientContact.ReceivesEmailNotifications). */
+  receivesEmailNotifications: boolean
   phone: string
   /** Prefijo internacional del teléfono, con «+» ("+1"). */
   countryCallingCode: string
@@ -376,6 +378,7 @@ export function personSchema(m: { nameRequired: string; nameMax: string; roleMax
     fullName: z.string().trim().min(1, m.nameRequired).max(CONTACT_NAME_MAX, m.nameMax),
     role: z.string().trim().max(CONTACT_ROLE_MAX, m.roleMax),
     isPrimary: z.boolean(),
+    receivesEmailNotifications: z.boolean(),
     phone: z.string(),
     countryCallingCode: z.string().trim(),
     email: z.string().trim().refine((v) => v === '' || isValidEmail(v), emailInvalid),

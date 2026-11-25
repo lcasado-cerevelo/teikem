@@ -52,6 +52,8 @@ public sealed class ClientContactConfiguration : IEntityTypeConfiguration<Client
         b.HasKey(c => c.ClientContactId);
         b.Property(c => c.FullName).HasMaxLength(150).IsRequired();
         b.Property(c => c.Role).HasMaxLength(80);
+        // Lote 243: BIT NOT NULL DEFAULT 0 (el default vive en el SQL; la entidad siempre manda el valor)
+        b.Property(c => c.ReceivesEmailNotifications).IsRequired();
         // Un contacto principal activo por cliente
         b.HasIndex(c => c.ClientId).IsUnique().HasFilter("[IsPrimary] = 1 AND [IsActive] = 1").HasDatabaseName("UX_ClientContact_Primary");
     }

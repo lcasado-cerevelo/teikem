@@ -716,7 +716,11 @@
       "removed": "Contact removed.",
       "removeTitle": "Remove the contact",
       "removeBody": "{name} will no longer appear as a contact person of this client.",
-      "pointsNeedPermission": "Your user cannot change phones or emails (contacts.manage permission)."
+      "pointsNeedPermission": "Your user cannot change phones or emails (contacts.manage permission).",
+      "notices": "Receives email notices",
+      "noticesHelp": "Receives by email the notices sent to the customer (for example, a copy of the sales order when it is requested). Needs an email address.",
+      "noticesChip": "Email notices",
+      "noticesNoEmail": "Marked for notices but has no email: add an email address."
     },
     "numbering": {
       "title": "Numbering",
@@ -8748,6 +8752,8 @@
         "taxable": "Shipping carries IVU",
         "taxableHelp": "Uses the product sale rate (respecting the client's exemption) and only when the tax module is on.",
         "clientHelp": "Each client can have its own rule on its record. Pickup pays no shipping and orders already requested do not change.",
+        "emailHelp": "The email with the order when it is requested is turned on in System → Notification rules (event “Sales order requested”).",
+        "emailLink": "Open Notification rules",
         "saved": "Sales settings saved.",
         "errors": {
           "charge": "The charge must be greater than zero with up to 2 decimals.",
@@ -11515,6 +11521,12 @@
         "kindUSER": "User",
         "kindEMAIL": "Email",
         "kindPHONE": "Phone",
+        "kindCONTEXT": "From the event",
+        "pickContext": "Choose an event recipient…",
+        "contextHelp": "Comes from the notice itself, for example the order's sales rep. If nobody is found, the Log explains why.",
+        "blockMark": "block · only in the email text",
+        "preview": "Preview",
+        "previewHelp": "See the email with the text above, without sending anything.",
         "pickRole": "Pick a role…",
         "pickUser": "Pick a user…",
         "emailPh": "name@company.com",
@@ -11542,12 +11554,33 @@
         "APP": "Bell",
         "PUSH": "Push"
       },
+      "preview": {
+        "title": "Email preview",
+        "lang": "Language",
+        "langEs": "Spanish",
+        "langEn": "English",
+        "audience": "For whom",
+        "audienceSTAFF": "Staff",
+        "audienceCUSTOMER": "Customer",
+        "reference": "Order number (optional; without it an example is used)",
+        "referencePh": "OV-00012",
+        "refresh": "Refresh",
+        "loading": "Building the preview…",
+        "subject": "Subject",
+        "attachments": "Attachments",
+        "noAttachments": "No attachments",
+        "sample": "With example data.",
+        "real": "With the data of order {ref}.",
+        "frame": "How the email will arrive",
+        "close": "Close"
+      },
       "errors": {
         "nameRequired": "Enter the rule name.",
         "nameMax": "The rule name cannot be longer than 100 characters.",
         "eventRequired": "Choose the rule's event.",
         "emailInvalid": "Invalid email: \"{value}\".",
-        "phoneInvalid": "Invalid phone: \"{value}\"."
+        "phoneInvalid": "Invalid phone: \"{value}\".",
+        "blockInSubject": "The variable {name} is a block and can only go in the text, not in the subject."
       },
       "log": {
         "event": "Event",

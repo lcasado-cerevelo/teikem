@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Teikem.Api.Auth;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Notifications;
 using Teikem.Infrastructure.Contracts;
+using Teikem.Infrastructure.Notifications;
 using Teikem.Infrastructure.Services;
 
 namespace Teikem.Api.Controllers;
@@ -63,6 +65,15 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     /// </summary>
     [HttpGet("kits/{kitPublicId:guid}/substitutes"), RequirePermission(PermissionCatalog.SalesCreate)]
     public Task<KitSubstitutesDto> KitSubstitutes(Guid kitPublicId, CancellationToken ct) => sales.SubstitutesAsync(kitPublicId, ct);
+
+    /// <summary>
+    /// Lote 243 — el correo de «Orden de venta solicitada» de esta orden tal como llegaría (asunto, HTML y adjuntos), con la plantilla de la
+    /// regla activa del evento o, si no hay, la de omisión. No envía nada. audience = STAFF (por omisión) | CUSTOMER (la copia al cliente);
+    /// lang = es | en (por omisión el de la compañía). 404 «Orden de venta no encontrada.» si no existe en la compañía.
+    /// </summary>
+    [HttpGet("{publicId:guid}/email-preview"), RequirePermission(PermissionCatalog.SalesView)]
+    public Task<NotificationPreviewDto> EmailPreview(Guid publicId, [FromQuery] string? audience, [FromQuery] string? lang, [FromServices] NotificationRuleService notifications, CancellationToken ct)
+        => notifications.PreviewAsync(new NotificationPreviewRequest(SalesEventCodes.OrderRequested, NotificationChannels.Email, null, null, lang, publicId.ToString("N"), audience), ct);
 
     /// <summary>Qué pasaría si se solicitara hoy: pedido / disponible / faltante por línea y el crédito del cliente. No guarda nada.</summary>
     [HttpGet("{publicId:guid}/availability"), RequirePermission(PermissionCatalog.SalesCreate)]

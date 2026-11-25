@@ -20,20 +20,32 @@ public sealed partial class SalesOrderService
         if (notifications is null) return;
         var client = await db.Set<Client>().AsNoTracking().Where(c => c.ClientId == order.ClientId).Select(c => c.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
         var warehouse = await db.Set<Warehouse>().AsNoTracking().Where(w => w.WarehouseId == order.WarehouseId).Select(w => w.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
-        var values = new Dictionary<string, string?> { ["orderNumber"] = order.Number, ["client"] = client, ["warehouse"] = warehouse };
+        // Lote 243: orderPublicId (Guid sin guiones) para el enlace a la orden y para que el contenido del correo la encuentre al enviar
+        var values = new Dictionary<string, string?> { ["orderNumber"] = order.Number, ["client"] = client, ["warehouse"] = warehouse, ["orderPublicId"] = order.PublicId.ToString("N") };
         foreach (var kv in extra) values[kv.Key] = kv.Value;
         await notifications.PublishAsync(eventCode, values, dedupKey, ct);
     }
 
     private static string Qty(decimal v) => v.ToString("0.###", CultureInfo.InvariantCulture);
 
-    /// <summary>Aviso de orden solicitada (dentro de la transacción de Solicitar).</summary>
+    /// <summary>Clave de no repetición del aviso de orden solicitada (Lote 243): una sola vez por orden.</summary>
+    public static string RequestedDedupKey(Guid orderPublicId) => $"REQ-{orderPublicId:N}";
+
+    /// <summary>
+    /// Aviso de orden solicitada (dentro de la transacción de Solicitar). Lote 243: lleva la huella de líneas y total (orderFingerprint) para que el correo,
+    /// que se arma al enviar, avise si la orden cambió; y sale UNA vez por orden (REQ-{guid}).
+    /// </summary>
     private Task NotifyRequestedAsync(SalesOrder order, CancellationToken ct)
     {
         var backordered = order.Lines.Count(l => l.QtyBackordered > 0m);
         var detail = backordered == 0 ? "Quedó todo reservado." : $"{backordered} línea(s) con faltante en backorder.";
-        return NotifyOrderAsync(SalesEventCodes.OrderRequested, order,
-            new Dictionary<string, string?> { ["lineCount"] = order.Lines.Count.ToString(CultureInfo.InvariantCulture), ["detail"] = detail }, null, ct);
+        var fingerprint = SalesOrderEmailRules.Fingerprint(order.Lines.Select(l => (l.LineNo, l.ProductId, l.QtyOrdered, l.UnitPrice)), TotalOf(order));
+        return NotifyOrderAsync(SalesEventCodes.OrderRequested, order, new Dictionary<string, string?>
+        {
+            ["lineCount"] = order.Lines.Count.ToString(CultureInfo.InvariantCulture),
+            ["detail"] = detail,
+            ["orderFingerprint"] = fingerprint,
+        }, RequestedDedupKey(order.PublicId), ct);
     }
 
     /// <summary>Lote 222 — aviso de pedido urgente (dentro de la transacción de Solicitar): una vez por orden.</summary>

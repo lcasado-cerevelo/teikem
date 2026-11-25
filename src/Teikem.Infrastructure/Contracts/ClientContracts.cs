@@ -47,7 +47,9 @@ public sealed record ClientContractSummaryDto(
     bool IsActive, bool IsCurrent);
 
 public sealed record ClientContactDto(
-    int Id, string FullName, string? Role, bool IsPrimary, bool IsActive, IReadOnlyList<ContactPointDto> ContactPoints);
+    int Id, string FullName, string? Role, bool IsPrimary, bool IsActive, IReadOnlyList<ContactPointDto> ContactPoints,
+    // Lote 243: «Recibe avisos por correo» y si tiene un correo activo (la web avisa «marcado sin correo»)
+    bool ReceivesEmailNotifications = false, bool HasEmail = false);
 
 public sealed record ClientDetailDto(
     int Id, Guid PublicId, string Code, string Name, string? LegalName, string? TaxId, decimal? CreditLimit,
@@ -95,8 +97,11 @@ public sealed record ClientNumberSettingsRequest(
 
 public sealed record NumberPreviewDto(string Pattern, long Seq, string Value);
 
-public sealed record ClientContactCreateRequest(string FullName, string? Role, bool IsPrimary, IList<ContactPointUpsertRequest>? ContactPoints);
-public sealed record ClientContactUpdateRequest(string? FullName, string? Role, bool? IsPrimary, bool? IsActive);
+/// <summary>ReceivesEmailNotifications (Lote 243): «Recibe avisos por correo»; null = no (alta) o sin cambio (edición).</summary>
+public sealed record ClientContactCreateRequest(string FullName, string? Role, bool IsPrimary, IList<ContactPointUpsertRequest>? ContactPoints,
+    bool? ReceivesEmailNotifications = null);
+public sealed record ClientContactUpdateRequest(string? FullName, string? Role, bool? IsPrimary, bool? IsActive,
+    bool? ReceivesEmailNotifications = null);
 
 /// <summary>Cambio de estatus vía StatusService (cliente y contrato).</summary>
 public sealed record StatusChangeRequest(string ToCode, string? Comment);

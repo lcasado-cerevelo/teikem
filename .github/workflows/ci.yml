@@ -17,6 +17,10 @@ jobs:
         options: >-
           --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Teikem_Dev_2026!' -Q 'SELECT 1' || exit 1"
           --health-interval 10s --health-timeout 5s --health-retries 15
+      # Lote 243: buzón local (SMTP en :1025, API y pantalla en :8025) para ver el correo de la orden de venta de verdad, sin Brevo
+      mailpit:
+        image: axllent/mailpit
+        ports: [ "1025:1025", "8025:8025" ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -39,7 +43,9 @@ jobs:
           sudo apt-get install -y jq >/dev/null
           # El smoke y los recorridos crean usuarios y entran con ellos: el primer ingreso obligatorio (2026-09-30) se apaga aquí
           # (lo cubren OnboardingTests y las pruebas de la web); lo mismo la aceptación del documento legal (Lote 99: LegalTests y su recorrido, que se salta si no está exigida).
-          Auth__Onboarding__Enabled=false Legal__RequireAcceptance=false Auth__Sessions__SingleSessionPerBrowser=false ASPNETCORE_URLS=http://localhost:5000 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Teikem.Api -c Release --no-build &
+          # Lote 243: Notifications__WebBaseUrl da el botón «Abrir la orden en Teikem» del correo de la orden (así el humo comprueba que la copia al cliente NO lo lleva).
+          Notifications__WebBaseUrl=http://localhost:5173 Auth__Onboarding__Enabled=false Legal__RequireAcceptance=false Auth__Sessions__SingleSessionPerBrowser=false ASPNETCORE_URLS=http://localhost:5000 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Teikem.Api -c Release --no-build &
+          echo $! > "$RUNNER_TEMP/api-5000.pid"   # Lote 243: se detiene después de Playwright para levantar el API con buzón local
           for i in $(seq 1 30); do curl -sf http://localhost:5000/health && break; sleep 2; done
           # SMOKE_SQL: sqlcmd dentro del contenedor de SQL Server para los pasos que necesitan datos sin API todavía
           # (pings del chofer del Lote 7, que el monitor del Lote 5 ya lee). Sin esta variable el smoke omite esos pasos.
@@ -52,6 +58,8 @@ jobs:
           scripts/smoke-contabilidad.sh http://localhost:5000
           # Lote 182: recepción maestra (varios avisos del mismo dueño que llegan juntos): abrir, confirmar juntos y eliminar
           scripts/smoke-recepcion-maestra.sh http://localhost:5000
+          # Lote 243: correo con la orden de venta al solicitarla (vista previa, validaciones, destinatarios del evento y canal APP). Este API va SIN correo: nunca Brevo.
+          scripts/smoke-correo-orden-venta.sh http://localhost:5000
           # scripts/smoke.sh retirado del CI (decidido por Luis, 2026-10-21): sigue el modelo viejo de estatus de órdenes (DRIVER → INBOUND, etc.); los humos de arriba cubren lo reciente.
       # Recorrido Playwright del frontend (Lote F1) contra el mismo API, que sigue arriba desde el paso anterior
       # (los procesos en segundo plano viven hasta el fin del job). Vite sirve la app en :5173 (CORS permitido en appsettings).
@@ -78,6 +86,20 @@ jobs:
           name: playwright-results
           path: web-app/test-results
           if-no-files-found: ignore
+      # Lote 243: el correo de la orden de venta de punta a punta contra el buzón local (Mailpit). Va DESPUÉS de Playwright, que sigue usando :5000.
+      # Antes se detiene el API de :5000: si los dos procesos viven, se disputan la cola de avisos y el correo queda SKIPPED sin llegar a Mailpit.
+      # El SMTP solo vale en Development y la llave de Brevo no se define: nunca sale correo real.
+      - name: Correo de la orden al buzón local (Lote 243)
+        run: |
+          if [ -f "$RUNNER_TEMP/api-5000.pid" ]; then kill "$(cat "$RUNNER_TEMP/api-5000.pid")" 2>/dev/null || true; fi
+          sudo fuser -k 5000/tcp 2>/dev/null || true
+          for i in $(seq 1 30); do curl -sf http://localhost:5000/health >/dev/null || break; sleep 1; done
+          if curl -sf http://localhost:5000/health >/dev/null; then echo "el API de :5000 sigue vivo"; exit 1; fi
+          # Notifications__WebBaseUrl: sin dirección web el correo del personal sale sin el botón «Abrir la orden» y el humo lo exige (la copia al cliente nunca lo lleva).
+          Notifications__WebBaseUrl=http://localhost:5173 Email__Smtp__Host=localhost Email__Smtp__Port=1025 Auth__Onboarding__Enabled=false Legal__RequireAcceptance=false Auth__Sessions__SingleSessionPerBrowser=false ASPNETCORE_URLS=http://localhost:5002 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Teikem.Api -c Release --no-build &
+          for i in $(seq 1 30); do curl -sf http://localhost:5002/health && break; sleep 2; done
+          curl -sf http://localhost:5002/health
+          MAILPIT_URL=http://localhost:8025 scripts/smoke-correo-orden-venta.sh http://localhost:5002
 
   frontend:
     runs-on: ubuntu-latest

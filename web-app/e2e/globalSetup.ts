@@ -3,7 +3,11 @@
 // de la cuenta (300 correos al día en el plan gratis) y deja a la compañía sin correos de verdad durante el resto del día (pasó el 2026-10-24).
 // Para correr contra un API con correo real a propósito: E2E_ALLOW_REAL_EMAIL=1. Para levantar el API sin correo: scripts/api-para-pruebas.ps1.
 // Solo se detiene cuando SABE que el correo está configurado: si el API no contesta o no hay clientes, no estorba (los recorridos fallarán por su cuenta).
+// Lote 243: si el correo configurado es el buzón LOCAL (Mailpit por SMTP, solo en Development: canal EMAIL con isLocal = true en
+// GET /api/v1/notifications/channels), sí deja correr: ese correo nunca sale a la calle (scripts/api-para-pruebas.ps1 -Mailpit).
 import { request } from '@playwright/test'
+
+type ChannelStatus = { channel?: string; isConfigured?: boolean; isLocal?: boolean }
 
 type Login = { status?: string; tenants?: { tenantId?: number; isDefault?: boolean }[]; tokens?: { accessToken?: string } }
 
@@ -14,6 +18,7 @@ export default async function globalSetup() {
   const password = process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!'
   const ctx = await request.newContext()
   let configured = false
+  let local = false
   try {
     let res = await ctx.post(`${api}/api/v1/auth/login`, { data: { email, password } })
     if (!res.ok()) return
@@ -34,10 +39,27 @@ export default async function globalSetup() {
     const settings = await ctx.get(`${api}/api/v1/clients/${first.publicId}/notifications/settings`, { headers })
     if (!settings.ok()) return
     configured = ((await settings.json()) as { emailConfigured?: boolean }).emailConfigured === true
+    if (configured) {
+      // ¿es el buzón local? Solo se acepta si el API lo dice expresamente; ante cualquier duda se sigue negando.
+      // (un fallo aquí NO deja pasar: local queda en false y abajo se niega como siempre)
+      try {
+        const channels = await ctx.get(`${api}/api/v1/notifications/channels`, { headers })
+        if (channels.ok()) {
+          const list = (await channels.json()) as ChannelStatus[]
+          local = Array.isArray(list) && list.some((c) => c.channel === 'EMAIL' && c.isConfigured === true && c.isLocal === true)
+        }
+      } catch {
+        local = false
+      }
+    }
   } catch {
     return
   } finally {
     await ctx.dispose()
+  }
+  if (configured && local) {
+    console.log(`[globalSetup] El API en ${api} manda el correo al buzón local (Mailpit): correo al buzón local, nunca a la calle.`)
+    return
   }
   if (configured) {
     throw new Error(

@@ -72,6 +72,51 @@ public sealed class SalesNotificationTests
         var values = NotificationRules.ParseValues(row.PayloadJson);
         Assert.Equal((r.Number, "Cliente C1", "1", "Quedó todo reservado."), (values["orderNumber"], values["client"], values["lineCount"], values["detail"]));
         Assert.Equal(w.Name, values["warehouse"]);
+        // Lote 243: el identificador de la orden (para el enlace y el correo que se arma al enviar), la huella de líneas y total, y una sola vez por orden
+        Assert.Equal(r.PublicId.ToString("N"), values["orderPublicId"]);
+        Assert.Matches("^[0-9a-f]{16}$", values["orderFingerprint"]);
+        Assert.Equal(SalesOrderEmailRules.Fingerprint(new[] { (1, p.ProductId, 4m, 10m) }, r.Total), values["orderFingerprint"]);
+        Assert.Equal($"REQ-{r.PublicId:N}", row.DedupKey);
+    }
+
+    [Fact]
+    public async Task Lote243_los_demas_avisos_de_la_orden_tambien_llevan_su_identificador()
+    {
+        var (f, w, c, svc, _, p) = await WorldAsync();
+        await using var _f = f;
+        var d = await DraftAsync(f, w, c, svc, p, 2m);
+        await svc.RequestAsync(d.PublicId, null, default);
+        await svc.CancelAsync(d.PublicId, "El cliente la anuló.", default);
+        var row = (await OutboxAsync(f, SalesEventCodes.OrderCancelled)).Single();
+        Assert.Equal(d.PublicId.ToString("N"), NotificationRules.ParseValues(row.PayloadJson)["orderPublicId"]);
+    }
+
+    [Fact]
+    public void Lote243_el_evento_de_orden_solicitada_trae_el_bloque_los_destinatarios_y_la_plantilla_del_correo()
+    {
+        var def = new SalesEventProvider().Events.Single(e => e.Code == SalesEventCodes.OrderRequested);
+        var detail = def.Variables.Single(v => v.Name == "orderDetail");
+        Assert.True(detail.IsBlock);
+        Assert.Equal("La orden completa (tabla)", detail.LabelEs);
+        foreach (var name in new[] { "orderDate", "seller", "total", "deliveryMode", "paymentMethod", "orderLink", "orderPublicId" })
+            Assert.False(def.Variables.Single(v => v.Name == name).IsBlock);
+        Assert.Equal("/sales-orders?order={orderPublicId}", def.LinkTemplate);
+
+        var seller = def.ContextRecipient("SELLER")!;
+        Assert.Equal(("Vendedor de la orden", "Order's sales rep", true, NotificationAudience.Staff), (seller.LabelEs, seller.LabelEn, seller.IsDefault, seller.Audience));
+        var client = def.ContextRecipient("CLIENT")!;
+        Assert.Equal(("Cliente de la orden (correo principal y contactos marcados)", false, NotificationAudience.Customer), (client.LabelEs, client.IsDefault, client.Audience));
+
+        var email = def.ChannelDefaultFor(NotificationChannels.Email)!;
+        Assert.Equal("Orden de venta {orderNumber} — {client}", email.SubjectEs);
+        Assert.Equal("Sales order {orderNumber} — {client}", email.SubjectEn);
+        Assert.Equal("Se solicitó la orden {orderNumber} de {client} para {warehouse}.\n\n{orderDetail}", email.BodyEs);
+        Assert.Equal("Sales order {orderNumber} for {client} was requested for {warehouse}.\n\n{orderDetail}", email.BodyEn);
+        Assert.Null(def.ChannelDefaultFor(NotificationChannels.App));   // los demás canales no cambian
+        Assert.DoesNotContain("orderDetail", def.DefaultSubjectEs + def.DefaultBodyEs);
+
+        // el catálogo la acepta (sin bloque en el asunto, sin claves repetidas)
+        Assert.NotNull(new NotificationEventCatalog(new INotificationEventProvider[] { new SalesEventProvider() }).Find(SalesEventCodes.OrderRequested));
     }
 
     [Fact]

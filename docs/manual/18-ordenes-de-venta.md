@@ -199,7 +199,7 @@ Pantalla **Órdenes de venta** del aparato (la ficha técnica de la app está en
 ## 15. Avisos de ventas (Lote 66)
 
 Las órdenes de venta publican cinco avisos (solicitada, despachada, cancelada, crédito por autorizar y backorder surtible) sobre el motor de avisos: ver la
-tabla en [14 — Avisos §3.1](14-avisos.md#31-eventos-de-las-órdenes-de-venta-lote-66). Para recibirlos hay que crear la regla en **Sistema → Reglas de aviso**
+tabla en [14 — Avisos §3.1](14-avisos.md#31-eventos-de-las-órdenes-de-venta-lote-66). Desde el Lote 243 el de «solicitada» puede mandar por correo la orden completa ([§29](#29-correo-con-la-orden-al-solicitarla-lote-243)). Para recibirlos hay que crear la regla en **Sistema → Reglas de aviso**
 (permiso `notifications.manage`) y elegir destinatarios y canal; sin regla no llega nada (no se siembra ninguna).
 
 - **Crédito:** la petición de autorización sale al fallar la solicitud con `El cliente excede su límite de crédito…` (422); quien tenga el permiso de autorizar
@@ -624,3 +624,22 @@ Decisión de Luis (2026-11-10). Aplica a la ventana **Nueva orden**, al **pedido
 **Qué bloquea.** Si la orden tiene productos o ya no está en borrador, el API responde **409** con el mensaje exacto: «Solo se puede borrar una orden en borrador que todavía no tiene productos; si ya tiene productos o ya fue solicitada, cancélela.» Una orden que no existe responde 404 «Orden de venta no encontrada.».
 
 **Para soporte.** El borrado es definitivo; el número OV-##### que tenía no se reutiliza. La bitácora de auditoría conserva quién la borró.
+
+## 29. Correo con la orden al solicitarla (Lote 243)
+
+<!-- kemi:staff -->
+
+**Qué hace.** Cuando se solicita una orden, la compañía puede mandar por correo la orden completa (como la del formulario anterior): datos generales, líneas con las piezas de los kits, subtotal, envío, IVU por componente, total, quién autorizó y la firma adjunta. Hay una versión para el **vendedor** (con botón para abrir la orden) y una **copia al cliente** (sin enlace ni marcas internas).
+
+**Quién puede.** Armar la regla: **`notifications.manage`** (Sistema → Reglas de aviso). Ver el correo de una orden sin enviarlo: **`sales.view`**, con el módulo **SALES_ORDERS** encendido. No hay permisos nuevos.
+
+**Cómo se enciende.** No hay interruptor en Ajustes. En Sistema → Ajustes → **Operación → Ventas** una línea de ayuda lo recuerda y lleva a Reglas de aviso (**«Abrir Reglas de aviso»**; solo la ve quien tiene `notifications.manage`). El correo se enciende en la regla del evento «Orden de venta solicitada»; la regla nace apagada y sin sembrar. Pasos y validaciones: [14 §3.1 bis](14-avisos.md#31-bis-el-correo-con-la-orden-de-venta-completa-lote-243-2026-11-25).
+
+**Ver el correo de una orden sin enviarlo.** `GET /api/v1/sales-orders/{publicId}/email-preview?audience=STAFF|CUSTOMER&lang=es|en` devuelve asunto, HTML y adjuntos con la plantilla de la regla activa (o la de omisión). `audience` por omisión `STAFF`; `lang` por omisión el de la compañía. Mensajes: `Orden de venta no encontrada.` (404), `Destinatario de la vista previa desconocido: 'X'. Use STAFF o CUSTOMER.` y `Idioma no válido: 'X'. Use es o en.` (400).
+
+**Qué se puede esperar.**
+- Sale **una sola vez por orden**, aunque se vuelva a solicitar.
+- Se arma al enviar: si la orden cambió desde que se solicitó, el correo del vendedor lo avisa.
+- Si la orden se canceló (o sigue en borrador) antes de enviarse, no sale y el Registro lo dice.
+- «Vendedor de la orden» = quien la solicitó y el usuario del representante del cliente (activos y de la compañía). «Cliente de la orden» = el contacto principal y las personas marcadas «Recibe avisos por correo» ([02 §1.5](02-clientes-y-contratos.md#15-personas-de-contacto)).
+- La orden de venta **no cambia** por este correo: un aviso fallido nunca deshace la solicitud.

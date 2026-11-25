@@ -2,7 +2,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { AccessProvider } from '../../../kernel/access'
 import { setLang } from '../../../kernel/i18n/i18n'
 import { SettingsSalesSection } from './SettingsSalesSection'
 
@@ -26,12 +28,16 @@ vi.mock('../../../kernel/api/client', async (importOriginal) => {
   return { ...actual, api: actual.createApiClient({ baseUrl: 'http://api.test', fetch }) }
 })
 
-function wrap(canEdit = true) {
+function wrap(canEdit = true, permissions: string[] = ['admin.tenant', 'notifications.manage']) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <QueryClientProvider client={client}>
-      <SettingsSalesSection canEdit={canEdit} />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <AccessProvider permissions={permissions} modules={['SYSTEM']}>
+          <SettingsSalesSection canEdit={canEdit} />
+        </AccessProvider>
+      </QueryClientProvider>
+    </MemoryRouter>,
   )
 }
 
@@ -91,5 +97,20 @@ describe('Ajustes → Operación → Ventas', () => {
     wrap(false)
     expect(await screen.findByLabelText('Cargo de envío')).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Guardar cambios' })).not.toBeInTheDocument()
+  })
+
+  it('Lote 243: la ayuda del correo de la orden enlaza a las reglas de aviso, solo con notifications.manage (no hay interruptor nuevo)', async () => {
+    wrap()
+    const link = await screen.findByRole('link', { name: 'Abrir Reglas de aviso' })
+    expect(link).toHaveAttribute('href', '/system/notifications')
+    expect(screen.getByTestId('sales-email-help')).toHaveTextContent('El correo con la orden al solicitarla se enciende en Sistema → Reglas de aviso (evento «Orden de venta solicitada»).')
+    expect(screen.getAllByRole('switch')).toHaveLength(1)   // solo el del IVU del envío
+  })
+
+  it('Lote 243: sin notifications.manage la ayuda del correo no se pinta', async () => {
+    wrap(true, ['admin.tenant'])
+    await screen.findByLabelText('Cargo de envío')
+    expect(screen.queryByRole('link', { name: 'Abrir Reglas de aviso' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('sales-email-help')).not.toBeInTheDocument()
   })
 })

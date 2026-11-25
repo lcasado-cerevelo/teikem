@@ -60,6 +60,7 @@ public class NotificationsTests
         Assert.Equal("EMAIL", NotificationRules.NormalizeChannel(" email "));
         Assert.Null(NotificationRules.NormalizeChannel("FAX"));
         Assert.Equal("ROLE", NotificationRules.NormalizeKind("role"));
+        Assert.Equal("CONTEXT", NotificationRules.NormalizeKind(" context "));   // Lote 243
         Assert.Null(NotificationRules.NormalizeKind("GROUP"));
     }
 
@@ -80,7 +81,7 @@ public class NotificationsTests
         Assert.Equal("El canal SMS todavía no está configurado en Teikem.", NotificationRules.NotConfiguredMessage("SMS"));
         Assert.Equal("El canal EMAIL necesita un asunto.", NotificationRules.SubjectRequiredMessage("EMAIL"));
         Assert.Equal("La plantilla usa una variable que el evento no tiene: {zzz}.", NotificationRules.UnknownVariableMessage("zzz"));
-        Assert.Equal("Tipo de destinatario desconocido: 'GROUP'. Use ROLE, USER, EMAIL o PHONE.", NotificationRules.UnknownRecipientKindMessage("GROUP"));
+        Assert.Equal("Tipo de destinatario desconocido: 'GROUP'. Use ROLE, USER, EMAIL, PHONE o CONTEXT.", NotificationRules.UnknownRecipientKindMessage("GROUP"));
         Assert.Equal("Correo no válido: 'x'.", NotificationRules.InvalidEmailMessage("x"));
         Assert.Equal("Teléfono no válido: 'x'.", NotificationRules.InvalidPhoneMessage("x"));
     }
@@ -166,7 +167,7 @@ public class NotificationsTests
     {
         Assert.Equal(ModuleKeys.System, typeof(NotificationsController).GetCustomAttribute<RequireModuleAttribute>()!.ModuleKey);
         var actions = typeof(NotificationsController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).ToList();
-        Assert.Equal(9, actions.Count);   // Events, Channels, List, Create, Get, Update, Test, TestEvent, Log
+        Assert.Equal(10, actions.Count);   // Events, Channels, List, Create, Get, Update, Test, Preview (Lote 243), TestEvent, Log
         foreach (var m in actions)
         {
             // 2026-10-22: las lecturas (eventos, canales, reglas, bitácora) las acepta también «entrar y ver»; crear, cambiar y probar exigen gestionar

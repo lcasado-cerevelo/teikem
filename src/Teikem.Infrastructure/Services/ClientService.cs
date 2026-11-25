@@ -357,7 +357,12 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
         {
             var client = await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.PublicId == publicId, ct2) ?? throw new NotFoundException("Cliente");
             if (req.IsPrimary) await ClearPrimaryContactAsync(client.ClientId, null, ct2); // respeta UX_ClientContact_Primary
-            var contact = new ClientContact { ClientId = client.ClientId, FullName = fullName, Role = role, IsPrimary = req.IsPrimary, IsActive = true };
+            var contact = new ClientContact
+            {
+                ClientId = client.ClientId, FullName = fullName, Role = role, IsPrimary = req.IsPrimary, IsActive = true,
+                // Lote 243: no se exige correo para marcarlo (la web lo señala)
+                ReceivesEmailNotifications = req.ReceivesEmailNotifications ?? false,
+            };
             db.ClientContacts.Add(contact);
             await db.SaveGuardedAsync("Ya existe un contacto principal activo para este cliente.", ct2);
             foreach (var p in points) await contacts.AddAsync(EntityTypes.ClientContact, contact.ClientContactId, p, ct2);
@@ -382,6 +387,7 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
             if (fullName is not null) contact.FullName = fullName;
             if (req.Role is not null) contact.Role = role;
             if (req.IsActive.HasValue) contact.IsActive = req.IsActive.Value;
+            if (req.ReceivesEmailNotifications.HasValue) contact.ReceivesEmailNotifications = req.ReceivesEmailNotifications.Value;
             if (req.IsPrimary.HasValue)
             {
                 if (req.IsPrimary.Value && !contact.IsPrimary) await ClearPrimaryContactAsync(client.ClientId, contact.ClientContactId, ct2);
@@ -536,7 +542,15 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
     }
 
     private async Task<ClientContactDto> ToContactDtoAsync(ClientContact c, CancellationToken ct)
-        => new(c.ClientContactId, c.FullName, c.Role, c.IsPrimary, c.IsActive, await contacts.GetForOwnerAsync(EntityTypes.ClientContact, c.ClientContactId, false, ct));
+    {
+        // Solo los medios activos (includeInactive: false); HasEmail = tiene al menos un correo activo (Lote 243)
+        var points = await contacts.GetForOwnerAsync(EntityTypes.ClientContact, c.ClientContactId, false, ct);
+        var hasEmail = points.Any(p => p.IsActive && p.ContactType == ContactEmailType && !string.IsNullOrWhiteSpace(p.Value));
+        return new(c.ClientContactId, c.FullName, c.Role, c.IsPrimary, c.IsActive, points, c.ReceivesEmailNotifications, hasEmail);
+    }
+
+    /// <summary>Código InternalCode del LookupCode CONTACT_TYPE de un correo electrónico.</summary>
+    private const string ContactEmailType = "EMAIL";
 
     private async Task<ClientAddressDto> ToAddressAsync(Location l, CancellationToken ct)
     {

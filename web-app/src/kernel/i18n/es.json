@@ -716,7 +716,11 @@
       "removed": "Contacto quitado.",
       "removeTitle": "Quitar el contacto",
       "removeBody": "{name} dejará de aparecer como persona de contacto de este cliente.",
-      "pointsNeedPermission": "Su usuario no puede cambiar teléfonos ni correos (permiso contacts.manage)."
+      "pointsNeedPermission": "Su usuario no puede cambiar teléfonos ni correos (permiso contacts.manage).",
+      "notices": "Recibe avisos por correo",
+      "noticesHelp": "Recibe por correo los avisos que se mandan al cliente (por ejemplo, una copia de la orden de venta al solicitarla). Necesita un correo.",
+      "noticesChip": "Avisos por correo",
+      "noticesNoEmail": "Marcado para avisos pero sin correo: agréguele un correo."
     },
     "numbering": {
       "title": "Numeración",
@@ -8748,6 +8752,8 @@
         "taxable": "El envío lleva IVU",
         "taxableHelp": "Usa la tasa de la venta de producto (respeta la exención del cliente) y solo si el módulo de impuestos está encendido.",
         "clientHelp": "Cada cliente puede tener su propia regla en su ficha. El recogido no paga envío y las órdenes ya solicitadas no cambian.",
+        "emailHelp": "El correo con la orden al solicitarla se enciende en Sistema → Reglas de aviso (evento «Orden de venta solicitada»).",
+        "emailLink": "Abrir Reglas de aviso",
         "saved": "Ajustes de ventas guardados.",
         "errors": {
           "charge": "El cargo debe ser mayor que cero y con hasta 2 decimales.",
@@ -11518,6 +11524,12 @@
         "kindUSER": "Usuario",
         "kindEMAIL": "Correo",
         "kindPHONE": "Teléfono",
+        "kindCONTEXT": "Del evento",
+        "pickContext": "Escoja un destinatario del evento…",
+        "contextHelp": "Sale del propio aviso, por ejemplo el vendedor de la orden. Si no se encuentra a nadie, el Registro explica por qué.",
+        "blockMark": "bloque · solo en el texto del correo",
+        "preview": "Vista previa",
+        "previewHelp": "Vea el correo con el texto de arriba, sin enviar nada.",
         "pickRole": "Escoja un rol…",
         "pickUser": "Escoja un usuario…",
         "emailPh": "nombre@empresa.com",
@@ -11545,12 +11557,33 @@
         "APP": "Campanita",
         "PUSH": "Push"
       },
+      "preview": {
+        "title": "Vista previa del correo",
+        "lang": "Idioma",
+        "langEs": "Español",
+        "langEn": "Inglés",
+        "audience": "Para quién",
+        "audienceSTAFF": "Personal",
+        "audienceCUSTOMER": "Cliente",
+        "reference": "Número de orden (opcional; sin él se usa un ejemplo)",
+        "referencePh": "OV-00012",
+        "refresh": "Actualizar",
+        "loading": "Armando la vista previa…",
+        "subject": "Asunto",
+        "attachments": "Adjuntos",
+        "noAttachments": "Sin adjuntos",
+        "sample": "Con datos de ejemplo.",
+        "real": "Con los datos de la orden {ref}.",
+        "frame": "Cómo llegará el correo",
+        "close": "Cerrar"
+      },
       "errors": {
         "nameRequired": "Escriba el nombre de la regla.",
         "nameMax": "El nombre de la regla no puede pasar de 100 caracteres.",
         "eventRequired": "Indique el evento de la regla.",
         "emailInvalid": "Correo no válido: «{value}».",
-        "phoneInvalid": "Teléfono no válido: «{value}»."
+        "phoneInvalid": "Teléfono no válido: «{value}».",
+        "blockInSubject": "La variable {name} es un bloque y solo puede ir en el texto, no en el asunto."
       },
       "log": {
         "event": "Evento",

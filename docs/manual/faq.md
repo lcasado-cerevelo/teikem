@@ -12504,3 +12504,77 @@ Para crear la orden de transporte (el envío) de lo recolectado cuando la orden 
 
 **Despaché y no sé si salió el inventario.**
 La orden pasa a «Despachada» (o «Despachada en parte» si dejó cantidades sin sacar), la lista dice «Sacado N de M» y la ficha muestra la recolección EMP-#####; el inventario baja en Productos e inventario y en el Kárdex.
+
+## Lote 243 — Correo con la orden de venta completa al solicitarla
+
+**¿Cómo hago que el correo con la orden salga al solicitarla?**
+En Sistema → Reglas de aviso cree una regla del evento «Orden de venta solicitada» (ya trae «Vendedor de la orden» y el texto del correo con `{orderDetail}`), encienda el canal EMAIL y active la regla. Para que también le llegue una copia al cliente, agregue el destinatario «Cliente de la orden». Sin regla activa no sale nada. Detalle: [14 §3.1 bis](14-avisos.md#31-bis-el-correo-con-la-orden-de-venta-completa-lote-243-2026-11-25).
+
+**¿Qué significa «Este evento no admite vista previa con un documento real.»? (HTTP 400)**
+Puso un número de orden (`reference`) en la vista previa o en «Enviar prueba» de un evento que no sabe leer documentos. Hoy solo «Orden de venta solicitada» lo admite. Borre el número y use el ejemplo, o escoja ese evento.
+
+**¿Qué significa «La variable {orderDetail} es un bloque y solo puede ir en el texto, no en el asunto.»? (HTTP 400)**
+`{orderDetail}` es la orden completa en tabla y no cabe en una línea de asunto. Quítela del asunto y déjela en el texto del correo.
+
+**¿Qué significa «Este evento no tiene el destinatario 'X'.»? (HTTP 400)**
+La regla pide un destinatario «del evento» que ese evento no ofrece. Para «Orden de venta solicitada» solo existen `SELLER` (Vendedor de la orden) y `CLIENT` (Cliente de la orden). Escójalo de la lista «Del evento» de la regla en vez de escribirlo.
+
+**¿Qué significa «Tipo de destinatario desconocido: 'X'. Use ROLE, USER, EMAIL, PHONE o CONTEXT.»? (HTTP 400)**
+El tipo de destinatario que mandó no existe. Use rol, usuario, correo, teléfono o «Del evento» (`CONTEXT`). Desde la pantalla no pasa; solo si se llama al API a mano.
+
+**¿Qué significa «Destinatario de la vista previa desconocido: 'X'. Use STAFF o CUSTOMER.»? (HTTP 400)**
+Solo hay dos versiones del correo: la del personal (`STAFF`) y la copia al cliente (`CUSTOMER`). En la ventana «Vista previa» se escoge en «Para quién».
+
+**¿Qué significa «Idioma no válido: 'X'. Use es o en.»? (HTTP 400)**
+La vista previa solo se arma en español (`es`) o inglés (`en`). Sin idioma usa el de la compañía.
+
+**¿Qué significa «Orden de venta no encontrada.» o «Orden de venta 'OV-X' no encontrada.» en la vista previa? (HTTP 404)**
+El número no existe en su compañía, está mal escrito o la orden queda fuera de su alcance de almacén o cliente. Revise el número (por ejemplo `OV-00012`) y pruebe de nuevo; sin número se usa un ejemplo.
+
+**La vista previa con una orden real dice «Falta el permiso 'sales.view'.» (HTTP 403).**
+Ver el correo de una orden real exige, además de `notifications.manage`, el permiso `sales.view`. Pídaselo al administrador, o use la vista previa sin número (con el ejemplo).
+
+**La vista previa con una orden real dice «El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» (HTTP 403).**
+La compañía no tiene encendido el módulo Órdenes de venta. Lo enciende el administrador de la plataforma.
+
+**En la vista previa sale «La orden OV-00012 se canceló antes de enviar el aviso.» o «La orden OV-00012 sigue en borrador.» (HTTP 400, campo `reference`).**
+El correo solo se arma de órdenes solicitadas. Una cancelada o en borrador no genera correo; escoja otra orden.
+
+**En el Registro de avisos veo «La orden OV-00012 se canceló antes de enviar el aviso.» (SKIPPED).**
+La orden se canceló en los segundos entre que se solicitó y que el sistema armó el correo. Es correcto: no se manda el correo de una orden cancelada. No hay nada que reenviar.
+
+**En el Registro veo «La orden OV-00012 sigue en borrador.» (SKIPPED).**
+Al armar el correo la orden estaba en borrador. No se manda. Si la orden se solicita de nuevo, el aviso sale entonces.
+
+**En el Registro veo «La orden no tiene un vendedor con usuario activo en la compañía.» (SKIPPED, destinatario «(Vendedor de la orden)»).**
+Ni quien solicitó la orden ni el usuario del representante del cliente están activos y con acceso a la compañía. Revise en Roles y usuarios que estén activos, o agregue a la regla un correo o un rol que reciba el aviso.
+
+**En el Registro veo «El cliente no tiene correo principal ni contactos marcados con correo.» (SKIPPED, destinatario «(Cliente de la orden)»).**
+No hay a quién mandarle la copia. En la ficha del cliente ponga un correo al contacto principal (o al cliente) o marque a una persona con correo en «Recibe avisos por correo».
+
+**En el Registro veo ««Vendedor de la orden» no tiene correo.» o ««Cliente de la orden» no tiene teléfono.» o «… no tiene usuario en Teikem.» (SKIPPED).**
+El destinatario del evento existe pero no tiene el dato que ese canal necesita: correo (EMAIL), teléfono (SMS) o usuario de Teikem (campanita y push). Agréguele el dato en su perfil o en la ficha del cliente.
+
+**Veo «Marcado para avisos pero sin correo: agréguele un correo.» en el contacto de un cliente.**
+Marcó «Recibe avisos por correo» pero la persona no tiene un correo. Se puede guardar así, pero no recibirá nada hasta que le agregue un correo (con el permiso `contacts.manage`). El chip «Avisos por correo» de la lista sale en tono de advertencia mientras falte.
+
+**El correo dice «Esta orden cambió después de solicitarse; el correo muestra los datos vigentes.»**
+Alguien modificó las líneas, las cantidades, los precios o el total entre que se solicitó la orden y que se armó el correo. Los datos del correo son los de ahora. Solo lo ve el personal; la copia al cliente no lleva este aviso.
+
+**El cliente no recibió el botón «Abrir la orden en Teikem».**
+Es por diseño: el botón y las notas internas solo van en la versión del personal. Además, sin `Notifications:WebBaseUrl` configurado (ni `Auth:PasswordReset:WebBaseUrl`) el correo del personal tampoco lleva el botón.
+
+**El correo no trae la firma.**
+La firma va adjunta solo si la orden la tiene, se puede leer del almacén de archivos y los adjuntos no pasan de 5 MB. Si no se puede, el correo sale igual, sin adjunto.
+
+**La tabla termina en «… y N líneas más.»**
+El correo muestra como máximo 200 filas (cuenta las piezas de los kits). La orden completa está en Teikem.
+
+**Solicité la orden otra vez y no llegó otro correo.**
+Es correcto: el correo de una orden sale una sola vez.
+
+**En TEST los correos se desvían a teikem@cerevelo.com. ¿Es un error?**
+No. En el ambiente de pruebas todo correo a una dirección que no sea `@cerevelo.com` se redirige a `teikem@cerevelo.com` para no escribirle a clientes reales. El asunto empieza con `[TEST → dirección original]` y el correo trae una franja roja que dice a quién iba. La copia al cliente de una orden probada en TEST llega, por tanto, al buzón de pruebas y no al cliente. Es por diseño; no se arregla agregando dominios reales a las excepciones.
+
+**¿Cómo veo el correo en mi computadora sin mandarlo a nadie?**
+En Reglas de aviso, abra la regla y pulse «Vista previa» (con o sin número de orden). El soporte puede además levantar el API con el buzón local (Mailpit; solo en desarrollo) y ver el correo completo en http://localhost:8025.

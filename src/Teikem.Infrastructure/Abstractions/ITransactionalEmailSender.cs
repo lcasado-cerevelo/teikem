@@ -20,6 +20,60 @@ public interface ITransactionalEmailSender
     /// La DIRECCIÓN del remitente es siempre la misma (Brevo:FromEmail).
     /// </summary>
     Task SendAsync(string toEmail, string? toName, string subject, string htmlContent, CancellationToken ct, string? companyName = null);
+
+    /// <summary>
+    /// Lote 243: true si el correo va a un buzón local de desarrollo (Mailpit por SMTP) y nunca sale a la calle. Por omisión false
+    /// (Brevo y los correos falsos de las pruebas no lo son).
+    /// </summary>
+    bool IsLocalSink => false;
+
+    /// <summary>
+    /// Lote 243: correo con adjuntos (p. ej. la firma de la orden de venta). La implementación por omisión llama al
+    /// <see cref="SendAsync(string, string?, string, string, CancellationToken, string?)"/> de siempre y DESCARTA los adjuntos, para que
+    /// las implementaciones que no los soportan (los correos falsos de las pruebas) sigan funcionando sin cambios.
+    /// </summary>
+    Task SendAsync(EmailMessage message, CancellationToken ct)
+        => SendAsync(message.ToEmail, message.ToName, message.Subject, message.HtmlContent, ct, message.CompanyName);
+}
+
+/// <summary>Lote 243: un archivo adjunto de un correo (nombre con extensión, tipo MIME y contenido).</summary>
+public sealed record EmailAttachment(string FileName, string ContentType, byte[] Content);
+
+/// <summary>Lote 243: un correo completo; <paramref name="Attachments"/> null o vacío = sin adjuntos.</summary>
+public sealed record EmailMessage(
+    string ToEmail,
+    string? ToName,
+    string Subject,
+    string HtmlContent,
+    string? CompanyName = null,
+    IReadOnlyList<EmailAttachment>? Attachments = null);
+
+/// <summary>Lote 243: tope de los adjuntos de un correo (lógica pura; la prueba unitaria la cubre).</summary>
+public static class EmailAttachmentRules
+{
+    /// <summary>Máximo de bytes sumando todos los adjuntos de un correo (5 MB).</summary>
+    public const long MaxTotalBytes = 5L * 1024 * 1024;
+
+    /// <summary>
+    /// Reparte los adjuntos, EN ORDEN, entre los que caben (Kept) y los que no (Omitted): uno se guarda si con él la suma no pasa
+    /// de <see cref="MaxTotalBytes"/>; si no, se omite y se sigue con el siguiente (uno más chico todavía puede caber). Un adjunto
+    /// sin contenido o sin nombre se omite.
+    /// </summary>
+    public static (IReadOnlyList<EmailAttachment> Kept, IReadOnlyList<EmailAttachment> Omitted) Fit(IEnumerable<EmailAttachment>? attachments)
+    {
+        var kept = new List<EmailAttachment>();
+        var omitted = new List<EmailAttachment>();
+        long total = 0;
+        foreach (var a in attachments ?? Array.Empty<EmailAttachment>())
+        {
+            if (a is null) continue;
+            if (a.Content is null || a.Content.Length == 0 || string.IsNullOrWhiteSpace(a.FileName)) { omitted.Add(a); continue; }
+            if (total + a.Content.Length > MaxTotalBytes) { omitted.Add(a); continue; }
+            total += a.Content.Length;
+            kept.Add(a);
+        }
+        return (kept, omitted);
+    }
 }
 
 public static class EmailSenderNames
@@ -54,7 +108,14 @@ public sealed class BrevoEmailSender(HttpClient http, IConfiguration config, ILo
         return o;
     }
 
-    public async Task SendAsync(string toEmail, string? toName, string subject, string htmlContent, CancellationToken ct, string? companyName = null)
+    public Task SendAsync(string toEmail, string? toName, string subject, string htmlContent, CancellationToken ct, string? companyName = null)
+        => SendCoreAsync(toEmail, toName, subject, htmlContent, companyName, null, ct);
+
+    /// <summary>Lote 243: con adjuntos. Sin adjuntos el JSON que se manda a Brevo es idéntico al de siempre.</summary>
+    public Task SendAsync(EmailMessage message, CancellationToken ct)
+        => SendCoreAsync(message.ToEmail, message.ToName, message.Subject, message.HtmlContent, message.CompanyName, message.Attachments, ct);
+
+    private async Task SendCoreAsync(string toEmail, string? toName, string subject, string htmlContent, string? companyName, IReadOnlyList<EmailAttachment>? attachments, CancellationToken ct)
     {
         if (!IsConfigured)
         {
@@ -64,16 +125,23 @@ public sealed class BrevoEmailSender(HttpClient http, IConfiguration config, ILo
         var r = EmailRedirectRules.Apply(Redirect(), toEmail, toName, subject, htmlContent);
         if (r.Redirected) logger.LogInformation("Correo '{Subject}' para {Email} redirigido a {Target} (Email:RedirectTo, ambiente de pruebas).", subject, toEmail, r.ToEmail);
         toEmail = r.ToEmail; toName = r.ToName; subject = r.Subject; htmlContent = r.HtmlContent;
+
+        var (kept, omitted) = EmailAttachmentRules.Fit(attachments);
+        // del adjunto omitido solo se anota el nombre y el tamaño, NUNCA el contenido
+        foreach (var a in omitted)
+            logger.LogWarning("El adjunto '{FileName}' ({Bytes} bytes) del correo '{Subject}' para {Email} se omitió: vacío o pasa el tope de {Max} bytes por correo.",
+                a.FileName, a.Content?.Length ?? 0, subject, toEmail, EmailAttachmentRules.MaxTotalBytes);
+
+        var sender = new { email = FromEmail, name = EmailSenderNames.Resolve(companyName, FromName) };
+        var to = new[] { new { email = toEmail, name = toName ?? toEmail } };
+        object payload = kept.Count == 0
+            ? new { sender, to, subject, htmlContent }
+            : new { sender, to, subject, htmlContent, attachment = kept.Select(a => new { name = a.FileName, content = Convert.ToBase64String(a.Content) }).ToArray() };
+
         using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
         req.Headers.Add("api-key", ApiKey);
         req.Headers.Add("accept", "application/json");
-        req.Content = JsonContent.Create(new
-        {
-            sender = new { email = FromEmail, name = EmailSenderNames.Resolve(companyName, FromName) },
-            to = new[] { new { email = toEmail, name = toName ?? toEmail } },
-            subject,
-            htmlContent,
-        });
+        req.Content = JsonContent.Create(payload, payload.GetType());
         using var res = await http.SendAsync(req, ct);
         if (!res.IsSuccessStatusCode)
         {

@@ -68,10 +68,35 @@ public sealed class NotificationSqlFixture : IAsyncLifetime
 
     public TeikemDbContext NewDb(int tenantId, int? userId = null) => NewDb(new TenantContext { TenantId = tenantId, UserId = userId });
 
+    private readonly SemaphoreSlim _membershipGate = new(1, 1);
+
+    /// <summary>
+    /// Lote 243: el id del estatus de membresía (MembershipStatus) con ese código; la base de pruebas no tiene el seed, así que se crea si falta.
+    /// Los destinatarios de un aviso son solo los miembros con la membresía ACTIVE.
+    /// </summary>
+    public async Task<int> MembershipStatusIdAsync(string code = Teikem.Domain.Constants.MembershipStatuses.Active)
+    {
+        await _membershipGate.WaitAsync();
+        try
+        {
+            await using var db = NewDb(new TenantContext());
+            var id = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == Teikem.Domain.Constants.StatusDomains.MembershipStatus && s.InternalCode == code).Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync();
+            if (id is int found) return found;
+            var s = new Teikem.Domain.Catalogs.StatusCode { Entity = Teikem.Domain.Constants.StatusDomains.MembershipStatus, InternalCode = code, LabelJson = $"{{\"es\":\"{code}\"}}", StageKindLookupId = 1, SortOrder = 1, IsActive = true };
+            db.StatusCodes.Add(s);
+            await db.SaveChangesAsync();
+            return s.StatusCodeId;
+        }
+        finally { _membershipGate.Release(); }
+    }
+
     public static NotificationEventCatalog Catalog() => new(new INotificationEventProvider[] { new TestEventProvider() });
 
-    /// <summary>Un procesador completo: su propio DI, la bandeja real, SMS y push «no configurado» y el correo que se le pase.</summary>
-    public NotificationProcessor NewProcessor(INotificationChannelSender email)
+    /// <summary>
+    /// Un procesador completo: su propio DI, la bandeja real, SMS y push «no configurado» y el correo que se le pase. Lote 243: catalog =
+    /// otro catálogo de eventos (por omisión el de prueba); configure = registros extra (p. ej. un INotificationContentProvider).
+    /// </summary>
+    public NotificationProcessor NewProcessor(INotificationChannelSender email, NotificationEventCatalog? catalog = null, Action<IServiceCollection>? configure = null)
     {
         var services = new ServiceCollection();
         services.AddScoped<TenantContext>();
@@ -81,8 +106,9 @@ public sealed class NotificationSqlFixture : IAsyncLifetime
         services.AddScoped<INotificationChannelSender, AppChannelSender>();
         services.AddScoped<INotificationChannelSender, SmsChannelSender>();
         services.AddScoped<INotificationChannelSender, PushChannelSender>();
+        configure?.Invoke(services);
         var provider = services.BuildServiceProvider();
-        return new NotificationProcessor(provider.GetRequiredService<IServiceScopeFactory>(), Catalog(), NullLogger<NotificationProcessor>.Instance);
+        return new NotificationProcessor(provider.GetRequiredService<IServiceScopeFactory>(), catalog ?? Catalog(), NullLogger<NotificationProcessor>.Instance);
     }
 
     public async Task DisposeAsync()
@@ -98,15 +124,20 @@ public sealed class NotificationSqlFixture : IAsyncLifetime
     }
 }
 
-/// <summary>Un canal de correo falso: anota lo que «envía»; puede configurarse como caído o como no configurado.</summary>
+/// <summary>
+/// Un canal de correo falso: anota lo que «envía» (con sus adjuntos, Lote 243); puede configurarse como caído, como no configurado o
+/// como buzón local (Local).
+/// </summary>
 public sealed class FakeEmailSender : INotificationChannelSender
 {
     private readonly object _gate = new();
     public List<NotificationDelivery> Sent { get; } = new();
     public bool Fail { get; set; }
     public bool Configured { get; set; } = true;
+    public bool Local { get; set; }
     public string Channel => NotificationChannels.Email;
     public bool IsConfigured => Configured;
+    public bool IsLocal => Local;
 
     public Task<SendOutcome> SendAsync(NotificationDelivery d, CancellationToken ct)
     {
@@ -141,7 +172,7 @@ public sealed class NotificationsSqlTests(NotificationSqlFixture fx) : IClassFix
         var u = new ApplicationUser { UserName = email, Email = email, FullName = fullName ?? email, IsActive = active, PhoneNumber = phone };
         db.Users.Add(u);
         await db.SaveChangesAsync();
-        db.UserTenants.Add(new UserTenant { UserId = u.Id, TenantId = tenantId, StatusCodeId = 1 });
+        db.UserTenants.Add(new UserTenant { UserId = u.Id, TenantId = tenantId, StatusCodeId = await fx.MembershipStatusIdAsync() });
         await db.SaveChangesAsync();
         return u.Id;
     }
@@ -446,7 +477,7 @@ public sealed class NotificationsSqlTests(NotificationSqlFixture fx) : IClassFix
             new[] { new NotificationChannelRequest("APP", true) }), default))).Message);
         Assert.Equal("La regla necesita al menos un canal encendido para poder activarse.", (await Invalid(() => svc.CreateRuleAsync(new NotificationRuleRequest("TEST", other, true,
             null, new[] { new NotificationRecipientRequest("ROLE", RoleId: role) }), default))).Message);
-        Assert.Equal("Tipo de destinatario desconocido: 'GROUP'. Use ROLE, USER, EMAIL o PHONE.", (await Invalid(() => svc.CreateRuleAsync(new NotificationRuleRequest("TEST", other, null,
+        Assert.Equal("Tipo de destinatario desconocido: 'GROUP'. Use ROLE, USER, EMAIL, PHONE o CONTEXT.", (await Invalid(() => svc.CreateRuleAsync(new NotificationRuleRequest("TEST", other, null,
             null, new[] { new NotificationRecipientRequest("GROUP") }), default))).Message);
         Assert.Equal("Correo no válido: 'x@'.", (await Invalid(() => svc.CreateRuleAsync(new NotificationRuleRequest("TEST", other, null,
             null, new[] { new NotificationRecipientRequest("EMAIL", Value: "x@") }), default))).Message);

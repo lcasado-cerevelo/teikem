@@ -73,11 +73,17 @@ function PersonModal({ client, person, open, onClose }: { client: ClientDetail; 
       fullName: person?.fullName ?? '',
       role: person?.role ?? '',
       isPrimary: person?.isPrimary ?? false,
+      receivesEmailNotifications: person?.receivesEmailNotifications ?? false,
       phone: phone?.value ? (f.usesCompanyMaskFor(phone.countryCallingCode) ? f.phoneInput(phone.value) : phone.value) : '',
       countryCallingCode: f.callingCodeInput(phone?.countryCallingCode),
       email: email?.value ?? '',
     },
   })
+
+  // Marcada para avisos pero sin correo: con permiso de medios de contacto vale el correo del formulario; sin él, el que ya tiene
+  const marked = form.watch('receivesEmailNotifications')
+  const typedEmail = form.watch('email')
+  const noticeWithoutEmail = marked && (canPoints ? !typedEmail?.trim() : !person?.hasEmail)
 
   /** Sincroniza un medio de contacto de la persona: crea, cambia o quita según el valor anterior y el nuevo. */
   const syncPoint = async (ownerId: number, existing: ContactPoint | undefined, next: string, contactType: string, countryCode = '') => {
@@ -117,10 +123,10 @@ function PersonModal({ client, person, open, onClose }: { client: ClientDetail; 
             if (v.email.trim()) points.push({ contactType: EMAIL_TYPE, value: v.email.trim().toLowerCase(), isPrimary: true })
             await saveContact.mutateAsync({
               action: 'create',
-              body: { fullName: v.fullName.trim(), role: v.role.trim() || null, isPrimary: v.isPrimary, contactPoints: canPoints ? points : [] },
+              body: { fullName: v.fullName.trim(), role: v.role.trim() || null, isPrimary: v.isPrimary, receivesEmailNotifications: v.receivesEmailNotifications, contactPoints: canPoints ? points : [] },
             })
           } else {
-            await saveContact.mutateAsync({ action: 'update', id: person.id, body: { fullName: v.fullName.trim(), role: v.role.trim(), isPrimary: v.isPrimary } })
+            await saveContact.mutateAsync({ action: 'update', id: person.id, body: { fullName: v.fullName.trim(), role: v.role.trim(), isPrimary: v.isPrimary, receivesEmailNotifications: v.receivesEmailNotifications } })
             if (canPoints) {
               await syncPoint(person.id, phone, v.phone, PHONE_TYPE, v.countryCallingCode)
               await syncPoint(person.id, email, v.email, EMAIL_TYPE)
@@ -151,6 +157,14 @@ function PersonModal({ client, person, open, onClose }: { client: ClientDetail; 
         <Field name="isPrimary" label={t('clients.people.primary')} help={t('clients.people.primaryHelp')}>
           <Toggle />
         </Field>
+        <Field name="receivesEmailNotifications" label={t('clients.people.notices')} help={t('clients.people.noticesHelp')}>
+          <Toggle />
+        </Field>
+        {noticeWithoutEmail && (
+          <p className="help cp-notice-warn" role="status">
+            {t('clients.people.noticesNoEmail')}
+          </p>
+        )}
       </Form>
     </Modal>
   )
@@ -196,6 +210,17 @@ export function ClientPeoplePanel({ client }: { client: ClientDetail }) {
         exportValue: (c) => personPhone(c)?.value ?? '',
       },
       { id: 'email', header: t('clients.people.email'), cell: (c) => (personEmail(c)?.value ? <EmailLink value={personEmail(c)!.value!} /> : '—'), sortValue: (c) => personEmail(c)?.value, exportValue: (c) => personEmail(c)?.value ?? '' },
+      {
+        id: 'notices',
+        header: t('clients.people.notices'),
+        cell: (c) =>
+          c.receivesEmailNotifications ? (
+            <Chip tone={c.hasEmail ? 'deliv' : 'warn'} title={c.hasEmail ? undefined : t('clients.people.noticesNoEmail')}>
+              {t('clients.people.noticesChip')}
+            </Chip>
+          ) : null,
+        sortValue: (c) => (c.receivesEmailNotifications ? 0 : 1),
+      },
       {
         id: 'primary',
         header: t('clients.people.primary'),

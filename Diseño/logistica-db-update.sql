@@ -8119,3 +8119,28 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L241_SALES_REP_FROM_FIELD');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-24 — Lote 243 (Lote G del plan de Solutions): correo con la orden de venta al solicitarla (docs/lote243-decisiones.md).
+   - dbo.NotificationRuleRecipient: CK_NotificationRuleRecipient_Kind admite Kind 'CONTEXT' (destinatario que sale del propio aviso:
+     Value = la clave que declara el evento, p. ej. SELLER «Vendedor de la orden» o CLIENT «Cliente de la orden»; RoleId y UserId NULL).
+     Mismo patrón que CK_NumberSequence_Kind: el DROP solo corre si la definición vigente NO menciona CONTEXT y el ADD solo si el CHECK
+     no existe. Las filas actuales (ROLE, USER, EMAIL, PHONE) siguen cumpliendo el CHECK nuevo. Claves futuras no necesitan SQL.
+   - dbo.ClientContact.ReceivesEmailNotifications («Recibe avisos por correo», plan §3.4, adelantada del Lote D): el contacto marcado,
+     activo y con correo recibe la copia al cliente del correo de la orden.
+   - Sin permisos nuevos, sin datos, sin reglas de aviso sembradas (la regla nace apagada) y sin DELETE.
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NotificationRuleRecipient_Kind' AND parent_object_id = OBJECT_ID('dbo.NotificationRuleRecipient')
+           AND definition NOT LIKE '%CONTEXT%')
+    ALTER TABLE dbo.NotificationRuleRecipient DROP CONSTRAINT CK_NotificationRuleRecipient_Kind;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NotificationRuleRecipient_Kind' AND parent_object_id = OBJECT_ID('dbo.NotificationRuleRecipient'))
+    ALTER TABLE dbo.NotificationRuleRecipient ADD CONSTRAINT CK_NotificationRuleRecipient_Kind CHECK (
+        (Kind = 'ROLE' AND RoleId IS NOT NULL AND UserId IS NULL AND Value IS NULL) OR
+        (Kind = 'USER' AND UserId IS NOT NULL AND RoleId IS NULL AND Value IS NULL) OR
+        (Kind IN ('EMAIL', 'PHONE', 'CONTEXT') AND Value IS NOT NULL AND RoleId IS NULL AND UserId IS NULL));
+GO
+IF COL_LENGTH(N'dbo.ClientContact', N'ReceivesEmailNotifications') IS NULL
+    ALTER TABLE dbo.ClientContact ADD ReceivesEmailNotifications BIT NOT NULL CONSTRAINT DF_ClientContact_ReceivesEmailNotifications DEFAULT 0;
+GO

@@ -16,6 +16,8 @@ export type NotificationRuleChannelDto = Schemas['NotificationRuleChannelDto']
 export type NotificationRecipientDto = Schemas['NotificationRecipientDto']
 export type NotificationLogDto = Schemas['NotificationLogDto']
 export type NotificationTestResultDto = Schemas['NotificationTestResultDto']
+export type NotificationPreviewRequest = Schemas['NotificationPreviewRequest']
+export type NotificationPreviewDto = Schemas['NotificationPreviewDto']
 
 export const notificationKeys = {
   all: ['notifications'] as const,
@@ -101,6 +103,11 @@ export function useRuleMutations() {
     }),
     testEvent: useMutation({ mutationFn: (message: string) => unwrap(api.POST('/api/v1/notifications/test-event', { body: { message } })), onSettled: invalidate }),
   }
+}
+
+/** Lote 243: vista previa de un aviso (POST /notifications/preview, notifications.manage). No envía nada ni escribe en el registro; con `reference` usa una orden real (además exige sales.view y el módulo de ventas). */
+export function usePreview() {
+  return useMutation({ mutationFn: (body: NotificationPreviewRequest) => unwrap(api.POST('/api/v1/notifications/preview', { body })) })
 }
 
 // ---- registro de envíos ----

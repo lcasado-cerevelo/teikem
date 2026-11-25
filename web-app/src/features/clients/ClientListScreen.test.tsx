@@ -448,6 +448,7 @@ describe('Clientes — ficha', () => {
       fullName: 'Luis Ríos',
       role: 'Gerente',
       isPrimary: false,
+      receivesEmailNotifications: false,   // Lote 243: sin marcar por omisión
       contactPoints: [
         { contactType: 'PHONE', value: '9395550000', countryCallingCode: '1', isPrimary: true },
         { contactType: 'EMAIL', value: 'luis@acme.com', isPrimary: true },

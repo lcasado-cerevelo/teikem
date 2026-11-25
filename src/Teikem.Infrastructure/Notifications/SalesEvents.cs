@@ -20,6 +20,15 @@ public static class SalesEventCodes
     public static readonly string[] All = { OrderRequested, OrderShipped, OrderCancelled, CreditOverrideNeeded, BackorderAvailable, ClientPendingApproval, OrderUrgent, QuickBooksPending };
 }
 
+/// <summary>Lote 243 — claves de los destinatarios del evento (Kind CONTEXT) de la orden de venta solicitada.</summary>
+public static class SalesContextRecipients
+{
+    /// <summary>«Vendedor de la orden»: quien la solicitó y el usuario del representante del cliente (SalesOrderSeller).</summary>
+    public const string Seller = "SELLER";
+    /// <summary>«Cliente de la orden»: el correo principal del cliente y sus contactos marcados «Recibe avisos por correo».</summary>
+    public const string Client = "CLIENT";
+}
+
 /// <summary>
 /// Lote 66 (P4 S3) — los eventos de aviso del módulo de órdenes de venta. Se publican desde SalesOrderService (en la misma transacción de la operación) y desde
 /// el trabajo SALES_BACKORDER_SCAN (backorder que ya se puede surtir). Todos son opcionales (el usuario puede silenciarlos en su bandeja) salvo el de crédito, que es
@@ -36,13 +45,39 @@ public sealed class SalesEventProvider : INotificationEventProvider
 
     public IEnumerable<NotificationEventDef> Events { get; } = new[]
     {
+        // Lote 243 (Lote G del plan de Solutions): el correo con la orden completa al solicitarla. Las variables nuevas y el bloque {orderDetail} los arma
+        // SalesOrderEmailContent AL ENVIAR (la orden no viaja en la cola); destinatarios del evento «Vendedor de la orden» (puesto por omisión) y «Cliente de
+        // la orden» (copia al cliente, apagada); plantilla por omisión del correo con la tabla. Los demás canales no cambian.
         new NotificationEventDef(
             SalesEventCodes.OrderRequested, ModuleKeys.SalesOrders, "Orden de venta solicitada", "Sales order requested",
-            Base(new NotificationVariable("lineCount", "Líneas", "Lines", "3"), new NotificationVariable("detail", "Detalle", "Detail", "1 línea con faltante en backorder.")),
-            IsOptional: true, LinkTemplate: "/sales-orders",
+            Base(
+                new NotificationVariable("lineCount", "Líneas", "Lines", "3"),
+                new NotificationVariable("detail", "Detalle", "Detail", "1 línea con faltante en backorder."),
+                new NotificationVariable("orderDate", "Fecha de la orden", "Order date", "11/24/2026"),
+                new NotificationVariable("seller", "Vendedor", "Sales rep", "Ana Pérez"),
+                new NotificationVariable("total", "Total", "Total", "$123.45"),
+                new NotificationVariable("deliveryMode", "Entrega o recogido", "Delivery or pickup", "Entrega"),
+                new NotificationVariable("paymentMethod", "Forma de pago", "Payment method", "Crédito 30 días"),
+                new NotificationVariable("orderLink", "Enlace a la orden", "Link to the order", "https://teikem.example/sales-orders?order=0f8fad5bd9cb469fa16570867728950e"),
+                new NotificationVariable("orderPublicId", "Identificador de la orden", "Order identifier", "0f8fad5bd9cb469fa16570867728950e"),
+                new NotificationVariable("orderDetail", "La orden completa (tabla)", "The full order (table)", "3 líneas · Total $123.45 · Entrega · Crédito 30 días", IsBlock: true)),
+            IsOptional: true, LinkTemplate: "/sales-orders?order={orderPublicId}",
             "Orden {orderNumber} solicitada", "Order {orderNumber} requested",
             "Se solicitó la orden {orderNumber} de {client} para {warehouse} ({lineCount} líneas). {detail}",
-            "Order {orderNumber} for {client} was requested for {warehouse} ({lineCount} lines). {detail}"),
+            "Order {orderNumber} for {client} was requested for {warehouse} ({lineCount} lines). {detail}",
+            ContextRecipients: new[]
+            {
+                new NotificationContextRecipientDef(SalesContextRecipients.Seller, "Vendedor de la orden", "Order's sales rep", IsDefault: true),
+                new NotificationContextRecipientDef(SalesContextRecipients.Client, "Cliente de la orden (correo principal y contactos marcados)",
+                    "Order's customer (main email and flagged contacts)", IsDefault: false, Audience: NotificationAudience.Customer),
+            },
+            ChannelDefaults: new[]
+            {
+                new NotificationChannelDefault(Teikem.Domain.Notifications.NotificationChannels.Email,
+                    "Orden de venta {orderNumber} — {client}", "Sales order {orderNumber} — {client}",
+                    "Se solicitó la orden {orderNumber} de {client} para {warehouse}.\n\n{orderDetail}",
+                    "Sales order {orderNumber} for {client} was requested for {warehouse}.\n\n{orderDetail}"),
+            }),
         new NotificationEventDef(
             SalesEventCodes.OrderShipped, ModuleKeys.SalesOrders, "Orden de venta despachada", "Sales order shipped",
             Base(new NotificationVariable("shipped", "Unidades despachadas", "Units shipped", "24")),

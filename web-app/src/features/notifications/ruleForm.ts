@@ -20,7 +20,8 @@ export interface ChannelForm {
   bodyEn: string
 }
 
-export type RecipientKind = 'ROLE' | 'USER' | 'EMAIL' | 'PHONE'
+/** CONTEXT (Lote 243) = «Del evento»: la clave (value) la declara el evento, p. ej. SELLER o CLIENT. */
+export type RecipientKind = 'ROLE' | 'USER' | 'EMAIL' | 'PHONE' | 'CONTEXT'
 
 export interface RecipientForm {
   kind: RecipientKind
@@ -38,16 +39,53 @@ export interface RuleForm {
   recipients: RecipientForm[]
 }
 
-/** Los cuatro canales con los textos por omisión del evento (o vacíos si todavía no hay evento), todos apagados. */
+/** Los cuatro canales con los textos por omisión del evento (o vacíos si todavía no hay evento), todos apagados. Un canal con plantilla propia (`channelDefaults`, p. ej. el correo con la orden completa) la usa. */
 export function defaultChannels(event: NotificationEventDto | undefined): ChannelForm[] {
-  return CHANNELS.map((channel) => ({
-    channel,
-    enabled: false,
-    subjectEs: event?.defaultSubject ?? '',
-    subjectEn: event?.defaultSubjectEn ?? '',
-    bodyEs: event?.defaultBody ?? '',
-    bodyEn: event?.defaultBodyEn ?? '',
-  }))
+  return CHANNELS.map((channel) => {
+    const own = (event?.channelDefaults ?? []).find((d) => d.channel === channel)
+    return {
+      channel,
+      enabled: false,
+      subjectEs: own?.subject ?? event?.defaultSubject ?? '',
+      subjectEn: own?.subjectEn ?? event?.defaultSubjectEn ?? '',
+      bodyEs: own?.body ?? event?.defaultBody ?? '',
+      bodyEn: own?.bodyEn ?? event?.defaultBodyEn ?? '',
+    }
+  })
+}
+
+/** Los destinatarios «Del evento» que el evento trae marcados por omisión (se prellenan al escoger el evento en una regla nueva). */
+export function defaultContextRecipients(event: NotificationEventDto | undefined, lang: 'es' | 'en' = 'es'): RecipientForm[] {
+  return (event?.contextRecipients ?? [])
+    .filter((c) => c.isDefault && c.key)
+    .map((c) => ({ kind: 'CONTEXT' as const, value: c.key!, label: (lang === 'en' ? c.labelEn : c.label) ?? c.key! }))
+}
+
+/**
+ * Destinatarios al cambiar de evento: se quitan los «Del evento» que el evento nuevo no declara (el servidor los rechaza con 400
+ * «Este evento no tiene el destinatario '…'.») y se conservan los demás; si no queda ninguno se prellenan los del evento marcados por omisión.
+ */
+export function recipientsForEvent(current: readonly RecipientForm[], event: NotificationEventDto | undefined, lang: 'es' | 'en' = 'es'): RecipientForm[] {
+  const keys = new Set((event?.contextRecipients ?? []).map((c) => c.key).filter((k): k is string => !!k))
+  const kept = current.filter((r) => r.kind !== 'CONTEXT' || keys.has(r.value ?? ''))
+  return kept.length === 0 ? defaultContextRecipients(event, lang) : kept
+}
+
+/** Nombres de las variables bloque del evento (solo van en el texto del correo, nunca en un asunto). */
+export function blockVariables(event: NotificationEventDto | undefined): string[] {
+  return (event?.variables ?? []).filter((v) => v.isBlock && v.name).map((v) => v.name!)
+}
+
+/** La primera variable bloque que algún asunto usa, o undefined. Mismo criterio del servidor (NotificationRules.VariablesOf). */
+export function blockInSubject(f: Pick<RuleForm, 'channels'>, event: NotificationEventDto | undefined): string | undefined {
+  const blocks = blockVariables(event)
+  if (blocks.length === 0) return undefined
+  for (const c of f.channels) {
+    for (const text of [c.subjectEs, c.subjectEn]) {
+      for (const m of text.matchAll(/\{(\w+)\}/g)) if (blocks.includes(m[1])) return m[1]
+    }
+  }
+  return undefined
 }
 
 export function emptyForm(): RuleForm {
@@ -76,14 +114,17 @@ export function formOfRule(rule: NotificationRuleDto): RuleForm {
 export interface FormErrors {
   name?: string
   eventCode?: string
+  channels?: string
 }
 
-export function validateForm(f: RuleForm, creating: boolean, t: Translate): FormErrors {
+export function validateForm(f: RuleForm, creating: boolean, t: Translate, event?: NotificationEventDto): FormErrors {
   const errors: FormErrors = {}
   const name = f.name.trim()
   if (!name) errors.name = t('notifications.rules.errors.nameRequired')
   else if (name.length > MAX_NAME) errors.name = t('notifications.rules.errors.nameMax')
   if (creating && !f.eventCode) errors.eventCode = t('notifications.rules.errors.eventRequired')
+  const block = blockInSubject(f, event)
+  if (block) errors.channels = t('notifications.rules.errors.blockInSubject', { name: `{${block}}` })
   return errors
 }
 
@@ -120,6 +161,7 @@ export function isValidPhone(v: string): boolean {
 
 /** Clave que identifica a un destinatario para no repetirlo. */
 export function recipientKey(r: Pick<RecipientForm, 'kind' | 'roleId' | 'userId' | 'value'>): string {
+  if (r.kind === 'CONTEXT') return `C${(r.value ?? '').trim()}`
   return r.kind === 'ROLE' ? `R${r.roleId}` : r.kind === 'USER' ? `U${r.userId}` : `${r.kind[0]}${(r.value ?? '').trim().toLowerCase()}`
 }
 

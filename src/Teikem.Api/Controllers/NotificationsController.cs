@@ -39,9 +39,17 @@ public sealed class NotificationsController(NotificationRuleService rules) : Con
     [HttpPatch("rules/{publicId:guid}"), RequirePermission(PermissionCatalog.NotificationsManage)]
     public Task<NotificationRuleDto> Update(Guid publicId, [FromBody] NotificationRuleRequest req, CancellationToken ct) => rules.UpdateRuleAsync(publicId, req, ct);
 
-    /// <summary>«Enviar prueba»: manda el texto de un canal de la regla, con valores de ejemplo, a quien la pide.</summary>
+    /// <summary>«Enviar prueba»: manda el texto de un canal de la regla, con valores de ejemplo (o, con reference, con los datos de un documento real), a quien la pide.</summary>
     [HttpPost("rules/{publicId:guid}/test"), RequirePermission(PermissionCatalog.NotificationsManage)]
     public Task<NotificationTestResultDto> Test(Guid publicId, [FromBody] NotificationTestRequest req, CancellationToken ct) => rules.TestAsync(publicId, req, ct);
+
+    /// <summary>
+    /// Lote 243 — vista previa de un aviso (asunto, texto, HTML del correo y adjuntos) sin enviarlo ni escribir en el registro; sirve
+    /// también con el texto de una regla sin guardar. Con reference (número o PublicId de un documento real) exige además el permiso y
+    /// el módulo del documento (p. ej. sales.view y SALES_ORDERS): 400 si el evento no lo admite, 403 sin ellos, 404 si no existe.
+    /// </summary>
+    [HttpPost("preview"), RequirePermission(PermissionCatalog.NotificationsManage)]
+    public Task<NotificationPreviewDto> Preview([FromBody] NotificationPreviewRequest req, CancellationToken ct) => rules.PreviewAsync(req, ct);
 
     /// <summary>Dispara el evento de prueba (TEST) por la cola real: lo reciben las reglas activas de ese evento.</summary>
     [HttpPost("test-event"), RequirePermission(PermissionCatalog.NotificationsManage)]

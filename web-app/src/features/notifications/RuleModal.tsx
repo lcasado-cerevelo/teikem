@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useLang, useT } from '../../kernel/i18n'
 import { groupEventsByCategory } from './eventCategories'
+import { EmailPreviewModal } from './EmailPreviewModal'
 import { Modal, Spinner, toast } from '../../kernel/ui'
 import { useRoles, useUsers } from '../system/api'
 import {
@@ -14,6 +15,7 @@ import {
   type NotificationRuleDto,
 } from './notificationsApi'
 import {
+  blockVariables,
   buildRequest,
   CHANNELS,
   defaultChannels,
@@ -26,8 +28,10 @@ import {
   MAX_SUBJECT,
   NEEDS_SUBJECT,
   recipientKey,
+  recipientsForEvent,
   validateForm,
   type ChannelForm,
+  type FormErrors,
   type RecipientForm,
   type RecipientKind,
   type RuleForm,
@@ -46,12 +50,14 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
   const users = useUsers()
   const { create, update, test } = useRuleMutations()
   const [form, setForm] = useState<RuleForm>(() => (rule ? formOfRule(rule) : emptyForm()))
-  const [errors, setErrors] = useState<{ name?: string; eventCode?: string }>({})
+  const [errors, setErrors] = useState<FormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
   const [kind, setKind] = useState<RecipientKind>('ROLE')
   const [loose, setLoose] = useState('')
   const [looseError, setLooseError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
+  const [subjectFocus, setSubjectFocus] = useState(false)
   const focused = useRef<{ el: HTMLInputElement | HTMLTextAreaElement; channel: string; field: TextField } | null>(null)
 
   const event = events.data?.find((e) => e.code === form.eventCode)
@@ -62,6 +68,12 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
   )
   const taken = useMemo(() => new Set(form.recipients.map(recipientKey)), [form.recipients])
   const usedUsers = useMemo(() => new Set(form.recipients.filter((r) => r.kind === 'USER').map((r) => r.userId!)), [form.recipients])
+  const contextOptions = event?.contextRecipients ?? []
+  const blocks = new Set(blockVariables(event))
+  const contextLabel = (r: RecipientForm) => {
+    const c = contextOptions.find((x) => x.key === r.value)
+    return (c ? (lang === 'en' ? c.labelEn : c.label) : null) ?? r.label
+  }
   const eventName = (code: string) => {
     const e = events.data?.find((x) => x.code === code)
     return (lang === 'en' ? e?.nameEn : e?.name) ?? code
@@ -85,12 +97,17 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
 
   const pickEvent = (code: string) => {
     const e = events.data?.find((x) => x.code === code)
-    setForm((f) => ({ ...f, eventCode: code, channels: defaultChannels(e) }))
+    // los «Del evento» que el evento nuevo no declara se quitan (el servidor los rechaza con 400); sin destinatarios se prellenan
+    // los que el evento trae marcados (p. ej. el vendedor de la orden)
+    setForm((f) => ({ ...f, eventCode: code, channels: defaultChannels(e), recipients: recipientsForEvent(f.recipients, e, lang) }))
+    if (kind === 'CONTEXT' && (e?.contextRecipients ?? []).length === 0) setKind('ROLE')
   }
 
   const insert = (variable: string) => {
     const cur = focused.current
     if (!cur) return
+    // una variable bloque (la orden completa) solo cabe en el texto, nunca en el asunto
+    if (blocks.has(variable) && cur.field.startsWith('subject')) return
     const field = cur.field
     const channel = form.channels.find((c) => c.channel === cur.channel)
     if (!channel) return
@@ -103,10 +120,10 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
   }
 
   const save = async () => {
-    const found = validateForm(form, creating, t)
+    const found = validateForm(form, creating, t, event)
     setErrors(found)
     setServerError(null)
-    if (found.name || found.eventCode) return
+    if (found.name || found.eventCode || found.channels) return
     setSaving(true)
     try {
       const body = buildRequest(form, rule)
@@ -140,6 +157,7 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
       maxLength: max,
       onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         focused.current = { el: e.currentTarget, channel: c.channel, field: name }
+        setSubjectFocus(name.startsWith('subject'))
       },
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setChannel(c.channel, { [name]: e.target.value }),
     }
@@ -159,7 +177,7 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
       size="lg"
       title={creating ? t('notifications.rules.new') : t('notifications.rules.edit')}
       onClose={onClose}
-      dismissible={!saving}
+      dismissible={!saving && !previewing}
       footer={
         <>
           <button type="button" className="btn" disabled={saving} onClick={onClose}>
@@ -230,10 +248,10 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
                 <ul className="nr-chips">
                   {form.recipients.map((r) => (
                     <li key={recipientKey(r)} className="nr-chip">
-                      <span className="nr-kind">{t(`notifications.rules.form.kind${r.kind}`)}</span> {r.label}
+                      <span className="nr-kind">{t(`notifications.rules.form.kind${r.kind}`)}</span> {r.kind === 'CONTEXT' ? contextLabel(r) : r.label}
                       <button
                         type="button"
-                        aria-label={t('notifications.rules.form.remove', { name: r.label })}
+                        aria-label={t('notifications.rules.form.remove', { name: r.kind === 'CONTEXT' ? contextLabel(r) : r.label })}
                         onClick={() => setForm((f) => ({ ...f, recipients: f.recipients.filter((x) => recipientKey(x) !== recipientKey(r)) }))}
                       >
                         ✕
@@ -254,7 +272,7 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
                       setLooseError(null)
                     }}
                   >
-                    {(['ROLE', 'USER', 'EMAIL', 'PHONE'] as const).map((k) => (
+                    {(contextOptions.length > 0 ? (['ROLE', 'USER', 'EMAIL', 'PHONE', 'CONTEXT'] as const) : (['ROLE', 'USER', 'EMAIL', 'PHONE'] as const)).map((k) => (
                       <option key={k} value={k}>
                         {t(`notifications.rules.form.kind${k}`)}
                       </option>
@@ -281,6 +299,29 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
                           </option>
                         ))}
                     </select>
+                  </div>
+                )}
+                {kind === 'CONTEXT' && (
+                  <div className="f">
+                    <label htmlFor="nr-context">{t('notifications.rules.form.kindCONTEXT')}</label>
+                    <select
+                      id="nr-context"
+                      value=""
+                      onChange={(e) => {
+                        const c = contextOptions.find((x) => x.key === e.target.value)
+                        if (c?.key) addRecipient({ kind: 'CONTEXT', value: c.key, label: (lang === 'en' ? c.labelEn : c.label) ?? c.key })
+                      }}
+                    >
+                      <option value="">{t('notifications.rules.form.pickContext')}</option>
+                      {contextOptions
+                        .filter((c) => c.key && !taken.has(`C${c.key}`))
+                        .map((c) => (
+                          <option key={c.key} value={c.key!}>
+                            {lang === 'en' ? c.labelEn : c.label}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="help">{t('notifications.rules.form.contextHelp')}</p>
                   </div>
                 )}
                 {kind === 'USER' && (
@@ -336,12 +377,16 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
                     <button
                       key={v.name}
                       type="button"
-                      className="nr-var"
+                      className={blocks.has(v.name!) ? 'nr-var nr-var-block' : 'nr-var'}
+                      disabled={blocks.has(v.name!) && subjectFocus}
                       title={`${lang === 'en' ? v.labelEn : v.label} — ${v.sample}`}
                       aria-label={t('notifications.rules.form.insert', { variable: `{${v.name}}` })}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => insert(v.name!)}
-                    >{`{${v.name}}`}</button>
+                    >
+                      {`{${v.name}}`}
+                      {blocks.has(v.name!) && <small className="nr-var-mark"> {t('notifications.rules.form.blockMark')}</small>}
+                    </button>
                   ))}
                 </p>
               )}
@@ -365,6 +410,11 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
                         <b>{name}</b>
                       </label>
                       {!ok && <span className="help">{t('notifications.rules.form.notConfigured')}</span>}
+                      {code === 'EMAIL' && (
+                        <button type="button" className="btn sm nr-prev-btn" disabled={!event} title={t('notifications.rules.form.previewHelp')} onClick={() => setPreviewing(true)}>
+                          {t('notifications.rules.form.preview')}
+                        </button>
+                      )}
                       {ok && !creating && (
                         <button type="button" className="btn sm" disabled={test.isPending} onClick={() => void sendTest(code)}>
                           {t('notifications.rules.form.test')}
@@ -390,6 +440,11 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
               })}
               {!creating && <p className="help">{t('notifications.rules.form.testNeedsSave')}</p>}
             </fieldset>
+            {errors.channels && (
+              <p className="ferr" role="alert">
+                {errors.channels}
+              </p>
+            )}
             {serverError && (
               <p className="ferr" role="alert">
                 {serverError}
@@ -398,6 +453,17 @@ export function RuleModal({ rule, onClose }: { rule: NotificationRuleDto | null;
           </>
         )}
       </div>
+      {previewing && event && (
+        <EmailPreviewModal
+          event={event}
+          template={(() => {
+            const c = form.channels.find((x) => x.channel === 'EMAIL')
+            return { subjectEs: c?.subjectEs ?? '', subjectEn: c?.subjectEn ?? '', bodyEs: c?.bodyEs ?? '', bodyEn: c?.bodyEn ?? '' }
+          })()}
+          initialLang={lang}
+          onClose={() => setPreviewing(false)}
+        />
+      )}
     </Modal>
   )
 }

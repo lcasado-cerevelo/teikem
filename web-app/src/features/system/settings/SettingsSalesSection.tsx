@@ -1,6 +1,8 @@
 // Ajustes → Operación → Ventas (Lote 222, plan §1.4): el cargo de envío de la compañía, el mínimo para envío gratis y si el envío lleva IVU. Cada cliente puede tener su propia
 // regla en su ficha (Perfil → Ventas). El mínimo se compara con el total de la orden después del IVU; el recogido no paga envío. Cambiar: admin.tenant; las órdenes ya solicitadas no cambian.
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Can } from '../../../kernel/access'
 import { applyProblemDetails } from '../../../kernel/api/problem'
 import { useT } from '../../../kernel/i18n'
 import { IconCart } from '../../../kernel/ui/screenIcons'
@@ -66,6 +68,13 @@ export function SettingsSalesSection({ canEdit }: { canEdit: boolean }) {
             </label>
             <p className="help">{t('system.settings.sales.taxableHelp')}</p>
             <p className="help">{t('system.settings.sales.clientHelp')}</p>
+            {/* Lote 243: el correo con la orden se enciende en la regla de aviso del evento, no aquí (no hay interruptor nuevo) */}
+            <Can perm="notifications.manage">
+              <p className="help" data-testid="sales-email-help">
+                {t('system.settings.sales.emailHelp')}{' '}
+                <Link to="/system/notifications">{t('system.settings.sales.emailLink')}</Link>
+              </p>
+            </Can>
           </fieldset>
           {error && <p className="ferr" role="alert">{error}</p>}
           {canEdit && (

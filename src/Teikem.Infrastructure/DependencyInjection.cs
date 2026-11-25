@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Teikem.Domain.Identity;
 using Teikem.Infrastructure.Abstractions;
@@ -145,7 +146,13 @@ public static class DependencyInjection
         services.AddScoped<IStatusTransitionEffect, PortalUserStatusEffect>();
         services.AddScoped<IInvitationSender, EmailInvitationSender>();   // 2026-10-22: la invitación al portal sale por correo (Brevo); LoggingInvitationSender queda para pruebas
         // 2026-09-30: correo transaccional (código de verificación del primer ingreso) por Brevo.
-        services.AddHttpClient<ITransactionalEmailSender, BrevoEmailSender>(c => c.Timeout = TimeSpan.FromSeconds(15));
+        services.AddHttpClient<BrevoEmailSender>(c => c.Timeout = TimeSpan.FromSeconds(15));
+        // Lote 243: buzón local (Mailpit) por SMTP SOLO en Development con Email:Smtp:Host; gana sobre Brevo, así nunca sale correo real.
+        services.AddTransient<SmtpEmailSender>();
+        services.AddTransient<ITransactionalEmailSender>(sp =>
+            EmailSenderSelection.UseLocalSmtp(sp.GetService<IHostEnvironment>()?.EnvironmentName, config["Email:Smtp:Host"])
+                ? sp.GetRequiredService<SmtpEmailSender>()
+                : sp.GetRequiredService<BrevoEmailSender>());
         // La invitación al portal reutiliza el token DataProtector de Identity: su vida es Portal:InviteHours (48 h por defecto).
         // Nota: afecta a todos los tokens DataProtector de Identity (incluido el futuro reset de contraseña).
         services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(Math.Max(1, config.GetValue("Portal:InviteHours", 48))));
@@ -377,6 +384,7 @@ public static class DependencyInjection
         services.Configure<NotificationsOptions>(config.GetSection(NotificationsOptions.Section));
         services.AddSingleton<INotificationEventProvider, TestEventProvider>();
         services.AddSingleton<INotificationEventProvider, SalesEventProvider>();   // Lote 66
+        services.AddScoped<INotificationContentProvider, SalesOrderEmailContent>();   // Lote 243: la orden completa en el correo de «Orden de venta solicitada»
         services.AddSingleton<INotificationEventProvider, IntegrationEventProvider>();   // Lote 132 (P11)
         services.AddSingleton<INotificationEventProvider, InventoryEventProvider>();   // Lote 141
         services.AddSingleton<INotificationEventProvider, FleetEventProvider>();   // Lote 168

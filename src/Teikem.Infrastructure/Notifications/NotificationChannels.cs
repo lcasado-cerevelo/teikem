@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Notifications;
 using Teikem.Infrastructure.Abstractions;
@@ -6,7 +7,10 @@ using Teikem.Infrastructure.Persistence;
 
 namespace Teikem.Infrastructure.Notifications;
 
-/// <summary>Un aviso ya armado (texto resuelto) para UN destinatario por UN canal.</summary>
+/// <summary>
+/// Un aviso ya armado (texto resuelto) para UN destinatario por UN canal. Attachments (Lote 243) = adjuntos del correo (solo EMAIL y
+/// solo si el cuerpo usó una variable bloque); null = sin adjuntos.
+/// </summary>
 public sealed record NotificationDelivery(
     int TenantId,
     string CompanyName,
@@ -20,7 +24,8 @@ public sealed record NotificationDelivery(
     string BodyText,
     string BodyHtml,
     string? LinkUrl,
-    bool EventIsOptional);
+    bool EventIsOptional,
+    IReadOnlyList<EmailAttachment>? Attachments = null);
 
 /// <summary>Resultado de un envío: SENT, SKIPPED (no corresponde o no está configurado; se explica) o FAILED (se reintenta).</summary>
 public sealed record SendOutcome(string Status, string? Message)
@@ -38,14 +43,22 @@ public interface INotificationChannelSender
 {
     string Channel { get; }
     bool IsConfigured { get; }
+
+    /// <summary>Lote 243: true si el canal entrega a un buzón local de desarrollo (Mailpit) y nunca sale a la calle.</summary>
+    bool IsLocal => false;
+
     Task<SendOutcome> SendAsync(NotificationDelivery delivery, CancellationToken ct);
 }
 
-/// <summary>Correo: usa el envío transaccional que ya existe (Brevo). Sin proveedor configurado el canal queda «no configurado».</summary>
+/// <summary>
+/// Correo: usa el envío transaccional que ya existe (Brevo, o el buzón local en desarrollo). Sin proveedor configurado el canal queda
+/// «no configurado». Lote 243: manda los adjuntos del aviso.
+/// </summary>
 public sealed class EmailChannelSender(ITransactionalEmailSender email) : INotificationChannelSender
 {
     public string Channel => NotificationChannels.Email;
     public bool IsConfigured => email.IsConfigured;
+    public bool IsLocal => email.IsLocalSink;
 
     public async Task<SendOutcome> SendAsync(NotificationDelivery d, CancellationToken ct)
     {
@@ -53,7 +66,7 @@ public sealed class EmailChannelSender(ITransactionalEmailSender email) : INotif
         if (string.IsNullOrWhiteSpace(d.Email)) return SendOutcome.Skipped("El destinatario no tiene correo.");
         try
         {
-            await email.SendAsync(d.Email.Trim(), null, d.Subject, d.BodyHtml, ct, d.CompanyName);
+            await email.SendAsync(new EmailMessage(d.Email.Trim(), null, d.Subject, d.BodyHtml, d.CompanyName, d.Attachments is { Count: > 0 } ? d.Attachments : null), ct);
             return SendOutcome.Sent();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
@@ -117,4 +130,26 @@ public sealed class PushChannelSender : INotificationChannelSender
 public static class NotificationHtml
 {
     public static string Paragraphs(string text) => "<p>" + WebUtility.HtmlEncode(text).Replace("\r\n", "\n").Replace("\n", "<br>") + "</p>";
+
+    /// <summary>
+    /// Lote 243 — el cuerpo HTML de un correo con variables bloque. La plantilla se parte en los {bloques} que vinieron: cada tramo
+    /// de texto pasa por <c>Paragraphs(Render(tramo))</c> (que codifica el HTML; los saltos de línea de la orilla, junto al bloque, se
+    /// quitan y un tramo vacío no deja párrafo) y cada bloque se inserta como su Html (el proveedor ya codificó sus valores).
+    /// Sin bloques (o si la plantilla no usa ninguno) devuelve EXACTAMENTE <c>Paragraphs(Render(template))</c>, lo de siempre.
+    /// </summary>
+    public static string Compose(string? template, IReadOnlyDictionary<string, string> values, IReadOnlyDictionary<string, NotificationBlock>? blocks)
+    {
+        var names = blocks is null || blocks.Count == 0 ? null : blocks.Keys.ToHashSet(StringComparer.Ordinal);
+        if (string.IsNullOrEmpty(template) || names is null || !NotificationRules.UsesAny(template, names))
+            return Paragraphs(NotificationRules.Render(template, values));
+        var sb = new StringBuilder();
+        foreach (var (text, block) in NotificationRules.SplitBlocks(template, names))
+        {
+            if (block is not null) { sb.Append(blocks![block].Html); continue; }
+            var t = text!.Replace("\r\n", "\n").Trim('\n');
+            if (string.IsNullOrWhiteSpace(t)) continue;
+            sb.Append(Paragraphs(NotificationRules.Render(t, values)));
+        }
+        return sb.ToString();
+    }
 }

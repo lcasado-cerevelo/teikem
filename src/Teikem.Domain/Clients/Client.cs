@@ -114,6 +114,12 @@ public class ClientContact : ISoftDeletable
     public string? Role { get; set; }
     public bool IsPrimary { get; set; }
     public bool IsActive { get; set; } = true;
+    /// <summary>
+    /// Lote 243 (adelantada del Lote D, plan §3.4): «Recibe avisos por correo». El contacto recibe la copia al cliente de los
+    /// avisos por correo (p. ej. la orden de venta al solicitarla). No exige que tenga correo (la web lo señala); un contacto
+    /// inactivo sale de los avisos aunque siga marcado.
+    /// </summary>
+    public bool ReceivesEmailNotifications { get; set; }
 
     public Client? Client { get; set; }
 }

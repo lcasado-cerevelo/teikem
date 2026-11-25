@@ -131,3 +131,6 @@
 .cl-docs { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .cl-docs li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .cl-doc-new { border-top: 1px solid var(--line, #8884); padding-top: 12px; }
+
+/* Lote 243: aviso de una persona marcada para avisos por correo pero sin correo (texto normal sobre fondo de advertencia: contraste de la paleta) */
+.cp-notice-warn{border-left:3px solid var(--warn);background:var(--warnbg);color:var(--text);font-weight:600;padding:6px 10px;border-radius:6px;margin:8px 0 0}

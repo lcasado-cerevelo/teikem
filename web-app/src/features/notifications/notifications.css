@@ -130,3 +130,23 @@
 .kemi-mic.on{background:var(--flow);border-color:var(--flow);color:var(--on-flow);animation:kemi-pulse 1.2s ease-in-out infinite}
 @keyframes kemi-pulse{0%,100%{box-shadow:0 0 0 0 var(--flow-line)}50%{box-shadow:0 0 0 7px transparent}}
 @media (prefers-reduced-motion:reduce){.kemi-mic.on{animation:none}}
+
+/* Lote 243: variables bloque y vista previa del correo. Clases con prefijo propio (nada de empty/card/row: heredan estilos globales) */
+.nr-var-block{display:inline-flex;align-items:baseline;flex-wrap:wrap;gap:0 4px;text-align:left;max-width:100%}
+.nr-var-block:disabled{opacity:.5;cursor:not-allowed}
+.nr-var-mark{font-family:inherit;font-size:11px;color:var(--muted)}
+.nr-var-block:hover .nr-var-mark{color:inherit}
+.nr-prev{display:flex;flex-direction:column;gap:12px;min-width:0}
+.nr-prev-fields{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end}
+.nr-prev-fields .f{min-width:140px}
+.nr-prev-fields .nr-prev-ref{flex:1 1 280px}
+.nr-prev-result{display:flex;flex-direction:column;gap:10px;min-width:0}
+.nr-prev-source{margin:0}
+.nr-prev-meta{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:0;font-size:13px}
+.nr-prev-meta dt{color:var(--muted);font-weight:600}
+.nr-prev-meta dd{margin:0;overflow-wrap:anywhere}
+.nr-prev-files{list-style:none;margin:0;padding:0}
+.nr-prev-size{color:var(--muted)}
+/* el correo se ve tal como llega: fondo claro propio aunque la ventana esté en tema oscuro */
+.nr-prev-frame{display:block;width:100%;max-height:70vh;border:1px solid var(--line);border-radius:10px;background:#fff;color-scheme:light}
+@media (max-width:600px){.nr-prev-meta{grid-template-columns:1fr}}

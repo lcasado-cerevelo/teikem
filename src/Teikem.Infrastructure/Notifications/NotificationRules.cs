@@ -39,9 +39,96 @@ public static partial class NotificationRules
     public static string SubjectTooLongMessage(string channel) => $"El asunto del canal {channel} no puede pasar de 200 caracteres.";
     public static string BodyTooLongMessage(string channel) => $"El texto del canal {channel} no puede pasar de 1000 caracteres.";
     public static string UnknownVariableMessage(string name) => $"La plantilla usa una variable que el evento no tiene: {{{name}}}.";
-    public static string UnknownRecipientKindMessage(string? kind) => $"Tipo de destinatario desconocido: '{kind}'. Use ROLE, USER, EMAIL o PHONE.";
+    public static string UnknownRecipientKindMessage(string? kind) => $"Tipo de destinatario desconocido: '{kind}'. Use ROLE, USER, EMAIL, PHONE o CONTEXT.";
     public static string InvalidEmailMessage(string? v) => $"Correo no válido: '{v}'.";
     public static string InvalidPhoneMessage(string? v) => $"Teléfono no válido: '{v}'.";
+
+    // ---- Lote 243: contenido armado al enviar (bloques, destinatarios del evento, vista previa) ----
+
+    /// <summary>400 (campo reference): el evento no tiene proveedor de contenido, así que no se puede armar con un documento real.</summary>
+    public const string ReferenceNotSupportedMessage = "Este evento no admite vista previa con un documento real.";
+
+    /// <summary>400 (campo channels): una variable bloque ({orderDetail}) en el asunto.</summary>
+    public static string BlockInSubjectMessage(string name) => $"La variable {{{name}}} es un bloque y solo puede ir en el texto, no en el asunto.";
+
+    /// <summary>400 (campo recipients): un destinatario CONTEXT con una clave que el evento no declara.</summary>
+    public static string UnknownContextRecipientMessage(string? value) => $"Este evento no tiene el destinatario '{value}'.";
+
+    /// <summary>400 (campo audience) de la vista previa: STAFF o CUSTOMER.</summary>
+    public static string UnknownAudienceMessage(string? value) => $"Destinatario de la vista previa desconocido: '{value}'. Use STAFF o CUSTOMER.";
+
+    /// <summary>400 (campo lang) de la vista previa: es o en.</summary>
+    public static string UnknownLangMessage(string? value) => $"Idioma no válido: '{value}'. Use es o en.";
+
+    /// <summary>
+    /// Registro de avisos: motivo de la fila SKIPPED cuando un destinatario del evento no dejó a nadie alcanzable en el canal y el
+    /// proveedor no dio su propio motivo. EMAIL «…» no tiene correo; SMS no tiene teléfono; APP y PUSH no tiene usuario en Teikem.
+    /// </summary>
+    public static string ContextUnreachableMessage(string label, string channel) => channel switch
+    {
+        NotificationChannels.Email => $"«{label}» no tiene correo.",
+        NotificationChannels.Sms => $"«{label}» no tiene teléfono.",
+        _ => $"«{label}» no tiene usuario en Teikem.",
+    };
+
+    /// <summary>
+    /// Etiqueta corta de un destinatario del evento para el Registro de avisos: lo que va antes del primer « (» (p. ej. «Cliente de
+    /// la orden (correo principal y contactos marcados)» → «Cliente de la orden»).
+    /// </summary>
+    public static string ShortContextLabel(string label)
+    {
+        var l = (label ?? string.Empty).Trim();
+        var i = l.IndexOf(" (", StringComparison.Ordinal);
+        return i > 0 ? l[..i].Trim() : l;
+    }
+
+    /// <summary>Lo que se anota como destinatario en el Registro de avisos para un destinatario del evento que no resolvió: «(etiqueta)».</summary>
+    public static string ContextLogRecipient(string label) => "(" + ShortContextLabel(label) + ")";
+
+    /// <summary>
+    /// Igual que <see cref="Render"/> pero cada variable bloque sale como su versión de una línea (<see cref="NotificationBlock.Text"/>):
+    /// el texto de la campanita, del SMS y el texto plano del correo. Un bloque que no vino sale vacío.
+    /// </summary>
+    public static string RenderText(string? template, IReadOnlyDictionary<string, string> values, IReadOnlyDictionary<string, NotificationBlock>? blocks)
+        => string.IsNullOrEmpty(template)
+            ? string.Empty
+            : VariableRegex().Replace(template, m =>
+            {
+                var name = m.Groups[1].Value;
+                if (blocks is not null && blocks.TryGetValue(name, out var block)) return block.Text ?? string.Empty;
+                return values.TryGetValue(name, out var x) ? x : string.Empty;
+            });
+
+    /// <summary>True si la plantilla usa alguna de las variables bloque indicadas.</summary>
+    public static bool UsesAny(string? template, IEnumerable<string> names)
+    {
+        var set = names as IReadOnlySet<string> ?? names.ToHashSet(StringComparer.Ordinal);
+        return VariablesOf(template).Any(set.Contains);
+    }
+
+    /// <summary>
+    /// Une las variables del aviso (payload) con las que agrega el proveedor de contenido; gana el proveedor.
+    /// </summary>
+    public static Dictionary<string, string> Merge(IReadOnlyDictionary<string, string> payload, IReadOnlyDictionary<string, string>? extra)
+    {
+        var d = new Dictionary<string, string>(payload, StringComparer.Ordinal);
+        if (extra is not null) foreach (var (k, v) in extra) d[k] = v ?? string.Empty;
+        return d;
+    }
+
+    /// <summary>Partes de una plantilla separadas en los {bloques}: (texto, null) o (null, nombre del bloque), en orden.</summary>
+    internal static IEnumerable<(string? Text, string? Block)> SplitBlocks(string template, IReadOnlySet<string> blockNames)
+    {
+        var last = 0;
+        foreach (Match m in VariableRegex().Matches(template))
+        {
+            if (!blockNames.Contains(m.Groups[1].Value)) continue;
+            if (m.Index > last) yield return (template[last..m.Index], null);
+            yield return (null, m.Groups[1].Value);
+            last = m.Index + m.Length;
+        }
+        if (last < template.Length) yield return (template[last..], null);
+    }
 
     [GeneratedRegex(@"\{([A-Za-z][A-Za-z0-9_]*)\}")]
     private static partial Regex VariableRegex();

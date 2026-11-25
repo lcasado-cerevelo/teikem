@@ -25,7 +25,9 @@ public static class NotificationRecipientKinds
     public const string User = "USER";
     public const string Email = "EMAIL";
     public const string Phone = "PHONE";
-    public static readonly string[] All = { Role, User, Email, Phone };
+    /// <summary>Lote 243: destinatario que sale del propio aviso (Value = clave que declara el evento, p. ej. SELLER «Vendedor de la orden»).</summary>
+    public const string Context = "CONTEXT";
+    public static readonly string[] All = { Role, User, Email, Phone, Context };
 }
 
 public static class NotificationOutboxStatuses

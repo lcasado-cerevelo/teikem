@@ -143,6 +143,18 @@ Cómo se usa:
 | Dos principales activos (carrera) | índice único | `Ya existe un contacto principal activo para este cliente.` | 409 |
 | Cliente inexistente (o de otra compañía) | — | `Cliente no encontrado.` | 404 |
 
+**«Recibe avisos por correo» (Lote 243, 2026-11-25).** Cada persona de contacto tiene una casilla **«Recibe avisos por correo»** (apagada al crearla). La persona marcada recibe por correo los avisos que se mandan **al cliente**; hoy, la copia de la orden de venta al solicitarla ([14 §3.1 bis](14-avisos.md#31-bis-el-correo-con-la-orden-de-venta-completa-lote-243-2026-11-25)). Antes se avisaba solo a quien la regla nombraba.
+
+- **Quién puede:** `clients.update` (marcar o desmarcar; el mismo permiso que editar el contacto). El correo de la persona se agrega con `contacts.manage`.
+- **Cómo se usa:** en la ficha del cliente → Personas de contacto → Agregar o Editar → casilla «Recibe avisos por correo». La lista muestra el chip **«Avisos por correo»** en las personas marcadas (ordenable). API: `POST` y `PATCH /api/v1/clients/{publicId}/contacts` con `"receivesEmailNotifications": true`; en el `PATCH`, sin el campo = sin cambio. La lista y el detalle devuelven `receivesEmailNotifications` y `hasEmail` (tiene al menos un correo activo).
+- **Reglas:**
+  - Se puede marcar a alguien **sin correo**: no hay error, pero el chip sale en tono de advertencia y el formulario dice `Marcado para avisos pero sin correo: agréguele un correo.`. Esa persona no recibe nada hasta que tenga un correo.
+  - Una persona **inactiva** no recibe avisos aunque siga marcada.
+  - Cada correo se manda una sola vez aunque se repita entre el contacto principal, el cliente y los marcados.
+  - La copia va a: el correo principal del contacto principal (si no tiene, el correo registrado en el propio cliente) **más** los contactos activos marcados con un correo válido.
+- **Si el cliente no tiene a nadie con correo,** la copia no sale y el Registro de avisos lo dice: `El cliente no tiene correo principal ni contactos marcados con correo.`
+- No hay mensajes de error nuevos en esta pantalla: los de arriba (nombre, principal, 404) siguen igual.
+
 ### 1.6 Estatus del cliente
 
 Estatus (`ClientStatus`), desde 2026-10-21 en este orden: **PROSPECT** (pipeline) → **ACTIVE** (inicial: el cliente nuevo nace Activo); **SUSPENDED** (lateral, reversible). El dominio **no tiene etapa terminal**: «Dar de baja» no es un estatus, desactiva al cliente (queda oculto salvo «Mostrar inactivos»). Cada compañía puede apagar «Prospecto» o cambiar los nombres y el orden en **Sistema → Catálogos → Estatus** (capítulo 01, sección 5). Las

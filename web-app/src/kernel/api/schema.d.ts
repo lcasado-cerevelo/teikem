@@ -42950,6 +42950,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["NotificationPreviewRequest"];
+                    "text/json": components["schemas"]["NotificationPreviewRequest"];
+                    "application/*+json": components["schemas"]["NotificationPreviewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationPreviewDto"];
+                        "application/json": components["schemas"]["NotificationPreviewDto"];
+                        "text/json": components["schemas"]["NotificationPreviewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/email-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    audience?: string;
+                    lang?: string;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["NotificationPreviewDto"];
+                        "application/json": components["schemas"]["NotificationPreviewDto"];
+                        "text/json": components["schemas"]["NotificationPreviewDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -43908,6 +43993,7 @@ export interface components {
             role?: string | null;
             isPrimary?: boolean;
             contactPoints?: components["schemas"]["ContactPointUpsertRequest"][] | null;
+            receivesEmailNotifications?: boolean | null;
         };
         ClientContactDto: {
             /** Format: int32 */
@@ -43917,12 +44003,15 @@ export interface components {
             isPrimary?: boolean;
             isActive?: boolean;
             contactPoints?: components["schemas"]["ContactPointDto"][] | null;
+            receivesEmailNotifications?: boolean;
+            hasEmail?: boolean;
         };
         ClientContactUpdateRequest: {
             fullName?: string | null;
             role?: string | null;
             isPrimary?: boolean | null;
             isActive?: boolean | null;
+            receivesEmailNotifications?: boolean | null;
         };
         ClientContractBillingDto: {
             billPerService?: boolean;
@@ -49247,6 +49336,7 @@ export interface components {
         NotificationChannelStatusDto: {
             channel?: string | null;
             isConfigured?: boolean;
+            isLocal?: boolean;
         };
         NotificationEventDto: {
             code?: string | null;
@@ -49260,6 +49350,8 @@ export interface components {
             defaultBody?: string | null;
             defaultBodyEn?: string | null;
             category?: string | null;
+            contextRecipients?: components["schemas"]["NotificationContextRecipientDto"][] | null;
+            channelDefaults?: components["schemas"]["NotificationChannelDefaultDto"][] | null;
         };
         NotificationLogDto: {
             /** Format: int64 */
@@ -49351,6 +49443,7 @@ export interface components {
         };
         NotificationTestRequest: {
             channel?: string | null;
+            reference?: string | null;
         };
         NotificationTestResultDto: {
             channel?: string | null;
@@ -49362,6 +49455,7 @@ export interface components {
             label?: string | null;
             labelEn?: string | null;
             sample?: string | null;
+            isBlock?: boolean;
         };
         NumberPreviewDto: {
             pattern?: string | null;
@@ -57590,6 +57684,44 @@ export interface components {
             pendingPurchase?: number;
             /** Format: double */
             lastMonthUnits?: number;
+        };
+        NotificationChannelDefaultDto: {
+            channel?: string | null;
+            subject?: string | null;
+            subjectEn?: string | null;
+            body?: string | null;
+            bodyEn?: string | null;
+        };
+        NotificationContextRecipientDto: {
+            key?: string | null;
+            label?: string | null;
+            labelEn?: string | null;
+            isDefault?: boolean;
+            audience?: string | null;
+        };
+        NotificationPreviewAttachmentDto: {
+            fileName?: string | null;
+            contentType?: string | null;
+            /** Format: int64 */
+            sizeBytes?: number;
+        };
+        NotificationPreviewDto: {
+            channel?: string | null;
+            subject?: string | null;
+            bodyText?: string | null;
+            bodyHtml?: string | null;
+            attachments?: components["schemas"]["NotificationPreviewAttachmentDto"][] | null;
+            usedSample?: boolean;
+            templateSource?: string | null;
+        };
+        NotificationPreviewRequest: {
+            eventCode?: string | null;
+            channel?: string | null;
+            subject?: string | null;
+            body?: string | null;
+            lang?: string | null;
+            reference?: string | null;
+            audience?: string | null;
         };
     };
     responses: never;

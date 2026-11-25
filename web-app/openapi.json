@@ -56480,6 +56480,108 @@
           }
         }
       }
+    },
+    "/api/v1/notifications/preview": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreviewRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreviewRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreviewDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreviewDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreviewDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/email-preview": {
+      "get": {
+        "tags": [
+          "SalesOrders"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "audience",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreviewDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreviewDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreviewDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -59363,6 +59465,10 @@
               "$ref": "#/components/schemas/ContactPointUpsertRequest"
             },
             "nullable": true
+          },
+          "receivesEmailNotifications": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -59394,6 +59500,12 @@
               "$ref": "#/components/schemas/ContactPointDto"
             },
             "nullable": true
+          },
+          "receivesEmailNotifications": {
+            "type": "boolean"
+          },
+          "hasEmail": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -59414,6 +59526,10 @@
             "nullable": true
           },
           "isActive": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "receivesEmailNotifications": {
             "type": "boolean",
             "nullable": true
           }
@@ -67313,7 +67429,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "DriverPayPolicyDto": {
         "type": "object",
@@ -67451,7 +67567,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "DriverRatesDto": {
         "type": "object",
@@ -69828,7 +69944,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "FuelVehicleSummaryDto": {
         "type": "object",
@@ -75579,6 +75695,9 @@
           },
           "isConfigured": {
             "type": "boolean"
+          },
+          "isLocal": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -75630,6 +75749,20 @@
           },
           "category": {
             "type": "string",
+            "nullable": true
+          },
+          "contextRecipients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationContextRecipientDto"
+            },
+            "nullable": true
+          },
+          "channelDefaults": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationChannelDefaultDto"
+            },
             "nullable": true
           }
         },
@@ -75931,6 +76064,10 @@
           "channel": {
             "type": "string",
             "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -75971,6 +76108,9 @@
           "sample": {
             "type": "string",
             "nullable": true
+          },
+          "isBlock": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -76946,7 +77086,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "OrderDetailDto": {
         "type": "object",
@@ -77517,7 +77657,7 @@
             "type": "boolean"
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "OrderQuotePreviewDto": {
         "type": "object",
@@ -82617,7 +82757,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "ProductPromoDto": {
         "type": "object",
@@ -83765,7 +83905,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "PurchaseOrderStatusRequest": {
         "type": "object",
@@ -86931,7 +87071,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "RentalProcessAdvanceRequest": {
         "type": "object",
@@ -87642,7 +87782,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "additionalProperties": { }
+              "additionalProperties": {}
             },
             "nullable": true
           },
@@ -96092,7 +96232,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "TripStartRequest": {
         "type": "object",
@@ -97326,7 +97466,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "VisibilityRequest": {
         "type": "object",
@@ -97588,7 +97728,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseBinRequest": {
         "type": "object",
@@ -97803,7 +97943,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseDockRequest": {
         "type": "object",
@@ -97982,7 +98122,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehousePulseDayDto": {
         "type": "object",
@@ -98357,7 +98497,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WarehouseZoneRequest": {
         "type": "object",
@@ -98904,7 +99044,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": { }
+        "additionalProperties": {}
       },
       "WorkOrderStatusRequest": {
         "type": "object",
@@ -100990,6 +101130,145 @@
           "lastMonthUnits": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationChannelDefaultDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectEn": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "bodyEn": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationContextRecipientDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "labelEn": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "audience": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationPreviewAttachmentDto": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentType": {
+            "type": "string",
+            "nullable": true
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationPreviewDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "bodyText": {
+            "type": "string",
+            "nullable": true
+          },
+          "bodyHtml": {
+            "type": "string",
+            "nullable": true
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationPreviewAttachmentDto"
+            },
+            "nullable": true
+          },
+          "usedSample": {
+            "type": "boolean"
+          },
+          "templateSource": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "eventCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "lang": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "audience": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
