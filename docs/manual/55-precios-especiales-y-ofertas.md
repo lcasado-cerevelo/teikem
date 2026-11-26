@@ -362,7 +362,9 @@ Avisos de la pantalla antes de enviar (no son del servidor): «Escoja el product
 
 ## 10. Fuente de datos «Precios especiales» (`SPECIAL_PRICE`)
 
-Para Vistas, Indicadores y Gráficos (análisis). Una fila por precio especial activo, con su estado **de hoy**: `OwnerKind` (`CLIENT` o `CHAIN`), `OwnerName`, `ChainName`, `Sku`, `ProductName`, `Brand`, `Price`, `ValidFrom`, `ValidTo`, `State`, `DaysToExpire` (vacío = sin «hasta»; 0 = vence hoy; negativo = ya venció), `GeneralListPrice`, `AboveGeneral`, `PriceListName` y `IsActive` (dueño activo). Se lee con `sales.view` y el módulo `SALES_ORDERS` encendido. Incluye las vencidas y las en borrador (el campo `State` lo dice): filtre por `State` para ver solo las vigentes. Todavía **no hay aviso programado de «precio especial por vencer»**: llega con el Lote D.
+Para Vistas, Indicadores y Gráficos (análisis). Una fila por precio especial activo, con su estado **de hoy**: `OwnerKind` («Cliente» o «Cadena», en el idioma del usuario), `OwnerKindCode` (el código: `CLIENT` o `CHAIN`; úselo para filtrar), `OwnerName`, `ChainName`, `Sku`, `ProductName`, `Brand`, `Price`, `ValidFrom`, `ValidTo`, `State`, `DaysToExpire` (vacío = sin «hasta»; 0 = vence hoy; negativo = ya venció), `GeneralListPrice`, `AboveGeneral`, `PriceListName` y `OwnerIsActive` («Dueño activo»: el cliente o la cadena está activo; los precios que salen siempre están activos). Se lee con `sales.view` y el módulo `SALES_ORDERS` encendido. Incluye las vencidas y las en borrador (el campo `State` lo dice): filtre por `State` para ver solo las vigentes. Todavía **no hay aviso programado de «precio especial por vencer»**: llega con el Lote D.
+
+> **Corregido después del cierre del lote:** el campo que antes se llamaba `IsActive` ahora es `OwnerIsActive`, y `OwnerKind` ya no trae `CLIENT`/`CHAIN` sino la etiqueta en el idioma del usuario (el código pasó a `OwnerKindCode`). Una vista, indicador o gráfico guardado que usara `IsActive`, o que filtrara `OwnerKind` por `CLIENT`/`CHAIN`, hay que editarlo para usar `OwnerIsActive` y `OwnerKindCode`.
 
 ## 11. Preguntas frecuentes del módulo
 

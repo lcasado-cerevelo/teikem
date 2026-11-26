@@ -15,8 +15,10 @@ namespace Teikem.Infrastructure.Analytics;
 /// vigente y si el especial sale más caro (se cobra el más bajo). La deja lista para el aviso «por vencer» del Lote D. Sin campos personalizados (EntityTypeCode null).
 /// AsNoTracking bajo el filtro global de tenant, tope ClientDataSourceHelpers.MaxRows y respeto de q.Ids (PriceListItemId). Lectura: sales.view
 /// (DataSourceExtraReadPermission) y el módulo Órdenes de venta encendido.
+/// OwnerKind es la etiqueta en el idioma de la sesión («Cliente»/«Cadena», «Client»/«Chain») y OwnerKindCode el código (CLIENT/CHAIN), como Kind/KindCode de
+/// SALES_REVENUE; OwnerIsActive = el dueño (cliente o cadena) está activo (los renglones que salen siempre lo están). Corregido después del cierre (DECISIÓN 33).
 /// </summary>
-public sealed class SpecialPriceDataSource(TeikemDbContext db, ITenantClock? clock = null) : IDataSource
+public sealed class SpecialPriceDataSource(TeikemDbContext db, ITenantContext tenant, ITenantClock? clock = null) : IDataSource
 {
     public string Key => SpecialPriceCodes.DataSourceKey;
     public string LabelEs => "Precios especiales";
@@ -31,6 +33,7 @@ public sealed class SpecialPriceDataSource(TeikemDbContext db, ITenantClock? clo
     {
         new DataField("Id", "Id", "Id", DataFieldType.Number),
         new DataField("OwnerKind", "De (cliente o cadena)", "Owner kind (client or chain)", DataFieldType.Text),
+        new DataField("OwnerKindCode", "De (código)", "Owner kind (code)", DataFieldType.Text),
         new DataField("OwnerName", "Cliente o cadena", "Client or chain", DataFieldType.Text),
         new DataField("ChainName", "Cadena", "Chain", DataFieldType.Text),
         new DataField("Sku", "SKU", "SKU", DataFieldType.Text),
@@ -44,10 +47,22 @@ public sealed class SpecialPriceDataSource(TeikemDbContext db, ITenantClock? clo
         new DataField("GeneralListPrice", "Precio en la lista general", "General list price", DataFieldType.Number, IsMoney: true),
         new DataField("AboveGeneral", "Más caro que la lista general", "Above the general list", DataFieldType.Bool),
         new DataField("PriceListName", "Lista", "Price list", DataFieldType.Text),
-        new DataField("IsActive", "Dueño activo", "Owner active", DataFieldType.Bool),
+        new DataField("OwnerIsActive", "Dueño activo", "Owner active", DataFieldType.Bool),
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = Array.Empty<DataRelation>();
+
+    /// <summary>Etiqueta de quién es el precio especial (CLIENT/CHAIN) en el idioma de la sesión; un código desconocido sale tal cual.</summary>
+    public static string OwnerKindLabel(string ownerKind, string? lang)
+    {
+        var en = string.Equals(lang, "en", StringComparison.OrdinalIgnoreCase);
+        return ownerKind switch
+        {
+            SpecialPriceOwnerKinds.Client => en ? "Client" : "Cliente",
+            SpecialPriceOwnerKinds.Chain => en ? "Chain" : "Cadena",
+            _ => ownerKind,
+        };
+    }
 
     public async Task<List<DataRow>> LoadAsync(DataQuery q, CancellationToken ct)
     {
@@ -84,6 +99,7 @@ public sealed class SpecialPriceDataSource(TeikemDbContext db, ITenantClock? clo
         // la lista general vigente hoy, para comparar
         var productIds = items.Select(x => x.ProductId).Distinct().ToList();
         var generalLists = await PriceListQueries.InEffectAsync(db, null, today, productIds, ct);
+        var lang = tenant.Lang;
 
         var rows = new List<DataRow>(items.Count);
         foreach (var x in items)
@@ -108,7 +124,8 @@ public sealed class SpecialPriceDataSource(TeikemDbContext db, ITenantClock? clo
             rows.Add(new DataRow
             {
                 ["Id"] = x.PriceListItemId,
-                ["OwnerKind"] = ownerKind,
+                ["OwnerKind"] = OwnerKindLabel(ownerKind, lang),
+                ["OwnerKindCode"] = ownerKind,
                 ["OwnerName"] = ownerName,
                 ["ChainName"] = chainName,
                 ["Sku"] = x.Sku,
@@ -122,7 +139,7 @@ public sealed class SpecialPriceDataSource(TeikemDbContext db, ITenantClock? clo
                 ["GeneralListPrice"] = generalPrice,
                 ["AboveGeneral"] = generalPrice is decimal g && x.Price > g,
                 ["PriceListName"] = x.Name,
-                ["IsActive"] = ownerActive,
+                ["OwnerIsActive"] = ownerActive,
             });
         }
         return rows;

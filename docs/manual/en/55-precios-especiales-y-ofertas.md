@@ -360,7 +360,9 @@ Screen warnings before sending (not from the server): «Choose the product or ki
 
 ## 10. Data source «Special prices» (`SPECIAL_PRICE`)
 
-For Views, Indicators and Charts (analytics). One row per active special price, with its state **as of today**: `OwnerKind` (`CLIENT` or `CHAIN`), `OwnerName`, `ChainName`, `Sku`, `ProductName`, `Brand`, `Price`, `ValidFrom`, `ValidTo`, `State`, `DaysToExpire` (empty = no «to»; 0 = expires today; negative = already expired), `GeneralListPrice`, `AboveGeneral`, `PriceListName` and `IsActive` (owner active). It is read with `sales.view` and the `SALES_ORDERS` module on. It includes expired and draft ones (the `State` field says so): filter by `State` to see only those in effect. There is **no scheduled «special price about to expire» notice yet**: it arrives with Batch D.
+For Views, Indicators and Charts (analytics). One row per active special price, with its state **as of today**: `OwnerKind` («Client» or «Chain», in the user's language), `OwnerKindCode` (the code: `CLIENT` or `CHAIN`; use it to filter), `OwnerName`, `ChainName`, `Sku`, `ProductName`, `Brand`, `Price`, `ValidFrom`, `ValidTo`, `State`, `DaysToExpire` (empty = no «to»; 0 = expires today; negative = already expired), `GeneralListPrice`, `AboveGeneral`, `PriceListName` and `OwnerIsActive` («Owner active»: the client or the chain is active; the prices listed are always active). It is read with `sales.view` and the `SALES_ORDERS` module on. It includes expired and draft ones (the `State` field says so): filter by `State` to see only those in effect. There is **no scheduled «special price about to expire» notice yet**: it arrives with Batch D.
+
+> **Fixed after the batch closed:** the field formerly called `IsActive` is now `OwnerIsActive`, and `OwnerKind` no longer carries `CLIENT`/`CHAIN` but the label in the user's language (the code moved to `OwnerKindCode`). A saved view, indicator or chart that used `IsActive`, or filtered `OwnerKind` by `CLIENT`/`CHAIN`, must be edited to use `OwnerIsActive` and `OwnerKindCode`.
 
 ## 11. Frequently asked questions of the module
 

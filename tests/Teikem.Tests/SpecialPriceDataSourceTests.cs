@@ -96,11 +96,12 @@ public sealed class SpecialPriceDataSourceTests
     public async Task Only_active_rows_of_active_dedicated_lists_of_the_tenant_with_state_days_and_general_price()
     {
         var w = await SeedAsync();
-        var rows = await new SpecialPriceDataSource(w.Db, Clock).LoadAsync(new DataQuery(), default);
+        var rows = await new SpecialPriceDataSource(w.Db, w.Tenant, Clock).LoadAsync(new DataQuery(), default);
         Assert.Equal(new[] { w.ClientItem, w.ChainItem, w.ExpiredItem }.OrderBy(x => x), rows.Select(r => (int)r["Id"]!).OrderBy(x => x));
 
         var client = rows.Single(r => (int)r["Id"]! == w.ClientItem);
-        Assert.Equal(SpecialPriceOwnerKinds.Client, client["OwnerKind"]);
+        Assert.Equal("Cliente", client["OwnerKind"]);                       // etiqueta en el idioma de la sesión (es por omisión)
+        Assert.Equal(SpecialPriceOwnerKinds.Client, client["OwnerKindCode"]);
         Assert.Equal("Farmacia Uno", client["OwnerName"]);
         Assert.Equal("Walgreens", client["ChainName"]);   // la cadena actual del cliente
         Assert.Equal(("SKU-1", "Producto SKU-1", "Acme"), ((string)client["Sku"]!, (string)client["ProductName"]!, (string?)client["Brand"]));
@@ -111,10 +112,12 @@ public sealed class SpecialPriceDataSourceTests
         Assert.Equal(9m, client["GeneralListPrice"]);
         Assert.Equal(true, client["AboveGeneral"]);
         Assert.Equal("Precio especial — Farmacia Uno", client["PriceListName"]);
-        Assert.Equal(true, client["IsActive"]);
+        Assert.Equal(true, client["OwnerIsActive"]);                        // el dueño (cliente o cadena) está activo
+        Assert.False(client.ContainsKey("IsActive"));
 
         var chain = rows.Single(r => (int)r["Id"]! == w.ChainItem);
-        Assert.Equal((SpecialPriceOwnerKinds.Chain, "Walgreens", "Walgreens"), ((string)chain["OwnerKind"]!, (string)chain["OwnerName"]!, (string?)chain["ChainName"]));
+        Assert.Equal(("Cadena", SpecialPriceOwnerKinds.Chain, "Walgreens", "Walgreens"),
+            ((string)chain["OwnerKind"]!, (string)chain["OwnerKindCode"]!, (string)chain["OwnerName"]!, (string?)chain["ChainName"]));
         Assert.Equal(10, chain["DaysToExpire"]);
         Assert.Equal(Today.AddDays(10), chain["ValidTo"]);
         Assert.Null(chain["GeneralListPrice"]);
@@ -126,25 +129,49 @@ public sealed class SpecialPriceDataSourceTests
         Assert.Equal(false, expired["AboveGeneral"]);       // 8 < 9
 
         // q.Ids y la otra compañía
-        Assert.Single(await new SpecialPriceDataSource(w.Db, Clock).LoadAsync(new DataQuery { Ids = new[] { w.ChainItem, w.RemovedItem } }, default));
+        Assert.Single(await new SpecialPriceDataSource(w.Db, w.Tenant, Clock).LoadAsync(new DataQuery { Ids = new[] { w.ChainItem, w.RemovedItem } }, default));
         using (w.Tenant.As(TenantB))
         {
-            var b = Assert.Single(await new SpecialPriceDataSource(w.Db, Clock).LoadAsync(new DataQuery(), default));
+            var b = Assert.Single(await new SpecialPriceDataSource(w.Db, w.Tenant, Clock).LoadAsync(new DataQuery(), default));
             Assert.Equal("Cliente B", b["OwnerName"]);
         }
     }
 
     [Fact]
+    public async Task Owner_kind_comes_in_the_session_language_and_the_code_stays_apart()
+    {
+        var w = await SeedAsync();
+        w.Tenant.Lang = "en";
+        var rows = await new SpecialPriceDataSource(w.Db, w.Tenant, Clock).LoadAsync(new DataQuery(), default);
+        var client = rows.Single(r => (int)r["Id"]! == w.ClientItem);
+        var chain = rows.Single(r => (int)r["Id"]! == w.ChainItem);
+        Assert.Equal(("Client", SpecialPriceOwnerKinds.Client), ((string)client["OwnerKind"]!, (string)client["OwnerKindCode"]!));
+        Assert.Equal(("Chain", SpecialPriceOwnerKinds.Chain), ((string)chain["OwnerKind"]!, (string)chain["OwnerKindCode"]!));
+    }
+
+    [Theory]
+    [InlineData(SpecialPriceOwnerKinds.Client, "es", "Cliente")]
+    [InlineData(SpecialPriceOwnerKinds.Chain, "es", "Cadena")]
+    [InlineData(SpecialPriceOwnerKinds.Client, "en", "Client")]
+    [InlineData(SpecialPriceOwnerKinds.Chain, "EN", "Chain")]
+    [InlineData(SpecialPriceOwnerKinds.Chain, null, "Cadena")]
+    [InlineData("OTHER", "en", "OTHER")]
+    public void Owner_kind_label(string code, string? lang, string expected)
+        => Assert.Equal(expected, SpecialPriceDataSource.OwnerKindLabel(code, lang));
+
+    [Fact]
     public void The_source_describes_itself_and_reads_with_sales_view()
     {
-        var s = new SpecialPriceDataSource(null!);
+        var s = new SpecialPriceDataSource(null!, null!);
         Assert.Equal("SPECIAL_PRICE", s.Key);
         Assert.Null(s.EntityTypeCode);
         Assert.Null(s.DateField);
         Assert.Equal(ModuleKeys.SalesOrders, s.TenantModule);
         Assert.Equal(BusinessModules.Warehouse, s.DefaultBusinessModule);
-        Assert.Equal(new[] { "Id", "OwnerKind", "OwnerName", "ChainName", "Sku", "ProductName", "Brand", "Price", "ValidFrom", "ValidTo", "State", "DaysToExpire",
-            "GeneralListPrice", "AboveGeneral", "PriceListName", "IsActive" }, s.Fields.Select(f => f.Key));
+        Assert.Equal(new[] { "Id", "OwnerKind", "OwnerKindCode", "OwnerName", "ChainName", "Sku", "ProductName", "Brand", "Price", "ValidFrom", "ValidTo", "State",
+            "DaysToExpire", "GeneralListPrice", "AboveGeneral", "PriceListName", "OwnerIsActive" }, s.Fields.Select(f => f.Key));
+        var owner = s.Fields.Single(f => f.Key == "OwnerIsActive");
+        Assert.Equal(("Dueño activo", "Owner active", DataFieldType.Bool), (owner.LabelEs, owner.LabelEn, owner.Type));
         Assert.Equal(PermissionCatalog.SalesView, PermissionCatalog.DataSourceReadPermission(SpecialPriceCodes.DataSourceKey));
         Assert.Equal(PermissionCatalog.SalesView, PermissionCatalog.DataSourceExtraReadPermission[SpecialPriceCodes.DataSourceKey]);
     }
