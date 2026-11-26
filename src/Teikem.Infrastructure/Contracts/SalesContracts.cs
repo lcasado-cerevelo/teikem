@@ -30,9 +30,16 @@ public sealed record SalesOrderRequest(Guid? WarehousePublicId = null, Guid? Cli
     // Lote 244: el vendedor escogido en el BORRADOR (el preferido del cliente o una persona vigente de su ruta; 400 si no). ClearSeller = volver a la propuesta.
     int? SellerUserId = null, bool? ClearSeller = null);
 
+/// <remarks>
+/// Lote 247: el ORIGEN guardado del precio de la línea (DECISIÓN 12): PriceSource (CLIENT_LIST, CHAIN_LIST, OFFER, GENERAL_LIST, PRODUCT, NONE; null = línea de antes
+/// del lote), la lista, la oferta y la cadena (nombres leídos al mostrar), ResolvedUnitPrice = el precio que daba la resolución e IsManualPrice = UnitPrice distinto
+/// de ese precio (precio escrito con sales.price).
+/// </remarks>
 public sealed record SalesOrderLineDto(int Id, int LineNo, Guid ProductPublicId, string Sku, string ProductName, int? LotId, decimal QtyOrdered, decimal QtyReserved,
     decimal QtyBackordered, decimal QtyShipped, bool IsClosed, decimal UnitPrice, decimal LineSubtotal, decimal TaxRatePct, decimal TaxAmount, bool IsTaxExempt,
-    bool IsKit = false, IReadOnlyList<SalesOrderLineComponentDto>? Components = null);
+    bool IsKit = false, IReadOnlyList<SalesOrderLineComponentDto>? Components = null,
+    string? PriceSource = null, Guid? PriceListPublicId = null, string? PriceListName = null, Guid? OfferPublicId = null, string? OfferName = null,
+    Guid? PriceChainPublicId = null, string? PriceChainName = null, decimal? ResolvedUnitPrice = null, bool IsManualPrice = false);
 
 /// <summary>Lote 69: un componente de la línea de un kit. Las cantidades son de piezas del componente (cantidad por kit × kits): pedido, reservado, en backorder y despachado.</summary>
 /// <remarks>Lote 230: el producto es la pieza REAL; si sustituye a una pieza del kit, SubstitutesProductPublicId / SubstitutesSku / SubstitutesName dicen cuál (para mostrar «en lugar de»).</remarks>

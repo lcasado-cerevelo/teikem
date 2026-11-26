@@ -15,6 +15,7 @@ interface Call {
   body: unknown
 }
 const mock = vi.hoisted(() => ({ calls: [] as Call[], publish: null as null | (() => Response) }))
+const SPECIAL_LIST = '2d2d2d2d-0000-0000-0000-000000000009'
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
@@ -39,7 +40,10 @@ const DETAIL = (publicId: string, name: string, state: string) => ({
 
 function route({ method, url }: Call): unknown {
   const p = url.pathname
-  if (method === 'GET' && p === '/api/v1/price-lists') return [LIST(L1, 'Base 2026', 'ACTIVE'), LIST(L2, 'Navidad', 'DRAFT')]
+  if (method === 'GET' && p === '/api/v1/price-lists')
+    return [LIST(L1, 'Base 2026', 'ACTIVE'), LIST(L2, 'Navidad', 'DRAFT'), ...(url.searchParams.get('includeSpecial') === 'true' ? [LIST(SPECIAL_LIST, 'Precio especial Walgreens', 'ACTIVE', { appliesToAll: false, chainCount: 1, specialOwnerKind: 'CHAIN', specialOwnerName: 'Walgreens' })] : [])]
+  if (method === 'GET' && p === `/api/v1/price-lists/${SPECIAL_LIST}`)
+    return { ...DETAIL(SPECIAL_LIST, 'Precio especial Walgreens', 'ACTIVE'), appliesToAll: false, chains: [], specialOwnerKind: 'CHAIN', specialOwnerPublicId: 'h1', specialOwnerName: 'Walgreens', warnings: [{ code: 'SPECIAL_ABOVE_GENERAL', message: 'El precio especial pone KIT-1 más caro que la lista general.', productPublicId: 'p1' }] }
   if (method === 'GET' && p === `/api/v1/price-lists/${L2}`) return DETAIL(L2, 'Navidad', 'DRAFT')
   if (method === 'POST' && p === '/api/v1/price-lists') return DETAIL(L2, 'Navidad', 'DRAFT')
   if (method === 'POST' && p === `/api/v1/price-lists/${L2}/publish`) return mock.publish ? mock.publish() : DETAIL(L2, 'Navidad', 'ACTIVE')
@@ -64,6 +68,7 @@ const problem = (status: number, title: string, code: string) =>
 
 beforeAll(() => setLang('es'))
 beforeEach(() => {
+  window.localStorage.clear()
   mock.calls = []
   mock.publish = null
 })
@@ -107,5 +112,32 @@ describe('Precios y ofertas', () => {
     await user.click(await screen.findByText('Navidad'))
     await user.click(await screen.findByRole('button', { name: 'Publicar' }))
     expect(await screen.findByText(/KIT-1 ya tiene precio en «Base 2026» en esas fechas\./)).toBeInTheDocument()
+  })
+
+  it('lote 247: las listas dedicadas se ocultan; el interruptor las muestra con su chip y se recuerda', async () => {
+    const user = userEvent.setup()
+    wrap(['sales.view', 'sales.pricelist'])
+    const table = await screen.findByRole('table', { name: 'Listas de precios' })
+    await within(table).findByText('Base 2026')
+    expect(within(table).queryByText('Precio especial Walgreens')).toBeNull()
+    expect(mock.calls.filter((c) => c.url.pathname === '/api/v1/price-lists').every((c) => !c.url.searchParams.has('includeSpecial') || c.url.searchParams.get('includeSpecial') === 'false')).toBe(true)
+    await user.click(screen.getByRole('switch', { name: 'Ver también los precios especiales' }))
+    expect(await screen.findByText('Precio especial de Walgreens')).toBeInTheDocument()
+    expect(window.localStorage.getItem('teikem.priceLists.includeSpecial')).toBe('1')
+  })
+
+  it('lote 247: una lista dedicada bloquea nombre y fechas, avisa y enlaza a la ficha de su dueño', async () => {
+    window.localStorage.setItem('teikem.priceLists.includeSpecial', '1')
+    const user = userEvent.setup()
+    wrap(['sales.view', 'sales.pricelist'])
+    const table = await screen.findByRole('table', { name: 'Listas de precios' })
+    await user.click(await within(table).findByText('Precio especial de Walgreens'))
+    const dialog = await screen.findByRole('dialog', { name: 'Precio especial Walgreens' })
+    expect(await within(dialog).findByLabelText('Nombre')).toBeDisabled()
+    expect(within(dialog).queryByRole('button', { name: 'Guardar datos' })).toBeNull()
+    expect(within(dialog).getByRole('link', { name: 'Abrir la ficha' })).toHaveAttribute('href', '/catalog/chains?id=h1')
+    expect(within(dialog).getByText('El precio especial pone KIT-1 más caro que la lista general.')).toBeInTheDocument()
+    // precios y renglones siguen editables
+    expect(within(dialog).getByRole('button', { name: 'Desactivar' })).toBeInTheDocument()
   })
 })

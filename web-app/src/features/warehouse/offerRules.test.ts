@@ -13,6 +13,10 @@ import {
   offerKitDraftError,
   offerKitSavings,
   offerPublishBlocker,
+  offerAudienceKey,
+  audienceBoxDisabled,
+  modeBeforeAdd,
+  isLastMember,
   offerStateKey,
   piecesFromKit,
   suggestedKitPrice,
@@ -36,16 +40,18 @@ describe('offerRules', () => {
   })
 
   it('cuerpo: sin «hasta» se manda clearValidTo (sin fecha de fin)', () => {
-    expect(toOfferRequest({ name: ' Navidad ', validFrom: '2026-11-09', validTo: '', appliesToAll: true, notes: ' ' })).toEqual({
-      name: 'Navidad', validFrom: '2026-11-09', validTo: null, clearValidTo: true, appliesToAll: true, notes: null,
+    expect(toOfferRequest({ name: ' Navidad ', validFrom: '2026-11-09', validTo: '', audienceMode: 'ALL', notes: ' ' })).toEqual({
+      name: 'Navidad', validFrom: '2026-11-09', validTo: null, clearValidTo: true, audienceMode: 'ALL', notes: null,
     })
-    expect(toOfferRequest({ name: 'N', validFrom: '2026-11-09', validTo: '2026-12-31', appliesToAll: false, notes: 'a' })).toMatchObject({ validTo: '2026-12-31', clearValidTo: false, appliesToAll: false })
+    expect(toOfferRequest({ name: 'N', validFrom: '2026-11-09', validTo: '2026-12-31', audienceMode: 'EXCLUDE', notes: 'a' })).toMatchObject({ validTo: '2026-12-31', clearValidTo: false, audienceMode: 'EXCLUDE' })
   })
 
   it('publicar exige renglones y clientes (o todos); estado y «sin fecha de fin»', () => {
-    expect(offerPublishBlocker(0, true, 0)).toBe('noItems')
-    expect(offerPublishBlocker(1, false, 0)).toBe('noClients')
-    expect(offerPublishBlocker(1, true, 0)).toBeNull()
+    expect(offerPublishBlocker(0, 'ALL', 0)).toBe('noItems')
+    expect(offerPublishBlocker(1, 'INCLUDE', 0)).toBe('noClients')
+    expect(offerPublishBlocker(1, 'INCLUDE', 2)).toBeNull()
+    expect(offerPublishBlocker(1, 'EXCLUDE', 0)).toBeNull() // «todos menos los excluidos» sin excluidos vale para todos
+    expect(offerPublishBlocker(1, 'ALL', 0)).toBeNull()
     expect(offerStateKey('ACTIVE')).toBe('ACTIVE')
     expect(offerStateKey(null)).toBe('DRAFT')
     expect(offerIsOpenEnded({ hasEndDate: false, validTo: null })).toBe(true)
@@ -113,5 +119,30 @@ describe('offerRules', () => {
     const rows = piecesFromKit([{ productPublicId: 'm', sku: 'MON', name: 'Monitor', quantity: 2, notSubstitutable: true }], (i) => `k${i}`)
     expect(rows).toEqual([{ key: 'k0', productPublicId: 'm', sku: 'MON', name: 'Monitor', quantity: '2', notSubstitutable: true, salePrice: null }])
     expect(piecesFromKit([], (i) => `k${i}`)).toHaveLength(1)
+  })
+})
+
+describe('público de la oferta (Lote 247)', () => {
+  it('el modo viene del servidor; sin él, de appliesToAll', () => {
+    expect(offerAudienceKey({ audienceMode: 'EXCLUDE', appliesToAll: false })).toBe('EXCLUDE')
+    expect(offerAudienceKey({ appliesToAll: false })).toBe('INCLUDE')
+    expect(offerAudienceKey({ appliesToAll: true })).toBe('ALL')
+    expect(offerAudienceKey({})).toBe('ALL')
+  })
+
+  it('llenar una caja deshabilita la otra; vacías, las dos quedan libres', () => {
+    expect(audienceBoxDisabled('EXCLUDE', 'INCLUDE', 2)).toBe(true)
+    expect(audienceBoxDisabled('INCLUDE', 'INCLUDE', 2)).toBe(false)
+    expect(audienceBoxDisabled('INCLUDE', 'EXCLUDE', 1)).toBe(true)
+    expect(audienceBoxDisabled('INCLUDE', 'EXCLUDE', 0)).toBe(false)
+    expect(audienceBoxDisabled('EXCLUDE', 'ALL', 0)).toBe(false)
+  })
+
+  it('agregar a una caja que no es la del modo actual pasa antes el modo; quitar el último pide confirmar', () => {
+    expect(modeBeforeAdd('INCLUDE', 'ALL')).toBe('INCLUDE')
+    expect(modeBeforeAdd('EXCLUDE', 'INCLUDE')).toBe('EXCLUDE')
+    expect(modeBeforeAdd('EXCLUDE', 'EXCLUDE')).toBeNull()
+    expect(isLastMember(1)).toBe(true)
+    expect(isLastMember(2)).toBe(false)
   })
 })

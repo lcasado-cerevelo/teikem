@@ -12,6 +12,7 @@ type S = components['schemas']
 export type OfferListItemDto = S['OfferListItemDto']
 export type OfferDto = S['OfferDto']
 export type OfferItemDto = S['OfferItemDto']
+export type OfferChainDto = S['OfferChainDto']
 export type OfferWarningDto = S['OfferWarningDto']
 export type OfferRequest = S['OfferRequest']
 export type OfferKitRequest = S['OfferKitRequest']
@@ -46,10 +47,12 @@ export function useOfferKitLibraryItem(productPublicId: string | null | undefine
   })
 }
 
-export function useOfferList(query: { q?: string; state?: string; includeInactive?: boolean }) {
+/** `chainPublicId` = solo las ofertas activas y no vencidas que le aplican a esa cadena (ficha de la cadena, Lote 247). */
+export function useOfferList(query: { q?: string; state?: string; includeInactive?: boolean; chainPublicId?: string }, enabled = true) {
   return useQuery({
     queryKey: [...offerKeys.list, 'list', query],
     queryFn: () => unwrap(api.GET('/api/v1/offers', { params: { query } })),
+    enabled,
     meta: { handleAccessDenied: false },
   })
 }
@@ -127,6 +130,17 @@ export function useOfferActions() {
     removeClient: useMutation({
       mutationFn: ({ publicId, clientPublicId }: { publicId: string; clientPublicId: string }) =>
         unwrap(api.DELETE('/api/v1/offers/{publicId}/clients/{clientPublicId}', { params: { path: { publicId, clientPublicId } } })),
+      ...opts,
+    }),
+    // Lote 247: cadenas a incluir o excluir (según el público de la oferta)
+    addChains: useMutation({
+      mutationFn: ({ publicId, chainPublicIds }: { publicId: string; chainPublicIds: string[] }) =>
+        unwrap(api.POST('/api/v1/offers/{publicId}/chains', { ...path(publicId), body: { chainPublicIds } })),
+      ...opts,
+    }),
+    removeChain: useMutation({
+      mutationFn: ({ publicId, chainPublicId }: { publicId: string; chainPublicId: string }) =>
+        unwrap(api.DELETE('/api/v1/offers/{publicId}/chains/{chainPublicId}', { params: { path: { publicId, chainPublicId } } })),
       ...opts,
     }),
     /** «Crear un kit nuevo»: queda en la biblioteca y nace con su renglón y su precio en esta oferta; responde el kit y la oferta. */

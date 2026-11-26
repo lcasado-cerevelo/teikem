@@ -5,6 +5,7 @@ import { useCan } from '../../kernel/access'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import { Chip, EmptyState, IconPercent, Panel, Spinner } from '../../kernel/ui'
+import { AudienceChip } from './OfferEditorModal'
 import { useOfferList, type OfferListItemDto } from './offerApi'
 import { offerIsOpenEnded, offerStateKey, offerStateTone } from './offerRules'
 import { StoredImage } from './StoredImage'
@@ -41,8 +42,8 @@ function OfferCard({ offer, onOpen }: { offer: OfferListItemDto; onOpen: () => v
         </span>
         <OfferValidity offer={offer} />
         <span className="pl-sub">
-          {offer.appliesToAll ? t('warehouse.products.prices.appliesAll') : t('warehouse.products.prices.appliesSome', { count: offer.clientCount ?? 0 })}
-          {' · '}
+          <AudienceChip offer={offer} />
+          {' '}
           {t('warehouse.products.prices.offer.itemsCount', { count: f.number(offer.itemCount ?? 0) })}
         </span>
         <button type="button" className="btn sm" onClick={onOpen}>

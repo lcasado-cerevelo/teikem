@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_LIST_DRAFT, listDraftError, parsePrice, publishBlocker, stateKey, stateTone, toListRequest } from './priceListRules'
+import { EMPTY_LIST_DRAFT, isDedicated, listAudienceCount, listDraftError, specialOwnerLink, parsePrice, publishBlocker, stateKey, stateTone, toListRequest } from './priceListRules'
 
 describe('priceListRules', () => {
   it('estado: color y clave, desconocido = borrador', () => {
@@ -42,5 +42,17 @@ describe('priceListRules', () => {
     expect(publishBlocker(2, false, 0)).toBe('noClients')
     expect(publishBlocker(2, false, 1)).toBeNull()
     expect(publishBlocker(2, true, 0)).toBeNull()
+  })
+
+  it('lote 247: lista dedicada (precio especial), enlace a la ficha de su dueño y a quién aplica con cadenas', () => {
+    expect(isDedicated({ specialOwnerKind: 'CLIENT' })).toBe(true)
+    expect(isDedicated({ specialOwnerKind: 'CHAIN' })).toBe(true)
+    expect(isDedicated({ specialOwnerKind: null })).toBe(false)
+    expect(isDedicated({})).toBe(false)
+    expect(specialOwnerLink({ specialOwnerKind: 'CLIENT', specialOwnerPublicId: 'c1' })).toBe('/catalog/clients?client=c1')
+    expect(specialOwnerLink({ specialOwnerKind: 'CHAIN', specialOwnerPublicId: 'h1' })).toBe('/catalog/chains?id=h1')
+    expect(specialOwnerLink({ specialOwnerKind: 'CHAIN' })).toBeNull()
+    expect(listAudienceCount({ clientCount: 2, chainCount: 3 })).toBe(5)
+    expect(listAudienceCount({})).toBe(0)
   })
 })

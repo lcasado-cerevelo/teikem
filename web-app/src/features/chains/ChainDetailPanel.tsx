@@ -1,5 +1,5 @@
-// Lote 245 — ficha de la cadena: PANELES INDEPENDIENTES apilados (Datos · Clientes · Agregar por nombre · Venta). El Lote C agrega «Precios especiales» y «Ofertas»
-// como paneles nuevos en esta lista, sin rehacer ninguno de los de aquí.
+// Lote 245 — ficha de la cadena: PANELES INDEPENDIENTES apilados (Datos · Clientes · Agregar por nombre · Venta). Lote 247 (Lote C): «Precios especiales» y «Ofertas»
+// se agregan como paneles nuevos al final, sin rehacer ninguno de los anteriores.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -8,8 +8,10 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { useT } from '../../kernel/i18n'
 import { Chip, ConfirmDialog, EmptyState, Field, Form, Panel, Spinner, TextArea, TextInput, toast } from '../../kernel/ui'
 import { IconLayers } from '../../kernel/ui/screenIcons'
+import { SpecialPricesPanel } from '../specialPrices/SpecialPricesPanel'
 import { ChainBulkAssign } from './ChainBulkAssign'
 import { ChainClientsPanel } from './ChainClientsPanel'
+import { ChainOffersPanel } from './ChainOffersPanel'
 import { ChainSalesSection } from './ChainSalesSection'
 import { CHAIN_NAME_MAX, CHAIN_NOTES_MAX, chainSchema, updateChainRequest, type ChainFormValues } from './chainRules'
 import { CHAIN_MANAGE, useChain, useSetChainActive, useUpdateChain, type ChainDetail } from './chainsApi'
@@ -42,7 +44,8 @@ export function ChainDetailPanel({ publicId }: { publicId: string }) {
         </Can>
       )}
       <ChainSalesSection chain={chain} />
-      {/* Lote C: aquí van «Precios especiales» y «Ofertas» como paneles propios */}
+      <SpecialPricesPanel ownerKind="chain" ownerPublicId={publicId} ownerActive={chain.isActive !== false} />
+      <ChainOffersPanel chainPublicId={publicId} />
     </div>
   )
 }

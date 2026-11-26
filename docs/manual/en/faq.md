@@ -12565,3 +12565,174 @@ In «Charts» press «Print presentation or save PDF» and in the browser's dial
 
 **The Pulse «Month sales vs quota» figure does not match the sum of the sales reps.**
 The Pulse sales also include clients without a sales rep, and the quota is the sum of the active sales reps. Assign sales reps to all clients.
+
+## Batch 247 — Special prices and offers by client and by chain
+<!-- kemi:staff -->
+
+> The Batch 242–246 sections of this FAQ are not translated yet; this one is. **The API returns its messages in Spanish only**, so each question quotes the exact Spanish message. Chapter: [55 — Special prices and offers by client and by chain](55-precios-especiales-y-ofertas.md). Screens: [L247](../frontend/l247-precios-especiales.md) (Spanish edition). Rule behind it all: **the lowest price always wins** among the client's price, its chain's, the offer and the general list. A special price is **before IVU**.
+
+### Adding and changing a special price
+
+**What does «Escoja el producto o kit de cada renglón.» mean? (HTTP 400)**
+You tried to add a special price without a product. Choose it in «Product or kit».
+
+**What does «Indique el precio de cada renglón.» mean? (HTTP 400)**
+The price is missing. Type it (on screen: «Enter a price greater than zero (up to 4 decimals).»).
+
+**What does «El precio no es válido.» mean? (HTTP 400)**
+The price is negative or above 9,999,999,999. Fix it. The screen also asks for a price greater than zero; the API accepts 0.
+
+**What does «El precio admite como máximo 4 decimales.» mean? (HTTP 400)**
+You typed more than 4 decimals. Round to 4 or fewer.
+
+**What does «Indique desde qué fecha vale el precio especial.» mean? (HTTP 400)**
+The «From» date is missing. Every special price needs a start date (the screen proposes today). «To» is optional: empty means «no end date».
+
+**What does «La fecha «hasta» no puede ser anterior a la fecha «desde».» mean? (HTTP 400)**
+«To» falls before «From». Fix the dates. To remove the «To» of a saved price, leave it empty when changing it.
+
+**What does «La fecha «hasta» ya pasó: un precio especial nuevo tiene que valer hoy o después.» mean? (HTTP 400)**
+You tried to **create** a special price that has already expired. Use a «To» of today or later, or leave it empty. When **editing** a running price a past «To» is allowed: that is how you close it.
+
+**What does «Una lista admite como máximo 2000 renglones.» mean? (HTTP 400)**
+The dedicated list of those dates already has 2000 products. Remove those you do not use or use another validity (other dates).
+
+**What does «Cliente no encontrado.» mean? (HTTP 404)**
+The client does not exist or belongs to another company (it does not say which). Reload the page or choose the client from the list.
+
+**What does «Producto no encontrado.» mean? (HTTP 404)**
+The price's product does not exist or belongs to another company. Search it again in «Product or kit».
+
+**What does «Precio especial no encontrado.» mean? (HTTP 404)**
+The row you tried to change or remove no longer exists, was already removed, or belongs to another client or chain. Reload the page. If someone removed it while you were editing, there is nothing to recover: add it again.
+
+**What does «El cliente está inactivo; no se le puede vender.» mean? (HTTP 422)**
+An inactive client accepts no new special prices, changes or removals. Reactivate the client or use another. On screen the panel says «It is inactive: it does not accept new prices.».
+
+**What does «La cadena está desactivada: actívela o escoja otra.» mean, when putting a special price or a chain in a list or offer? (HTTP 422)**
+The chain is deactivated. Reactivate it (chain page → «Reactivate») or choose another. Careful: a deactivated chain counts as «no chain» and its clients **do not get** its prices or offers. (With clients, the same message comes with HTTP 400; see Batch 245.)
+
+**What does «Solo se ponen en una lista productos propios de la compañía.» mean? (HTTP 422)**
+The product belongs to a client (an owner's goods), not to the company. Special prices go only on the company's own products.
+
+**What does «El producto {SKU} está inactivo: no se puede poner en la lista.» mean? (HTTP 422)**
+The product is inactive. Reactivate it in Products or choose another.
+
+**What does «El kit {SKU} es un kit de oferta: su precio va en una oferta, no en una lista de precios.» mean? (HTTP 422)**
+An offer kit has no special price: its price is set inside an offer (Prices and offers → the offer → lines). A normal kit is fine.
+
+**What does «La lista se cruza con «…» en las mismas fechas y para los mismos clientes o cadenas en: …. Cambie las fechas o quite esos productos de una de las dos.» mean? (HTTP 409)**
+The same product already has a price, for the **same client** or the **same chain**, on dates that overlap the ones you typed; the message names the list and up to 5 SKUs («y N más» = «and N more»). Change the dates so they do not overlap, or remove the other price. A chain price and a client price do **not** clash, and neither does a special price with a normal list: they coexist and the lowest is charged. With the **same** dates it is not an error either: the line's price is changed.
+
+**What does «La lista cambió al mismo tiempo. Recárguela e intente de nuevo.» mean? (HTTP 409)**
+Two people added the same special price (same owner and dates) at the same time. One saved it and the other gets this message. Reload the page: the price is already there; if you needed another value, change it.
+
+**What does «El registro fue modificado por otro usuario; recargue e intente de nuevo.» mean? (HTTP 409)**
+Someone changed the same list at the same time. Nothing of yours was saved. Reload and repeat.
+
+**What does «El cuerpo de la solicitud es obligatorio.» mean, when adding or changing a special price, an offer or a list's chain? (HTTP 400)**
+The API received the call without a body. It only shows when calling the API by hand.
+
+**What does «Falta el permiso 'sales.pricelist'.» mean? (HTTP 403)**
+Adding, changing and removing special prices (and putting chains in lists or offers) requires `sales.pricelist`. With only `sales.view` the panel shows but has no buttons. Ask the administrator for the permission (Sales supervisor role).
+
+**What does «El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» mean? (HTTP 403)**
+The company does not have the Sales orders module on. The platform administrator turns it on.
+
+### Price lists with chains
+
+**What does «Escoja las cadenas de la lista.» mean? (HTTP 400)**
+You tried to add chains to a list without choosing any. Choose at least one.
+
+**What does «Una lista admite como máximo 500 cadenas.» mean? (HTTP 400)**
+The list would exceed 500 chains. Use another list for the rest.
+
+**What does «Cadena no encontrada.» mean? (HTTP 404)**
+The chain does not exist or belongs to another company. It is the same message in a special price, a list, an offer and `GET /offers?chainPublicId=`. Choose the chain from the drop-down.
+
+**What does «Cadena de la lista no encontrada.» mean? (HTTP 404)**
+You tried to remove from a list a chain that is not in it (maybe it was already removed). Reload the list.
+
+**What does «La lista aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.» mean? (HTTP 422)**
+A general list (for everybody) carries no chains. Untick «Applies to all clients» and choose chains or clients.
+
+**What does «Esta lista es el precio especial de «…»: el nombre, las fechas y a quién aplica se cambian en «Precios especiales» de su ficha.» mean? (HTTP 422)**
+From Prices and offers you opened a «Special price of …» list (a dedicated list) and tried to change its name, dates, «applies to all», or to add or remove clients or chains. That is done in the «Special prices» panel of the client's or chain's page (the «Open the page» link opens it). From the list you can change prices, lines, photos and notes, publish, put back to draft and deactivate.
+
+**What does «Escoja al menos un cliente o una cadena, o marque que la lista aplica a todos los clientes.» mean? (HTTP 422)**
+You tried to publish a list that is not general and has neither clients nor chains, or to remove the last client or chain of a **published** list. Add who it applies to, or tick «Applies to all clients», or put the list back to draft before removing the last one.
+
+**What does «La lista tiene clientes o cadenas escogidos: quítelos antes de hacerla general (aplica a todos).» mean? (HTTP 422)**
+You ticked «Applies to all clients» on a list that has chosen clients or chains. Remove them first (or leave the list as it is).
+
+### Offers: audience, include and exclude
+
+**What does «El público de la oferta debe ser ALL (todos), INCLUDE (solo los escogidos) o EXCLUDE (todos menos los escogidos).» mean? (HTTP 400)**
+`audienceMode` carries another value. Only `ALL`, `INCLUDE` and `EXCLUDE` exist. The screen never sends it wrong; it shows when calling the API by hand.
+
+**What does «“Aplica a todos” no coincide con el público escogido: …» mean? (HTTP 400)**
+The call carries contradictory `appliesToAll` and `audienceMode` (for example `appliesToAll: true` with `EXCLUDE`). Send only `audienceMode`.
+
+**What does «Quite los clientes y cadenas de la oferta antes de cambiar entre incluir y excluir.» mean? (HTTP 422)**
+The offer has chosen clients or chains and you tried to switch it from «Include» to «Exclude» (or back). Remove what is chosen and switch. On screen, filling one box disables the other.
+
+**What does «La oferta tiene clientes o cadenas escogidos: quítelos antes de hacerla para todos.» mean? (HTTP 422)**
+You tried to make an offer with chosen ones «for all», through the API. On screen, **removing the last one** asks for confirmation and leaves the offer for all.
+
+**What does «Escoja al menos un cliente o una cadena, o marque que la oferta aplica a todos los clientes.» mean? (HTTP 422)**
+You tried to publish an «only for the chosen» (`INCLUDE`) offer with nobody chosen. Choose clients or chains, or make it «for all». An `EXCLUDE` offer with nobody excluded does publish: it applies to everybody.
+
+**What does «Escoja las cadenas de la oferta.» mean? (HTTP 400)**
+You tried to add chains to the offer without choosing any.
+
+**What does «Una oferta admite como máximo 500 cadenas.» mean? (HTTP 400)**
+The offer would exceed 500 chains.
+
+**What does «Cadena de la oferta no encontrada.» mean? (HTTP 404)**
+You tried to remove from the offer a chain that is not in it. Reload the offer.
+
+**What does «La oferta aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.» mean? (HTTP 422)**
+The offer is for all (`ALL`). First choose «Include» or «Exclude» (through the API, `PATCH` with `audienceMode`) and then add the chains. The screen does it by itself when adding to an empty box. (The same case with clients says «…no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.».)
+
+### Deactivating a chain
+
+**What does «La cadena tiene precios especiales u ofertas publicados y vigentes (N listas de precios y M ofertas): quítela de ellos antes de desactivarla.» mean? (HTTP 409)**
+A chain cannot be deactivated while it still has published, not-expired **price lists** (including its special prices) or published, not-expired **«only for the chosen» offers** with it. N and M say how many. To be able to deactivate it:
+1. On its page, **remove its special prices** (or wait for them to expire).
+2. In Accounting → Prices and offers, remove it from the normal lists and from the «Include» offers, or deactivate those lists and offers.
+3. Try «Deactivate» again.
+«Exclude» offers, and expired, draft or already deactivated lists do not block. If it also has active clients, the clients message comes first (Batch 245). A **scheduled** list or price (not started yet) also blocks.
+
+### Price notices (not errors)
+
+**What does «Precio especial más caro que la lista general: {SKU} a {precio} y en la lista general a {precio}. Se cobra el más bajo; corrija el precio especial.» mean?**
+It is a notice, not an error (HTTP 200): that product's special price is higher than the general list's. The general list price is charged. Lower the special price or remove it. It shows in the list's and the «Special prices» panel's notice box.
+
+**What does «El precio especial «…» pone {SKU} a {precio}, más caro que la lista general ({precio}): se aplica el de la lista general. Corrija el precio especial.» mean?**
+The same notice seen from the order: the client's (or its chain's) special price for the product is higher than the general list and the general list price is charged. It does not prevent saving or requesting the order. The quoted name is the dedicated list's («Precio especial — {owner} (desde el …)»), which the server always writes in Spanish.
+
+### Frequent cases
+
+**Why is the general list charged to a client that has a special price?**
+Because the general list is **cheaper or equal**. The lowest always wins. The panel row marks it («Higher than the general list»). Also check the **Status**: only an **In effect** price is charged. «Scheduled» has not started, «Expired» has passed and **«Draft»** means someone put the dedicated list back to draft (Prices and offers → «Also show special prices» → open → «Publish»).
+
+**Why doesn't the offer show if the client is excluded?**
+An «Exclude» offer applies to everybody **except** the chosen clients and chains. If the client, or its chain, is in that box, it does not get it. An «Include» offer applies only to the chosen ones and to the clients of the chosen chains. And if the client's chain is **deactivated**, it counts as no chain.
+
+**How do I change only a special price's date?**
+In the panel, **Change price** (pencil) and change «From» or «To». The line moves to the list of those dates by itself. If it overlaps another validity of the same product for the same owner, it gives 409.
+
+**Why don't I see the «Special price of …» lists in Prices and offers?**
+They are hidden by default (there can be hundreds). Turn on **«Also show special prices»**.
+
+**It will not let me deactivate the chain.**
+See «La cadena tiene precios especiales u ofertas publicados y vigentes …» above.
+
+**Does the special price carry IVU?**
+It is a price **before IVU**: tax is calculated afterwards on the price charged, and the client's exemptions (state, municipal, both or full) apply on that tax. To be confirmed with the accountant; the calculation was not changed.
+
+**I removed the last chain of an offer and now it applies to everybody.**
+That is what the confirmation «The offer will be for all clients.» says: an offer with nobody chosen does not stay «only for the chosen». If you do not want it for everybody, deactivate it before removing the last one.
+
+**Why do the notice and the dedicated list's name show in Spanish with the screen in English?**
+The server builds them and they have no English version yet (neither has an offer's validity: «desde el …, sin fecha de fin»). They use day/month/year dates. The data is the same.

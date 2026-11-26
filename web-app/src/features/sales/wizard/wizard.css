@@ -110,7 +110,8 @@
   .wz-progress li { flex: none; }
   .wz-progress li.on { flex: 0 1 auto; min-width: 0; }
   .wz-prod { grid-template-columns: 44px minmax(0, 1fr); }
-  .wz-prod > .wz-qty, .wz-prod > .wz-money, .wz-prod > .wz-noprice, .wz-prod > .mono { grid-column: 2; justify-self: start; }
+  .wz-prod > .wz-qty, .wz-prod > .wz-money, .wz-prod > .wz-noprice, .wz-prod > .mono, .wz-prod > .wz-price-wrap { grid-column: 2; justify-self: start; }
+  .wz-prod > .wz-price-wrap { align-items: flex-start; }
   .wz-cart-line { grid-template-columns: minmax(0, 1fr) auto; }
   .wz-nav .btn { max-width: none; }
 }

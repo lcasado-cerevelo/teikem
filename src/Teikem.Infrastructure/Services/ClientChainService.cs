@@ -163,8 +163,10 @@ public sealed class ClientChainService(TeikemDbContext db, ITenantContext tenant
     }
 
     /// <summary>
-    /// ÚNICO lugar de las reglas de activar y desactivar (el Lote C agrega aquí «tiene precios u ofertas publicadas» en <see cref="DeactivationBlockersAsync"/>):
+    /// ÚNICO lugar de las reglas de activar y desactivar (las de desactivar viven en <see cref="DeactivationBlockersAsync"/>):
     /// - desactivar cuenta los clientes ACTIVOS de la cadena DENTRO de la transacción: si hay → 409 «La cadena tiene N clientes activos…»;
+    /// - Lote 247: después, las listas de precios (incluidos sus precios especiales) y las ofertas INCLUDE publicadas y vigentes con la cadena → 409 «La cadena tiene
+    ///   precios especiales u ofertas publicados y vigentes…»;
     /// - reactivar con el nombre tomado por otra activa → 409 «Ya hay una cadena activa con ese nombre.»;
     /// - pedir el estado que ya tiene no cambia nada; el cambio viaja con RowVersion (una asignación concurrente da 409).
     /// </summary>
@@ -185,11 +187,24 @@ public sealed class ClientChainService(TeikemDbContext db, ITenantContext tenant
         return await GetAsync(publicId, ct);
     }
 
-    /// <summary>Lo que impide desactivar la cadena (null = nada). Hoy: clientes activos. El Lote C agrega aquí los precios y ofertas publicados.</summary>
+    /// <summary>
+    /// Lo que impide desactivar la cadena (null = nada), contado dentro de la transacción de quien llama:
+    /// - primero, los clientes activos (el mensaje de siempre);
+    /// - Lote 247 (DECISIÓN 13): las listas activas, publicadas y no vencidas («hasta» vacío o desde hoy) con fila PriceListChain activa de la cadena (incluidos sus
+    ///   precios especiales) y las ofertas activas, publicadas, no vencidas y en INCLUDE con fila OfferChain activa de la cadena. Las ofertas EXCLUDE no bloquean.
+    /// </summary>
     private async Task<string?> DeactivationBlockersAsync(int chainId, CancellationToken ct)
     {
         var activeClients = await db.Clients.CountAsync(x => x.ChainId == chainId && x.IsActive, ct);
-        return activeClients > 0 ? R.HasActiveClients(activeClients) : null;
+        if (activeClients > 0) return R.HasActiveClients(activeClients);
+
+        var today = clock.Today;
+        var lists = await db.Set<PriceList>().CountAsync(l => l.IsActive && l.IsPublished && (l.ValidTo == null || l.ValidTo >= today)
+            && (l.SpecialChainId == chainId || db.Set<PriceListChain>().Any(pc => pc.PriceListId == l.PriceListId && pc.IsActive && pc.ChainId == chainId)), ct);
+        const string include = OfferAudienceModes.Include;
+        var offers = await db.Set<Offer>().CountAsync(o => o.IsActive && o.IsPublished && (o.ValidTo == null || o.ValidTo >= today) && o.AudienceMode == include
+            && db.Set<OfferChain>().Any(oc => oc.OfferId == o.OfferId && oc.IsActive && oc.ChainId == chainId), ct);
+        return lists + offers > 0 ? R.HasPricesOrOffers(lists, offers) : null;
     }
 
     // ================================================================ asignar y quitar clientes

@@ -1050,6 +1050,10 @@ public static class PermissionCatalog
 
         [Clients.ClientChainCodes.DataSourceKey] = ClientsRead,
 
+        // Lote 247: precios especiales (listas dedicadas de cliente o cadena) con sales.view, como las órdenes de venta
+
+        [Sales.SpecialPriceCodes.DataSourceKey] = SalesView,
+
     };
 
 

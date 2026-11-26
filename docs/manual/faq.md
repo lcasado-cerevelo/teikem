@@ -13006,3 +13006,174 @@ Alguna de las órdenes ya se había exportado y no se confirmó ni se mandó a �
 
 **¿Por qué el botón «QuickBooks» o Sistema → Plantillas no aparecen?**
 Falta el permiso (`purchasing.quickbooks` para el botón; `integrations.view` para Plantillas) o el módulo (Compras para el botón; Integraciones para Plantillas, que en una base nueva solo enciende el administrador de la plataforma). Para la plantilla, use Compras → Importar → «Nueva plantilla».
+
+## Lote 247 — Precios especiales y ofertas por cliente y por cadena
+<!-- kemi:staff -->
+
+Capítulo: [55 — Precios especiales y ofertas por cliente y por cadena](55-precios-especiales-y-ofertas.md). Pantallas: [L247](frontend/l247-precios-especiales.md). Regla de fondo: **gana siempre el precio más bajo** entre el precio del cliente, el de su cadena, la oferta y la lista general. El precio especial es **antes del IVU**.
+
+### Agregar y cambiar un precio especial
+
+**¿Qué significa «Escoja el producto o kit de cada renglón.»? (HTTP 400)**
+Quiso agregar un precio especial sin producto. Escójalo en «Producto o kit» (en pantalla el aviso dice «Escoja el producto o kit.»).
+
+**¿Qué significa «Indique el precio de cada renglón.»? (HTTP 400)**
+Falta el precio. Escríbalo (en pantalla: «Escriba un precio mayor que cero (hasta 4 decimales).»).
+
+**¿Qué significa «El precio no es válido.»? (HTTP 400)**
+El precio es negativo o pasa de 9 999 999 999. Corríjalo. La pantalla además pide un precio mayor que cero; el API acepta 0.
+
+**¿Qué significa «El precio admite como máximo 4 decimales.»? (HTTP 400)**
+Escribió más de 4 decimales (por ejemplo 7.12345). Redondee a 4 o menos.
+
+**¿Qué significa «Indique desde qué fecha vale el precio especial.»? (HTTP 400)**
+Falta la fecha «Desde». Todo precio especial necesita fecha de inicio (la pantalla propone hoy). El «Hasta» sí es opcional: vacío es «sin fecha final».
+
+**¿Qué significa «La fecha «hasta» no puede ser anterior a la fecha «desde».»? (HTTP 400)**
+El «Hasta» cae antes del «Desde». Corrija las fechas. Para quitar el «Hasta» de un precio ya guardado, déjelo vacío al cambiarlo.
+
+**¿Qué significa «La fecha «hasta» ya pasó: un precio especial nuevo tiene que valer hoy o después.»? (HTTP 400)**
+Quiso **crear** un precio especial que ya venció. Ponga un «Hasta» de hoy en adelante, o déjelo vacío. Al **editar** un precio que ya corre sí se permite un «Hasta» pasado: es la forma de cerrarlo.
+
+**¿Qué significa «Una lista admite como máximo 2000 renglones.»? (HTTP 400)**
+La lista dedicada de esas fechas ya tiene 2000 productos. Quite los que no use o use otra vigencia (otras fechas).
+
+**¿Qué significa «Cliente no encontrado.»? (HTTP 404)**
+El cliente no existe o es de otra compañía (no se dice cuál de las dos). Recargue la ficha o escoja el cliente de la lista.
+
+**¿Qué significa «Producto no encontrado.»? (HTTP 404)**
+El producto del precio no existe o es de otra compañía. Búsquelo otra vez en «Producto o kit».
+
+**¿Qué significa «Precio especial no encontrado.»? (HTTP 404)**
+El renglón que quiso cambiar o quitar ya no existe, ya se quitó, o es de otro cliente o cadena. Recargue la ficha. Si otra persona lo quitó mientras usted lo editaba, no hay nada que recuperar: agréguelo de nuevo.
+
+**¿Qué significa «El cliente está inactivo; no se le puede vender.»? (HTTP 422)**
+Un cliente inactivo no admite precios especiales nuevos, ni cambios, ni quitar. Reactive al cliente o use otro. En pantalla el panel dice «Está inactivo: no admite precios nuevos.».
+
+**¿Qué significa «La cadena está desactivada: actívela o escoja otra.» al poner un precio especial o una cadena en una lista u oferta? (HTTP 422)**
+La cadena está desactivada. Reactívela (ficha de la cadena → «Reactivar») o escoja otra. Ojo: una cadena desactivada cuenta como «sin cadena» y sus clientes **no reciben** sus precios ni sus ofertas. (Con clientes, el mismo mensaje sale con HTTP 400; ver el Lote 245.)
+
+**¿Qué significa «Solo se ponen en una lista productos propios de la compañía.»? (HTTP 422)**
+El producto es de un cliente (mercancía de un dueño), no propio de la compañía. Los precios especiales solo se ponen a productos propios.
+
+**¿Qué significa «El producto {SKU} está inactivo: no se puede poner en la lista.»? (HTTP 422)**
+El producto está inactivo. Reactívelo en Productos o escoja otro.
+
+**¿Qué significa «El kit {SKU} es un kit de oferta: su precio va en una oferta, no en una lista de precios.»? (HTTP 422)**
+Un kit de oferta no tiene precio especial: su precio se pone dentro de una oferta (Precios y ofertas → la oferta → renglones). Un kit normal sí se puede.
+
+**¿Qué significa «La lista se cruza con «…» en las mismas fechas y para los mismos clientes o cadenas en: …. Cambie las fechas o quite esos productos de una de las dos.»? (HTTP 409)**
+El mismo producto ya tiene un precio, para el **mismo cliente** o la **misma cadena**, en fechas que se cruzan con las que escribió; el mensaje cita la lista y hasta 5 SKU («y N más»). Cambie las fechas para que no se pisen, o quite el otro precio. **No** choca un precio de la cadena con uno del cliente, ni un precio especial con una lista normal: en esos casos conviven y se cobra el más bajo. Con las **mismas** fechas tampoco es un error: se cambia el precio de ese renglón.
+
+**¿Qué significa «La lista cambió al mismo tiempo. Recárguela e intente de nuevo.»? (HTTP 409)**
+Dos personas agregaron al mismo tiempo el mismo precio especial (mismo dueño y fechas). Una lo guardó y la otra recibe este mensaje. Recargue la ficha: el precio ya está; si hacía falta otro valor, cámbielo.
+
+**¿Qué significa «El registro fue modificado por otro usuario; recargue e intente de nuevo.»? (HTTP 409)**
+Alguien cambió la misma lista a la vez. No se guardó nada de lo suyo. Recargue y repita.
+
+**¿Qué significa «El cuerpo de la solicitud es obligatorio.» al agregar o cambiar un precio especial, una oferta o una cadena de una lista? (HTTP 400)**
+El API recibió la llamada sin cuerpo. Solo sale al llamar al API a mano.
+
+**¿Qué significa «Falta el permiso 'sales.pricelist'.»? (HTTP 403)**
+Agregar, cambiar y quitar precios especiales (y poner cadenas en listas u ofertas) pide `sales.pricelist`. Con solo `sales.view` el panel se ve pero no tiene botones. Pídale al administrador que le dé el permiso (rol Supervisor de ventas).
+
+**¿Qué significa «El módulo 'SALES_ORDERS' no está habilitado para esta compañía.»? (HTTP 403)**
+La compañía no tiene el módulo Órdenes de venta encendido. Lo enciende el administrador de la plataforma.
+
+### Listas de precios con cadenas
+
+**¿Qué significa «Escoja las cadenas de la lista.»? (HTTP 400)**
+Quiso agregar cadenas a una lista sin escoger ninguna. Escoja al menos una.
+
+**¿Qué significa «Una lista admite como máximo 500 cadenas.»? (HTTP 400)**
+La lista llegaría a más de 500 cadenas. Use otra lista para el resto.
+
+**¿Qué significa «Cadena no encontrada.»? (HTTP 404)**
+La cadena no existe o es de otra compañía. En un precio especial, en una lista, en una oferta y en `GET /offers?chainPublicId=` es el mismo mensaje. Escoja la cadena de la lista desplegable.
+
+**¿Qué significa «Cadena de la lista no encontrada.»? (HTTP 404)**
+Quiso quitar de una lista una cadena que no está en ella (quizá ya la quitaron). Recargue la lista.
+
+**¿Qué significa «La lista aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.»? (HTTP 422)**
+Una lista general (para todos) no lleva cadenas. Desmarque «Aplica a todos los clientes» y escoja cadenas o clientes.
+
+**¿Qué significa «Esta lista es el precio especial de «…»: el nombre, las fechas y a quién aplica se cambian en «Precios especiales» de su ficha.»? (HTTP 422)**
+Abrió, desde Precios y ofertas, una lista «Precio especial de …» (lista dedicada) y quiso cambiar su nombre, sus fechas, «aplica a todos», o agregar o quitar clientes o cadenas. Eso se hace en el panel «Precios especiales» de la ficha del cliente o de la cadena (el enlace «Abrir la ficha» lo abre). Desde la lista sí puede cambiar precios, renglones, fotos y notas, publicar, volver a borrador y desactivar.
+
+**¿Qué significa «Escoja al menos un cliente o una cadena, o marque que la lista aplica a todos los clientes.»? (HTTP 422)**
+Quiso publicar una lista que no es general y no tiene ni clientes ni cadenas, o quitar el último cliente o la última cadena de una lista **publicada**. Agregue a quién aplica, o marque «Aplica a todos los clientes», o vuelva la lista a borrador antes de quitar al último.
+
+**¿Qué significa «La lista tiene clientes o cadenas escogidos: quítelos antes de hacerla general (aplica a todos).»? (HTTP 422)**
+Marcó «Aplica a todos los clientes» en una lista que tiene clientes o cadenas escogidos. Quítelos primero (o deje la lista como está).
+
+### Ofertas: público, incluir y excluir
+
+**¿Qué significa «El público de la oferta debe ser ALL (todos), INCLUDE (solo los escogidos) o EXCLUDE (todos menos los escogidos).»? (HTTP 400)**
+`audienceMode` trae otro valor. Solo existen `ALL`, `INCLUDE` y `EXCLUDE`. La pantalla nunca lo manda mal; sale al llamar al API a mano.
+
+**¿Qué significa «“Aplica a todos” no coincide con el público escogido: …»? (HTTP 400)**
+La llamada trae `appliesToAll` y `audienceMode` contradictorios (por ejemplo `appliesToAll: true` con `EXCLUDE`). Mande solo `audienceMode`.
+
+**¿Qué significa «Quite los clientes y cadenas de la oferta antes de cambiar entre incluir y excluir.»? (HTTP 422)**
+La oferta tiene clientes o cadenas escogidos y quiso pasarla de «Incluir» a «Excluir» (o al revés). Quite lo escogido y cambie. En la pantalla, llenar una caja deshabilita la otra.
+
+**¿Qué significa «La oferta tiene clientes o cadenas escogidos: quítelos antes de hacerla para todos.»? (HTTP 422)**
+Quiso pasar a «para todos» una oferta con escogidos, por API. En la pantalla, **quitar al último** pide confirmar y deja la oferta para todos.
+
+**¿Qué significa «Escoja al menos un cliente o una cadena, o marque que la oferta aplica a todos los clientes.»? (HTTP 422)**
+Quiso publicar una oferta «solo para los escogidos» (`INCLUDE`) sin nadie escogido. Escoja clientes o cadenas, o pásela a «para todos». Una oferta `EXCLUDE` sin nadie excluido sí se publica: vale para todos.
+
+**¿Qué significa «Escoja las cadenas de la oferta.»? (HTTP 400)**
+Quiso agregar cadenas a la oferta sin escoger ninguna.
+
+**¿Qué significa «Una oferta admite como máximo 500 cadenas.»? (HTTP 400)**
+La oferta llegaría a más de 500 cadenas.
+
+**¿Qué significa «Cadena de la oferta no encontrada.»? (HTTP 404)**
+Quiso quitar de la oferta una cadena que no está en ella. Recargue la oferta.
+
+**¿Qué significa «La oferta aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.»? (HTTP 422)**
+La oferta es para todos (`ALL`). Primero escoja «Incluir» o «Excluir» (por API, `PATCH` con `audienceMode`) y luego agregue las cadenas. La pantalla lo hace sola al agregar a una caja vacía. (El mismo caso con clientes dice «…no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.».)
+
+### Desactivar una cadena
+
+**¿Qué significa «La cadena tiene precios especiales u ofertas publicados y vigentes (N listas de precios y M ofertas): quítela de ellos antes de desactivarla.»? (HTTP 409)**
+No se puede desactivar una cadena que todavía tiene **listas de precios** (incluidos sus precios especiales) publicadas y no vencidas, u **ofertas «solo para los escogidos»** publicadas y no vencidas con ella. N y M dicen cuántas. Para poder desactivarla:
+1. En su ficha, **quite sus precios especiales** (o espere a que venzan).
+2. En Contabilidad → Precios y ofertas, quítela de las listas normales y de las ofertas «Incluir», o desactive esas listas y ofertas.
+3. Vuelva a «Desactivar».
+No bloquean las ofertas «Excluir», las listas vencidas, en borrador o ya desactivadas. Si además tiene clientes activos, primero sale el mensaje de clientes (Lote 245). Una lista o precio **programado** (que aún no empieza) también bloquea.
+
+### Avisos de precio (no son errores)
+
+**¿Qué significa «Precio especial más caro que la lista general: {SKU} a {precio} y en la lista general a {precio}. Se cobra el más bajo; corrija el precio especial.»?**
+Es un aviso, no un error (HTTP 200): el precio especial de ese producto es más caro que el de la lista general. Se cobra el de la lista general. Baje el precio especial o quítelo. Sale en el recuadro de avisos de la lista y del panel «Precios especiales».
+
+**¿Qué significa «El precio especial «…» pone {SKU} a {precio}, más caro que la lista general ({precio}): se aplica el de la lista general. Corrija el precio especial.»?**
+El mismo aviso, visto desde el pedido: el producto del cliente (o de su cadena) tiene un precio especial más caro que la lista general y se le cobra el de la lista general. No impide guardar ni solicitar el pedido. El nombre entre comillas es el de la lista dedicada («Precio especial — {dueño} (desde el …)»), que el servidor escribe siempre en español.
+
+### Casos frecuentes
+
+**¿Por qué se le cobra la lista general a un cliente que tiene precio especial?**
+Porque la lista general es **más barata o igual**. Gana siempre el más bajo. La fila del panel lo marca («Más caro que la lista general»). Revise también el **Estado**: solo se cobra el precio **Vigente**. «Programada» aún no empieza, «Vencida» ya pasó y **«Borrador»** quiere decir que alguien volvió la lista dedicada a borrador (Precios y ofertas → «Ver también los precios especiales» → abrir → «Publicar»).
+
+**¿Por qué no me sale la oferta si el cliente está excluido?**
+Una oferta «Excluir» vale para todos **menos** los clientes y cadenas escogidos. Si el cliente, o su cadena, está en esa caja, no le sale. Una oferta «Incluir» solo vale para los escogidos y para los clientes de las cadenas escogidas. Y si la cadena del cliente está **desactivada**, cuenta como sin cadena.
+
+**¿Cómo cambio solo la fecha de un precio especial?**
+En el panel, **Cambiar precio** (lápiz) y cambie «Desde» o «Hasta». El renglón pasa solo a la lista de esas fechas. Si se cruza con otra vigencia del mismo producto para el mismo dueño, da 409.
+
+**¿Por qué no veo las listas «Precio especial de …» en Precios y ofertas?**
+Están ocultas por omisión (pueden ser cientos). Encienda **«Ver también los precios especiales»**.
+
+**No me deja desactivar la cadena.**
+Vea «La cadena tiene precios especiales u ofertas publicados y vigentes …» arriba.
+
+**¿El precio especial lleva IVU?**
+Es un precio **antes del IVU**: el impuesto se calcula después sobre el precio que se cobra, y las exenciones del cliente (estatal, municipal, los dos o total) se aplican sobre ese impuesto. Pendiente de confirmar con el contable; no se cambió el cálculo.
+
+**Quité a la última cadena de una oferta y ahora le sale a todos.**
+Es lo que dice la confirmación «La oferta quedará para todos los clientes.»: una oferta sin escogidos no se queda «solo para los escogidos». Si no la quiere para todos, desactívela antes de quitar al último.
+
+**¿Por qué el aviso o el nombre de la lista dedicada salen en español con la pantalla en inglés?**
+Los arma el servidor y todavía no tienen versión en inglés (tampoco la vigencia de una oferta: «desde el …, sin fecha de fin»). Usan fecha día/mes/año. Los datos son los mismos.

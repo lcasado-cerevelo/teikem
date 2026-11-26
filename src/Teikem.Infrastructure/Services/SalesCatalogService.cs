@@ -5,6 +5,7 @@ using Teikem.Domain.Files;
 using Teikem.Domain.Sales;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
@@ -18,7 +19,8 @@ namespace Teikem.Infrastructure.Services;
 /// - Oferta = un kit marcado «es promoción», con vigencia opcional (desde / hasta) y foto. Solo un kit puede serlo. Fuera de vigencia no se vende; las órdenes ya
 ///   hechas no cambian.
 /// - Catálogo: los productos propios, activos y vendibles (sin serie) agrupados por Product.Brand (los sin marca al final), con sus ofertas vigentes arriba y la
-///   lista completa de la marca debajo, cada uno con el precio ya resuelto para el cliente (lista del cliente &gt; lista general &gt; precio de venta del producto).
+///   lista completa de la marca debajo, cada uno con el precio ya resuelto para el cliente (Lote 247: el más bajo entre la lista del cliente, la de su cadena, la
+///   oferta y la lista general; si no, el precio de venta del producto).
 /// </summary>
 public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, ILookupCache lookups, StoredFileService files)
 {
@@ -120,19 +122,23 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
         var kitTypeId = await lookups.TryGetIdAsync(KitCodes.ProductTypeDomain, ProductTypes.Kit, ct);
         var products = await db.Set<Product>().AsNoTracking().Where(p => p.IsActive && p.ClientId == null && p.TrackingTypeLookupId != serialId).ToListAsync(ct);
 
-        var lists = await PriceListQueries.InEffectAsync(db, clientId, today, null, ct);
-        var offers = await PriceListQueries.OffersInEffectAsync(db, clientId, today, null, ct);
-        // Lote 231: un kit de oferta solo se vende mientras esté en alguna oferta publicada y vigente que aplique al cliente
-        products = products.Where(p => !p.IsOfferKit || OfferKitRules.IsOnSale(p.ProductId, clientId, today, offers)).ToList();
+        // Lote 247: la cadena ACTIVA del cliente (una vez): sus listas y ofertas compiten con las del cliente y gana el precio más bajo
+        var chainId = await ClientChainQueries.ActiveChainOfClientAsync(db, clientId, ct);
+        var lists = await PriceListQueries.InEffectAsync(db, clientId, today, null, ct, chainId);
+        var offers = await PriceListQueries.OffersInEffectAsync(db, clientId, today, null, ct, chainId);
+        // Lote 231: un kit de oferta solo se vende mientras esté en alguna oferta publicada y vigente que aplique al cliente (Lote 247: o a su cadena)
+        products = products.Where(p => !p.IsOfferKit || OfferKitRules.IsOnSale(p.ProductId, clientId, today, offers, chainId)).ToList();
+        var chain = chainId is int chid ? (await ClientChainQueries.ChainsByIdAsync(db, new[] { chid }, ct)).GetValueOrDefault(chid) : null;
         var listIds = lists.Select(x => x.PriceListId).ToList();
         var listInfo = listIds.Count == 0 ? new Dictionary<int, (Guid PublicId, string Name)>()
             : (await db.Set<PriceList>().AsNoTracking().Where(l => listIds.Contains(l.PriceListId)).Select(l => new { l.PriceListId, l.PublicId, l.Name }).ToListAsync(ct))
                 .ToDictionary(l => l.PriceListId, l => (l.PublicId, l.Name));
+        var listPublic = listInfo.ToDictionary(kv => kv.Key, kv => kv.Value.PublicId);
         var offerIds = offers.Select(o => o.OfferId).ToList();
         var offerPublic = offerIds.Count == 0 ? new Dictionary<int, Guid>()
             : await db.Set<Offer>().AsNoTracking().Where(o => offerIds.Contains(o.OfferId)).ToDictionaryAsync(o => o.OfferId, o => o.PublicId, ct);
         var offerById = offers.ToDictionary(o => o.OfferId);
-        var resolved = products.ToDictionary(p => p.ProductId, p => OfferRules.Resolve(p.ProductId, clientId, today, lists, offers, p.SalePrice));
+        var resolved = products.ToDictionary(p => p.ProductId, p => OfferRules.Resolve(p.ProductId, clientId, today, lists, offers, p.SalePrice, chainId));
         // la oferta que «presenta» al producto (la más barata que lo trae), aunque gane el negociado
         var offerOf = new Dictionary<int, (OfferView Offer, OfferItemView Item)>();
         foreach (var o in offers)
@@ -153,11 +159,12 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
             var rowImage = asOffer ? shown?.Item.ImageFileId ?? r.ImageFileId : r.ImageFileId;
             var fileId = ProductImageRules.Resolve(rowImage, productImages.GetValueOrDefault(p.ProductId), false, null);
             var info = r.PriceListId is int lid && listInfo.TryGetValue(lid, out var li) ? li : ((Guid PublicId, string Name)?)null;
-            var notices = r.Notices?.Select(n => Notice(p, n, offerPublic)).ToList();
+            var notices = r.Notices?.Select(n => Notice(p, n, offerPublic, listPublic)).ToList();
+            var byChain = r.Source == PriceSources.ChainList ? chain : null;   // Lote 247: solo la web del personal la muestra (DECISIÓN 28)
             return new SalesCatalogItemDto(p.PublicId, p.Sku, p.Name, p.Brand, isKit, isKit && p.IsOfferKit && p.KitAdjustable, shown is not null, shown?.Offer.ValidFrom, shown?.Offer.ValidTo,
                 r.Price, r.Source, info?.PublicId, info?.Name, p.SalePrice, fileId is int f && images.TryGetValue(f, out var g) ? g : null,
                 shown is { } s1 && offerPublic.TryGetValue(s1.Offer.OfferId, out var op) ? op : null, shown?.Offer.Name, shown?.Offer.ValidFrom, shown?.Offer.ValidTo,
-                shown?.Item.Price, p.IsOfferKit, notices is { Count: > 0 } ? notices : null);
+                shown?.Item.Price, p.IsOfferKit, notices is { Count: > 0 } ? notices : null, byChain?.PublicId, byChain?.Name);
         }
 
         var brands = products
@@ -176,10 +183,17 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
         return new SalesCatalogDto(clientPublicId, today, brands, await PriceListQueries.PhotosEnabledAsync(db, ct));
     }
 
-    /// <summary>Un aviso de precio con su texto, la oferta que ganó y la otra (si hay).</summary>
-    internal static SalesPriceNoticeDto Notice(Product p, PriceNotice n, IReadOnlyDictionary<int, Guid> offerPublic)
-        => new(n.Code, OfferRules.NoticeMessage(p.Sku, n), p.PublicId, p.Sku, offerPublic.TryGetValue(n.OfferId, out var a) ? a : null, n.OfferName,
-            n.OtherOfferId is int o && offerPublic.TryGetValue(o, out var b) ? b : null, n.OtherOfferName);
+    /// <summary>
+    /// Un aviso de precio con su texto, la oferta que ganó y la otra (si hay). Lote 247: SPECIAL_ABOVE_GENERAL lleva la lista del precio especial
+    /// (<paramref name="listPublic"/> da su PublicId; sin oferta: OfferPublicId y OfferName vacíos).
+    /// </summary>
+    internal static SalesPriceNoticeDto Notice(Product p, PriceNotice n, IReadOnlyDictionary<int, Guid> offerPublic, IReadOnlyDictionary<int, Guid>? listPublic = null)
+    {
+        var isList = n.PriceListId is not null;
+        return new(n.Code, OfferRules.NoticeMessage(p.Sku, n), p.PublicId, p.Sku, !isList && offerPublic.TryGetValue(n.OfferId, out var a) ? a : null,
+            isList ? null : n.OfferName, n.OtherOfferId is int o && offerPublic.TryGetValue(o, out var b) ? b : null, n.OtherOfferName,
+            n.PriceListId is int lid && listPublic is not null && listPublic.TryGetValue(lid, out var l) ? l : null, n.PriceListName);
+    }
 
     // ---------------------------------------------------------------- piezas
 

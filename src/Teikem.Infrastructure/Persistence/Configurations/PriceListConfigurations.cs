@@ -22,6 +22,18 @@ public sealed class PriceListConfiguration : IEntityTypeConfiguration<PriceList>
         b.HasMany(p => p.Clients).WithOne().HasForeignKey(c => c.PriceListId).OnDelete(DeleteBehavior.NoAction);
         b.HasIndex(p => p.PublicId).IsUnique().HasDatabaseName("UQ_PriceList_PublicId");
         b.HasIndex(p => new { p.TenantId, p.IsActive, p.IsPublished }).HasDatabaseName("IX_PriceList_Tenant");
+
+        // Lote 247 (sección «Lote 247» de update.sql): lista dedicada (precio especial) de un cliente o de una cadena y cadenas de la lista. En la base las FK son
+        // COMPUESTAS por compañía (FK_PriceList_SpecialClient / FK_PriceList_SpecialChain → UQ_Client_IdTenant / UQ_ClientChain_IdTenant) y
+        // CK_PriceList_SpecialOwner exige un solo dueño y AppliesToAll = 0; aquí bastan las simples (precedente del Lote 245, decisión 20).
+        b.Ignore(p => p.IsSpecial);
+        b.HasOne<Teikem.Domain.Clients.Client>().WithMany().HasForeignKey(p => p.SpecialClientId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Clients.ClientChain>().WithMany().HasForeignKey(p => p.SpecialChainId).OnDelete(DeleteBehavior.NoAction);
+        b.HasMany(p => p.Chains).WithOne().HasForeignKey(c => c.PriceListId).OnDelete(DeleteBehavior.NoAction);
+        b.HasIndex(p => new { p.TenantId, p.SpecialClientId, p.ValidFrom, p.ValidTo }).IsUnique()
+            .HasFilter("[IsActive] = 1 AND [SpecialClientId] IS NOT NULL").HasDatabaseName("UX_PriceList_SpecialClient");
+        b.HasIndex(p => new { p.TenantId, p.SpecialChainId, p.ValidFrom, p.ValidTo }).IsUnique()
+            .HasFilter("[IsActive] = 1 AND [SpecialChainId] IS NOT NULL").HasDatabaseName("UX_PriceList_SpecialChain");
     }
 }
 
@@ -48,5 +60,18 @@ public sealed class PriceListClientConfiguration : IEntityTypeConfiguration<Pric
         b.HasOne<Teikem.Domain.Clients.Client>().WithMany().HasForeignKey(c => c.ClientId).OnDelete(DeleteBehavior.NoAction);
         b.HasIndex(c => new { c.PriceListId, c.ClientId }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_PriceListClient_Client");
         b.HasIndex(c => new { c.TenantId, c.ClientId }).HasDatabaseName("IX_PriceListClient_Client");
+    }
+}
+
+/// <summary>Lote 247 — cadena de una lista que no es general (FK compuestas por compañía en la base: FK_PriceListChain_List y FK_PriceListChain_Chain).</summary>
+public sealed class PriceListChainConfiguration : IEntityTypeConfiguration<PriceListChain>
+{
+    public void Configure(EntityTypeBuilder<PriceListChain> b)
+    {
+        b.ToTable("PriceListChain");
+        b.HasKey(c => c.PriceListChainId);
+        b.HasOne<Teikem.Domain.Clients.ClientChain>().WithMany().HasForeignKey(c => c.ChainId).OnDelete(DeleteBehavior.NoAction);
+        b.HasIndex(c => new { c.PriceListId, c.ChainId }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_PriceListChain_Chain");
+        b.HasIndex(c => new { c.TenantId, c.ChainId }).HasDatabaseName("IX_PriceListChain_Chain");
     }
 }

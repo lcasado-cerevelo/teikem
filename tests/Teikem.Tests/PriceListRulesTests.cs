@@ -82,7 +82,7 @@ public sealed class PriceListRulesTests
     public void The_overlap_message_names_the_other_list_and_up_to_five_skus()
     {
         var msg = PriceListRules.Overlap("Navidad", new[] { "A", "B", "C", "D", "E", "F", "G" });
-        Assert.Equal("La lista se cruza con «Navidad» en las mismas fechas y para los mismos clientes en: A, B, C, D, E y 2 más. Cambie las fechas o quite esos productos de una de las dos.", msg);
+        Assert.Equal("La lista se cruza con «Navidad» en las mismas fechas y para los mismos clientes o cadenas en: A, B, C, D, E y 2 más. Cambie las fechas o quite esos productos de una de las dos.", msg);
     }
 
     [Fact]
@@ -118,13 +118,17 @@ public sealed class PriceListRulesTests
     }
 
     [Fact]
-    public void With_old_overlapping_data_the_list_that_started_later_wins()
+    public void With_old_overlapping_data_the_lowest_wins_and_a_tie_goes_to_the_list_that_started_later()
     {
+        // Lote 247 (DECISIÓN 15): dentro del mismo nivel gana el precio más bajo; a igual precio, la que empezó más tarde y, a igual fecha, la más nueva
         var older = L(1, true, D1, null, items: new[] { (10, 1m) });
         var newer = L(2, true, D1.AddDays(5), null, items: new[] { (10, 2m) });
-        var sameDayNewer = L(3, true, D1.AddDays(5), null, items: new[] { (10, 3m) });
-        Assert.Equal(2m, PriceListRules.Resolve(10, null, D1.AddDays(6), new[] { newer, older }, null).Price);
-        Assert.Equal(3m, PriceListRules.Resolve(10, null, D1.AddDays(6), new[] { sameDayNewer, older, newer }, null).Price);
+        Assert.Equal(new ResolvedPrice(1m, PriceSources.GeneralList, 1), PriceListRules.Resolve(10, null, D1.AddDays(6), new[] { newer, older }, null));
+        var sameOlder = L(4, true, D1, null, items: new[] { (10, 3m) });
+        var sameNewer = L(5, true, D1.AddDays(5), null, items: new[] { (10, 3m) });
+        var sameDayNewer = L(6, true, D1.AddDays(5), null, items: new[] { (10, 3m) });
+        Assert.Equal(6, PriceListRules.Resolve(10, null, D1.AddDays(6), new[] { sameDayNewer, sameOlder, sameNewer }, null).PriceListId);
+        Assert.Equal(5, PriceListRules.Resolve(10, null, D1.AddDays(6), new[] { sameOlder, sameNewer }, null).PriceListId);
     }
 
     [Fact]

@@ -72,3 +72,21 @@ export function publishBlocker(itemCount: number, appliesToAll: boolean, clientC
   if (!appliesToAll && clientCount < 1) return 'noClients'
   return null
 }
+
+/** Lote 247: una lista dedicada de «Precios especiales» (de un cliente o de una cadena): nombre, fechas y público no se cambian desde la lista de precios. */
+export function isDedicated(list: { specialOwnerKind?: string | null }): boolean {
+  return list.specialOwnerKind === 'CLIENT' || list.specialOwnerKind === 'CHAIN'
+}
+
+/** Ruta de la ficha del dueño de una lista dedicada (null si no es dedicada o no se conoce el dueño). */
+export function specialOwnerLink(list: { specialOwnerKind?: string | null; specialOwnerPublicId?: string | null }): string | null {
+  if (!list.specialOwnerPublicId) return null
+  if (list.specialOwnerKind === 'CLIENT') return `/catalog/clients?client=${list.specialOwnerPublicId}`
+  if (list.specialOwnerKind === 'CHAIN') return `/catalog/chains?id=${list.specialOwnerPublicId}`
+  return null
+}
+
+/** Texto de «a quién aplica» de una lista, con cadenas: `{ clients, chains }` escogidos. */
+export function listAudienceCount(l: { clientCount?: number; chainCount?: number }): number {
+  return (l.clientCount ?? 0) + (l.chainCount ?? 0)
+}

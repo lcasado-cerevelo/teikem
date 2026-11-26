@@ -50,6 +50,12 @@ public sealed class SalesOrderLineConfiguration : IEntityTypeConfiguration<Sales
         b.Property(l => l.UnitPrice).HasColumnType("decimal(18,4)");
         b.Property(l => l.TaxRatePct).HasColumnType("decimal(9,4)");
         b.Property(l => l.TaxAmount).HasColumnType("decimal(18,4)");
+        // Lote 247: copia del origen del precio (FK compuestas por compañía en la base: FK_SalesOrderLine_PriceList, _Offer y _PriceChain; aquí las simples)
+        b.Property(l => l.PriceSource).HasMaxLength(20);
+        b.Property(l => l.ResolvedUnitPrice).HasColumnType("decimal(18,4)");
+        b.HasOne<PriceList>().WithMany().HasForeignKey(l => l.PriceListId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Offer>().WithMany().HasForeignKey(l => l.OfferId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Teikem.Domain.Clients.ClientChain>().WithMany().HasForeignKey(l => l.PriceChainId).OnDelete(DeleteBehavior.NoAction);
         b.HasIndex(l => new { l.SalesOrderId, l.LineNo }).IsUnique().HasDatabaseName("UX_SalesOrderLine_No");
         b.HasIndex(l => new { l.TenantId, l.ProductId }).HasDatabaseName("IX_SalesOrderLine_Product");
         b.HasMany(l => l.Components).WithOne().HasForeignKey(c => c.SalesOrderLineId).OnDelete(DeleteBehavior.Cascade);

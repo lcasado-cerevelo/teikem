@@ -12,6 +12,8 @@ public static class PriceListCodes
     public const int MaxNotesLength = 500;
     public const int MaxItems = 2000;
     public const int MaxClients = 2000;
+    /// <summary>Lote 247: tope de cadenas por lista (los clientes siguen en 2000).</summary>
+    public const int MaxChains = 500;
 }
 
 /// <summary>
@@ -30,6 +32,8 @@ public static class PriceListStates
 public static class PriceSources
 {
     public const string ClientList = "CLIENT_LIST";
+    /// <summary>Lote 247: una lista (normal o el precio especial) de la cadena del cliente.</summary>
+    public const string ChainList = "CHAIN_LIST";
     /// <summary>Lote 229: una oferta vigente que aplica al cliente (ganó por ser el precio más bajo).</summary>
     public const string Offer = "OFFER";
     public const string GeneralList = "GENERAL_LIST";
@@ -60,8 +64,18 @@ public class PriceList : ITenantScoped, ISoftDeletable, IAuditStamped
     [NotAudited] public DateTime? UpdatedAtUtc { get; set; }
     public int? UpdatedBy { get; set; }
     [NotAudited] public byte[]? RowVersion { get; set; }
+
+    // --- Lote 247 (Lote C): lista DEDICADA = el precio especial de un cliente o de una cadena (uno solo de los dos; CK_PriceList_SpecialOwner exige además
+    // AppliesToAll = 0). Lleva también su fila PriceListClient o PriceListChain, así la resolución del precio no necesita conocer la marca.
+    public int? SpecialClientId { get; set; }
+    public int? SpecialChainId { get; set; }
+    /// <summary>¿Es el precio especial (lista dedicada) de un cliente o de una cadena? (no se guarda: sale de las dos columnas).</summary>
+    public bool IsSpecial => SpecialClientId != null || SpecialChainId != null;
+
     public List<PriceListItem> Items { get; set; } = new();
     public List<PriceListClient> Clients { get; set; } = new();
+    /// <summary>Lote 247: cadenas a las que aplica una lista que NO es general.</summary>
+    public List<PriceListChain> Chains { get; set; } = new();
 }
 
 /// <summary>Renglón de una lista: un producto o un kit (incluida una oferta) a un precio, con foto opcional (StoredFile del producto). Quitar = IsActive 0.</summary>
@@ -90,12 +104,47 @@ public class PriceListClient : ITenantScoped, ISoftDeletable
     [NotAudited] public DateTime CreatedAtUtc { get; set; }
 }
 
+/// <summary>Lote 247 — cadena a la que aplica una lista que NO es general (alcanza a los clientes de la cadena mientras esté activa). Quitar = IsActive 0.</summary>
+[AuditEntity(PriceListCodes.EntityType)]
+public class PriceListChain : ITenantScoped, ISoftDeletable
+{
+    public int PriceListChainId { get; set; }
+    public int TenantId { get; set; }
+    public int PriceListId { get; set; }
+    public int ChainId { get; set; }
+    public bool IsActive { get; set; } = true;
+    [NotAudited] public DateTime CreatedAtUtc { get; set; }
+}
+
 /// <summary>Un renglón visto por las reglas puras.</summary>
 public sealed record PriceListItemView(int ProductId, decimal Price, int? ImageFileId = null);
 
-/// <summary>Una lista vista por las reglas puras (solo lo vigente: renglones y clientes activos).</summary>
+/// <summary>
+/// Una lista vista por las reglas puras (solo lo vigente: renglones, clientes y cadenas activos). Lote 247: ChainIds = las cadenas de la lista (null = ninguna) e
+/// IsSpecial = es el precio especial (lista dedicada) de un cliente o de una cadena.
+/// </summary>
 public sealed record PriceListView(int PriceListId, string Name, bool IsPublished, bool AppliesToAll, DateOnly ValidFrom, DateOnly? ValidTo,
-    IReadOnlyCollection<int> ClientIds, IReadOnlyList<PriceListItemView> Items);
+    IReadOnlyCollection<int> ClientIds, IReadOnlyList<PriceListItemView> Items, IReadOnlyCollection<int>? ChainIds = null, bool IsSpecial = false);
+
+/// <summary>Lote 247 — el renglón que ganó dentro de un nivel (cliente, cadena o general) y su lista.</summary>
+public sealed record PriceLevelPick(PriceListView List, PriceListItemView Item);
+
+/// <summary>Lote 247 — lo mejor de cada nivel para un producto: la lista del cliente, la de su cadena y la general (null = ese nivel no trae el producto).</summary>
+public sealed record PriceLevels(PriceLevelPick? Client, PriceLevelPick? Chain, PriceLevelPick? General);
+
+/// <summary>
+/// Lote 247 — la copia del origen del precio que se guarda en la línea de la orden (SalesOrderLine.PriceSource, PriceListId, OfferId, PriceChainId,
+/// ResolvedUnitPrice). PriceChainId solo va con CHAIN_LIST.
+/// </summary>
+public sealed record PriceOrigin(string Source, int? PriceListId, int? OfferId, int? PriceChainId, decimal? ResolvedUnitPrice);
+
+/// <summary>Lote 247 — reglas puras de la copia del origen del precio en la línea.</summary>
+public static class PriceOriginRules
+{
+    /// <summary>La copia del precio resuelto: de dónde salió, la lista o la oferta, la cadena (solo si salió de una lista de cadena) y el precio resuelto.</summary>
+    public static PriceOrigin Copy(ResolvedPrice r, int? chainId)
+        => new(r.Source, r.PriceListId, r.OfferId, r.Source == PriceSources.ChainList ? chainId : null, r.Price);
+}
 
 /// <summary>
 /// Precio resuelto: el precio (null = no hay), de dónde salió, la lista (si salió de una) y la foto del renglón de esa lista (o de la oferta). Lote 229: la oferta
@@ -130,10 +179,15 @@ public static class PriceListRules
     public const string ClientsRequired = "Escoja los clientes de la lista.";
     public static readonly string TooManyClients = $"Una lista admite como máximo {PriceListCodes.MaxClients} clientes.";
     public const string ClientsOnGeneralList = "La lista aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.";
-    public const string GeneralWithClients = "La lista tiene clientes escogidos: quítelos antes de hacerla general (aplica a todos).";
+    public const string GeneralWithClients = "La lista tiene clientes o cadenas escogidos: quítelos antes de hacerla general (aplica a todos).";
     public const string ClientNotInList = "Cliente de la lista";
     public const string PublishNeedsItems = "Agregue al menos un renglón antes de publicar la lista.";
-    public const string PublishNeedsClients = "Escoja al menos un cliente o marque que la lista aplica a todos los clientes.";
+    public const string PublishNeedsClients = "Escoja al menos un cliente o una cadena, o marque que la lista aplica a todos los clientes.";
+    // Lote 247: cadenas en las listas y listas dedicadas (precios especiales)
+    public const string ChainsRequired = "Escoja las cadenas de la lista.";
+    public static readonly string TooManyChains = $"Una lista admite como máximo {PriceListCodes.MaxChains} cadenas.";
+    public const string ChainsOnGeneralList = "La lista aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.";
+    public const string ChainNotInList = "Cadena de la lista";
     public const string AlreadyPublished = "La lista ya está publicada.";
     public const string NotPublished = "La lista ya está en borrador.";
     public const string AlreadyInactive = "La lista ya está desactivada.";
@@ -142,12 +196,20 @@ public static class PriceListRules
     public const string ImageNotImage = "La foto debe ser una imagen (JPG, PNG, WEBP o GIF).";
     public const string Concurrency = "La lista cambió al mismo tiempo. Recárguela e intente de nuevo.";
 
-    /// <summary>Dos listas publicadas que se cruzan en fechas y clientes no pueden dar dos precios al mismo producto. Se citan hasta 5 SKU.</summary>
+    /// <summary>Lote 247: 422 al cambiar el nombre, las fechas o a quién aplica una lista dedicada desde los endpoints genéricos de listas.</summary>
+    public static string DedicatedLocked(string owner)
+        => $"Esta lista es el precio especial de «{owner}»: el nombre, las fechas y a quién aplica se cambian en «Precios especiales» de su ficha.";
+
+    /// <summary>Lote 247: aviso (no bloquea) de un precio especial más caro que la lista general vigente.</summary>
+    public static string SpecialAboveGeneral(string sku, decimal price, decimal general)
+        => $"Precio especial más caro que la lista general: {sku} a {OfferRules.Money(price)} y en la lista general a {OfferRules.Money(general)}. Se cobra el más bajo; corrija el precio especial.";
+
+    /// <summary>Dos listas publicadas que se cruzan en fechas y clientes (o cadenas) no pueden dar dos precios al mismo producto. Se citan hasta 5 SKU.</summary>
     public static string Overlap(string otherName, IReadOnlyList<string> skus)
     {
         var shown = string.Join(", ", skus.Take(5));
         var more = skus.Count > 5 ? $" y {skus.Count - 5} más" : string.Empty;
-        return $"La lista se cruza con «{otherName}» en las mismas fechas y para los mismos clientes en: {shown}{more}. Cambie las fechas o quite esos productos de una de las dos.";
+        return $"La lista se cruza con «{otherName}» en las mismas fechas y para los mismos clientes o cadenas en: {shown}{more}. Cambie las fechas o quite esos productos de una de las dos.";
     }
 
     /// <summary>Recorta el nombre; vacío = error.</summary>
@@ -186,12 +248,19 @@ public static class PriceListRules
     public static bool DatesOverlap(DateOnly aFrom, DateOnly? aTo, DateOnly bFrom, DateOnly? bTo)
         => (aTo is null || bFrom <= aTo.Value) && (bTo is null || aFrom <= bTo.Value);
 
-    /// <summary>¿Las dos listas alcanzan a los mismos clientes? Dos generales sí; dos de clientes si comparten alguno; una general y una de clientes NO (la del cliente gana).</summary>
+    /// <summary>
+    /// ¿Las dos listas chocan por alcanzar a los mismos clientes? Lote 247 (DECISIÓN 14): solo si son del MISMO tipo; una dedicada (precio especial) y una normal
+    /// conviven y gana el precio más bajo. Dos generales sí chocan; dos no generales, si comparten un cliente o una cadena (dos dedicadas, si son del mismo dueño);
+    /// una general y una de clientes o cadenas NO. Una lista de cliente y una de cadena tampoco (aunque el cliente sea de esa cadena): gana el más bajo.
+    /// </summary>
     public static bool SameAudience(PriceListView a, PriceListView b)
     {
+        if (a.IsSpecial != b.IsSpecial) return false;
         if (a.AppliesToAll != b.AppliesToAll) return false;
         if (a.AppliesToAll) return true;
-        return a.ClientIds.Any(b.ClientIds.Contains);
+        if (a.ClientIds.Any(b.ClientIds.Contains)) return true;
+        var bChains = b.ChainIds ?? Array.Empty<int>();
+        return (a.ChainIds ?? Array.Empty<int>()).Any(bChains.Contains);
     }
 
     /// <summary>
@@ -213,30 +282,38 @@ public static class PriceListRules
     }
 
     /// <summary>
-    /// El precio de un producto (o kit) para un cliente en una fecha: la lista PUBLICADA y vigente del cliente que lo traiga gana; si no, la lista general publicada y
-    /// vigente; si no, el precio de venta del producto; si tampoco hay, sin precio. Si por datos viejos dos listas del mismo nivel lo traen, gana la que empezó más
-    /// tarde (y a igual fecha, la más nueva).
+    /// Lote 247 — lo mejor de cada nivel para un producto en una fecha, entre las listas PUBLICADAS y vigentes que lo traen: CLIENTE (la lista incluye al cliente),
+    /// CADENA (no lo incluye a él, pero sí a su cadena <paramref name="chainId"/>; null = sin cadena o cadena inactiva) y GENERAL (aplica a todos). Dentro de un nivel
+    /// gana el precio MÁS BAJO; a igual precio, la lista que empezó más tarde y, a igual fecha, la más nueva (DECISIÓN 15).
     /// </summary>
-    public static ResolvedPrice Resolve(int productId, int? clientId, DateOnly date, IEnumerable<PriceListView> lists, decimal? productSalePrice)
+    public static PriceLevels BestByLevel(int productId, int? clientId, int? chainId, DateOnly date, IEnumerable<PriceListView> lists)
     {
-        PriceListView? bestClient = null, bestGeneral = null;
-        PriceListItemView? clientItem = null, generalItem = null;
+        PriceLevelPick? client = null, chain = null, general = null;
         foreach (var l in lists)
         {
             if (!l.IsPublished || !InEffect(l.ValidFrom, l.ValidTo, date)) continue;
             var item = l.Items.FirstOrDefault(i => i.ProductId == productId);
             if (item is null) continue;
-            if (l.AppliesToAll)
-            {
-                if (Better(l, bestGeneral)) { bestGeneral = l; generalItem = item; }
-            }
-            else if (clientId is int c && l.ClientIds.Contains(c))
-            {
-                if (Better(l, bestClient)) { bestClient = l; clientItem = item; }
-            }
+            var pick = new PriceLevelPick(l, item);
+            if (l.AppliesToAll) general = Lower(pick, general);
+            else if (clientId is int c && l.ClientIds.Contains(c)) client = Lower(pick, client);
+            else if (chainId is int ch && l.ChainIds is { } chains && chains.Contains(ch)) chain = Lower(pick, chain);
         }
-        if (bestClient is not null) return new ResolvedPrice(clientItem!.Price, PriceSources.ClientList, bestClient.PriceListId, clientItem.ImageFileId);
-        if (bestGeneral is not null) return new ResolvedPrice(generalItem!.Price, PriceSources.GeneralList, bestGeneral.PriceListId, generalItem.ImageFileId);
+        return new PriceLevels(client, chain, general);
+    }
+
+    /// <summary>
+    /// El precio de un producto (o kit) para un cliente en una fecha, solo con listas. Lote 247: gana el MÁS BAJO entre la lista del cliente, la de su cadena
+    /// (<paramref name="chainId"/>) y la general (a igual precio: cliente, cadena, general); si ninguna lo trae, el precio de venta del producto; si tampoco hay, sin
+    /// precio. Dentro de un nivel, ver <see cref="BestByLevel"/>.
+    /// </summary>
+    public static ResolvedPrice Resolve(int productId, int? clientId, DateOnly date, IEnumerable<PriceListView> lists, decimal? productSalePrice, int? chainId = null)
+    {
+        var levels = BestByLevel(productId, clientId, chainId, date, lists);
+        (PriceLevelPick Pick, string Source)? best = null;
+        foreach (var (pick, source) in new[] { (levels.Client, PriceSources.ClientList), (levels.Chain, PriceSources.ChainList), (levels.General, PriceSources.GeneralList) })
+            if (pick is not null && (best is null || pick.Item.Price < best.Value.Pick.Item.Price)) best = (pick, source);
+        if (best is { } b) return new ResolvedPrice(b.Pick.Item.Price, b.Source, b.Pick.List.PriceListId, b.Pick.Item.ImageFileId);
         return productSalePrice is decimal p ? new ResolvedPrice(p, PriceSources.Product) : new ResolvedPrice(null, PriceSources.None);
     }
 
@@ -254,8 +331,16 @@ public static class PriceListRules
     public static bool NeedsPricePermission(decimal given, decimal? resolved, decimal? previous)
         => !(resolved is decimal r && r == given) && !(previous is decimal p && p == given);
 
-    private static bool Better(PriceListView candidate, PriceListView? current)
-        => current is null || candidate.ValidFrom > current.ValidFrom || (candidate.ValidFrom == current.ValidFrom && candidate.PriceListId > current.PriceListId);
+    /// <summary>Dentro de un nivel: el precio más bajo; a igual precio, la lista que empezó más tarde y, a igual fecha, la más nueva.</summary>
+    private static PriceLevelPick Lower(PriceLevelPick candidate, PriceLevelPick? current)
+    {
+        if (current is null || candidate.Item.Price < current.Item.Price) return candidate;
+        if (candidate.Item.Price > current.Item.Price) return current;
+        return Later(candidate.List, current.List) ? candidate : current;
+    }
+
+    private static bool Later(PriceListView candidate, PriceListView current)
+        => candidate.ValidFrom > current.ValidFrom || (candidate.ValidFrom == current.ValidFrom && candidate.PriceListId > current.PriceListId);
 }
 
 /// <summary>

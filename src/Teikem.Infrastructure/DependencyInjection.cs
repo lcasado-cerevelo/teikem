@@ -454,6 +454,7 @@ public static class DependencyInjection
         // Lote 2
         services.AddScoped<IDataSource, ClientDataSource>();
         services.AddScoped<IDataSource, ClientChainDataSource>();   // Lote 245
+        services.AddScoped<IDataSource, SpecialPriceDataSource>();   // Lote 247: precios especiales (listas dedicadas de cliente o cadena)
         services.AddScoped<IDataSource, ContractDataSource>();
         services.AddScoped<IDataSource, LocationDataSource>();
         services.AddScoped<IOwnedEntityResolver, ClientOwnedEntityResolver>();

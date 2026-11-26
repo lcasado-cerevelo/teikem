@@ -292,4 +292,29 @@ describe('OrderModal — Lote 222', () => {
     expect(within(dialog).getByText('Norte · Ana Titular')).toBeInTheDocument()
     expect(within(dialog).queryByLabelText('Vendedor')).toBeNull()
   })
+
+  it('lote 247: una orden solicitada dice el origen guardado de cada precio (cadena, precio especial, oferta) y el precio manual con el de lista; sin origen, sin chip', async () => {
+    const line = (id: number, extra: object) => ({ ...LINE, id, lineNo: id, sku: `S${id}`, productPublicId: `${PROD}-${id}`, ...extra })
+    REQUESTED_ORDER = {
+      ...BASE,
+      publicId: REQ,
+      number: 'OV-00002',
+      status: 'REQUESTED',
+      statusLabel: 'Solicitada',
+      lines: [
+        line(1, { priceSource: 'CHAIN_LIST', priceChainName: 'Walgreens', resolvedUnitPrice: 12.5 }),
+        line(2, { priceSource: 'CLIENT_LIST', resolvedUnitPrice: 12.5 }),
+        line(3, { priceSource: 'OFFER', offerName: 'Verano', resolvedUnitPrice: 12.5 }),
+        line(4, { priceSource: 'GENERAL_LIST', resolvedUnitPrice: 14, unitPrice: 12.5, isManualPrice: true }),
+        line(5, {}),
+      ],
+    }
+    wrap(REQ)
+    const dialog = await screen.findByRole('dialog', { name: /Orden OV-00002/ })
+    expect(await within(dialog).findByText('Cadena Walgreens')).toBeInTheDocument()
+    expect(within(dialog).getByText('Precio especial')).toBeInTheDocument()
+    expect(within(dialog).getByText('Oferta «Verano»')).toBeInTheDocument()
+    expect(within(dialog).getByText('Precio manual')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Lista: \$14\.00/)).toBeInTheDocument()
+  })
 })

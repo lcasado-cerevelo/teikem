@@ -3,3 +3,6 @@
 .so-seller select{max-width:100%;width:100%}
 .so-seller-help{overflow-wrap:anywhere}
 .so-seller-fact dd{overflow-wrap:anywhere}
+
+/* Lote 247 — origen del precio de la línea (Cadena X / Precio especial / Oferta X / Precio manual con el de lista). Prefijo propio `so-price-cell`. */
+.so-price-cell{display:inline-flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}

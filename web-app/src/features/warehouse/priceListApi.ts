@@ -10,13 +10,16 @@ export type PriceListListItemDto = S['PriceListListItemDto']
 export type PriceListDto = S['PriceListDto']
 export type PriceListItemDto = S['PriceListItemDto']
 export type PriceListClientDto = S['PriceListClientDto']
+export type PriceListChainDto = S['PriceListChainDto']
+export type PriceListWarningDto = S['PriceListWarningDto']
 
 export const priceListKeys = {
   list: ['/api/v1/price-lists'] as const,
   detail: ['/api/v1/price-lists', 'detail'] as const,
 }
 
-export function usePriceLists(query: { q?: string; state?: string; includeInactive?: boolean }) {
+/** `includeSpecial` = también las listas dedicadas de «Precios especiales» (Lote 247; por omisión el servidor las oculta). */
+export function usePriceLists(query: { q?: string; state?: string; includeInactive?: boolean; includeSpecial?: boolean }) {
   return useQuery({
     queryKey: [...priceListKeys.list, query],
     queryFn: () => unwrap(api.GET('/api/v1/price-lists', { params: { query } })),
@@ -90,6 +93,17 @@ export function usePriceListActions() {
     removeClient: useMutation({
       mutationFn: ({ publicId, clientPublicId }: { publicId: string; clientPublicId: string }) =>
         unwrap(api.DELETE('/api/v1/price-lists/{publicId}/clients/{clientPublicId}', { params: { path: { publicId, clientPublicId } } })),
+      ...opts,
+    }),
+    // Lote 247: cadenas de la lista (alcanzan a sus clientes mientras estén activas)
+    addChains: useMutation({
+      mutationFn: ({ publicId, chainPublicIds }: { publicId: string; chainPublicIds: string[] }) =>
+        unwrap(api.POST('/api/v1/price-lists/{publicId}/chains', { ...path(publicId), body: { chainPublicIds } })),
+      ...opts,
+    }),
+    removeChain: useMutation({
+      mutationFn: ({ publicId, chainPublicId }: { publicId: string; chainPublicId: string }) =>
+        unwrap(api.DELETE('/api/v1/price-lists/{publicId}/chains/{chainPublicId}', { params: { path: { publicId, chainPublicId } } })),
       ...opts,
     }),
   }

@@ -1,4 +1,4 @@
-// Lote 229 — avisos de precio del pedido guiado, discretos: junto al precio en la lista y las tarjetas (`PriceNoticeList`), en cada línea del carrito con la
+// Lote 247: el chip de origen también dice «Cadena X» o «Precio especial». Lote 229 — avisos de precio del pedido guiado, discretos: junto al precio en la lista y las tarjetas (`PriceNoticeList`), en cada línea del carrito con la
 // oferta de donde sale el precio (`CartLinePriceInfo`) y en el resumen del paso de entrega (`DeliveryPriceNotices`). Solo informan: se cobra el precio más bajo.
 import { useT } from '../../../kernel/i18n'
 import { Chip } from '../../../kernel/ui'
@@ -24,10 +24,12 @@ export function CartLinePriceInfo({ productPublicId, sku, clientPublicId, saved 
   const t = useT()
   const catalog = useSalesCatalog(clientPublicId).data
   const info = priceSourceOf(productPublicId, catalog, saved)
-  if (!info.fromOffer && info.notices.length === 0) return null
+  if (!info.fromOffer && !info.special && info.notices.length === 0) return null
   return (
     <div className="wz-line-price">
       {info.fromOffer && <Chip tone="cod">{info.offerName ? t('salesWizard.cart.offerOf', { name: info.offerName }) : t('salesWizard.products.offerPriceChip')}</Chip>}
+      {info.special === 'CHAIN_LIST' && <Chip tone="deliv">{t('salesWizard.cart.originChain', { name: info.chainName ?? '' })}</Chip>}
+      {info.special === 'CLIENT_LIST' && <Chip tone="deliv">{t('salesWizard.cart.originClient')}</Chip>}
       <PriceNoticeList notices={info.notices} label={t('salesWizard.products.notices', { sku })} />
     </div>
   )
@@ -54,4 +56,45 @@ export function DeliveryPriceNotices({ cart, clientPublicId, saved }: { cart: re
       <p className="help">{t('salesWizard.summary.priceNoticesHelp')}</p>
     </section>
   )
+}
+
+/**
+ * Lote 247 — origen guardado del precio de una línea de la orden (`PriceSource` y nombres de `SalesOrderLineDto`): «Cadena X», «Precio especial», «Oferta X»;
+ * con `isManualPrice`, «Precio manual» y el precio de lista al lado. Sin origen guardado (líneas de antes del lote), no pinta nada.
+ */
+export function LinePriceOrigin({
+  line,
+  money,
+}: {
+  line: { priceSource?: string | null; offerName?: string | null; priceChainName?: string | null; resolvedUnitPrice?: number | null; isManualPrice?: boolean }
+  money: (n: number) => string
+}) {
+  const t = useT()
+  const label = originLabel(line, t)
+  if (!label && !line.isManualPrice) return null
+  return (
+    <span className="wz-line-origin">
+      {line.isManualPrice ? (
+        <>
+          <Chip tone="warn">{t('salesWizard.cart.manualPrice')}</Chip>
+          {line.resolvedUnitPrice != null && <span className="wz-list-price">{t('salesWizard.cart.listPrice', { price: money(line.resolvedUnitPrice) })}</span>}
+        </>
+      ) : (
+        label && <Chip tone={line.priceSource === 'OFFER' ? 'cod' : 'deliv'}>{label}</Chip>
+      )}
+    </span>
+  )
+}
+
+function originLabel(line: { priceSource?: string | null; offerName?: string | null; priceChainName?: string | null }, t: ReturnType<typeof useT>): string | null {
+  switch (line.priceSource) {
+    case 'CHAIN_LIST':
+      return t('salesWizard.cart.originChain', { name: line.priceChainName ?? '' })
+    case 'CLIENT_LIST':
+      return t('salesWizard.cart.originClient')
+    case 'OFFER':
+      return line.offerName ? t('salesWizard.cart.offerOf', { name: line.offerName }) : t('salesWizard.products.offerPriceChip')
+    default:
+      return null
+  }
 }

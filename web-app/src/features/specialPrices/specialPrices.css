@@ -1,0 +1,30 @@
+/* Lote 247 — «Precios especiales» (clases con prefijo spx-; solo variables del tema) */
+.spx-add{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+.spx-add .f{margin:0;min-width:0;flex:0 1 150px}
+.spx-add .spx-add-product{flex:1 1 260px}
+.spx-add .spx-err,.spx-add .spx-help{flex:1 0 100%;margin:0}
+.spx-bar{display:flex;justify-content:flex-end;padding:8px 12px}
+.spx-note{color:var(--muted);margin:0;padding:8px 12px}
+.spx-product{display:inline-flex;flex-wrap:wrap;gap:4px 8px;align-items:center;min-width:0}
+.spx-name{overflow-wrap:anywhere}
+.spx-price,.spx-charged,.spx-state{display:inline-flex;flex-wrap:wrap;gap:4px 6px;align-items:center;justify-content:flex-end}
+.spx-state{justify-content:flex-start}
+.spx-open{color:var(--muted)}
+.spx-warns{margin:8px 12px;padding:10px 12px;border:1px solid var(--warn);border-radius:9px;background:var(--panel-2);display:flex;flex-direction:column;gap:6px;min-width:0}
+.spx-warns b{color:var(--warn);font-size:13px}
+.spx-warns ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.spx-warns li{font-size:13px;overflow-wrap:anywhere;color:var(--text)}
+.spx-section{border-top:1px solid var(--line-2);padding:10px 12px 12px;min-width:0}
+.spx-h{margin:0 0 4px;font-size:14px}
+.spx-link{font-size:13px;font-weight:500;margin-left:6px}
+.spx-help{margin:0 0 8px}
+.spx-chips{display:flex;flex-wrap:wrap;gap:6px}
+.spx-soon{color:var(--warn);font-weight:600}
+/* en escritorio ancho cada fila cabe en una línea (≤ 56 px); más angosto, el texto parte para no desbordar */
+@media (min-width:1280px){
+  .spx-product{flex-wrap:nowrap}
+  .spx-name{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  table .spx-price,table .spx-charged,table .spx-state,table .spx-open,table .spx-soon{white-space:nowrap;flex-wrap:nowrap}
+  .spx-charged .chip{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+.spx-box{min-width:0}

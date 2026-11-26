@@ -5321,6 +5321,26 @@
               "nameRequired": "Indique el nombre del kit.",
               "priceRequired": "Indique el precio de oferta del kit."
             }
+          },
+          "audience": {
+            "title": "A quién aplica",
+            "INCLUDE": "Incluir",
+            "EXCLUDE": "Excluir",
+            "INCLUDEHelp": "Solo estos clientes y cadenas reciben la oferta.",
+            "EXCLUDEHelp": "Todos reciben la oferta menos estos clientes y cadenas.",
+            "INCLUDENote": "La oferta es solo para los clientes y cadenas escogidos.",
+            "EXCLUDENote": "La oferta es para todos menos los clientes y cadenas escogidos.",
+            "INCLUDEChip": "Solo escogidos: {count}",
+            "EXCLUDEChip": "Todos menos {count}",
+            "chainChip": "Cadena {name}",
+            "removeChain": "Quitar la cadena {name}",
+            "addChain": "Agregar una cadena",
+            "empty": "Nadie escogido todavía.",
+            "locked": "Quite lo escogido en la otra caja para usar esta.",
+            "lastTitle": "¿Quitar el último?",
+            "lastMessage": "La oferta quedará para todos los clientes.",
+            "lastConfirm": "Dejarla para todos",
+            "lastFailed": "No se pudo dejar la oferta para todos."
           }
         },
         "title": "Precios y ofertas",
@@ -5402,7 +5422,20 @@
           "itemPrice": "Indique un precio válido (número, desde 0).",
           "noItems": "Agregue al menos un renglón antes de publicar la lista.",
           "noClients": "Escoja al menos un cliente o marque que la lista aplica a todos."
-        }
+        },
+        "special": {
+          "chip": "Precio especial de {name}",
+          "note": "Esta lista es el precio especial de «{name}»: su nombre, fechas y a quién aplica se cambian en «Precios especiales» de su ficha. Aquí puede cambiar precios, publicar o desactivar.",
+          "openOwner": "Abrir la ficha",
+          "warningsTitle": "Avisos de la lista",
+          "showSpecial": "Ver también los precios especiales",
+          "appliesChain": "Solo esa cadena",
+          "appliesClient": "Solo ese cliente"
+        },
+        "chains": "Cadenas",
+        "noChains": "Sin cadenas.",
+        "removeChain": "Quitar la cadena {name}",
+        "addChain": "Agregar una cadena"
       },
       "invReport": "Reporte de inventario",
       "invReportHint": "PDF con todos los productos que cumplen los filtros de la tabla: disponible, reservado, total, costo y valor, por categoría.",
@@ -11005,7 +11038,11 @@
       "empty": "El carrito está vacío: escriba una cantidad en un producto.",
       "remove": "Quitar",
       "removeOf": "Quitar {sku} del carrito",
-      "offerOf": "Oferta «{name}»"
+      "offerOf": "Oferta «{name}»",
+      "originChain": "Cadena {name}",
+      "originClient": "Precio especial",
+      "manualPrice": "Precio manual",
+      "listPrice": "Lista: {price}"
     },
     "delivery": {
       "title": "Entrega",
@@ -14266,6 +14303,27 @@
       "recMonth": "Venta neta de {month}",
       "recDifference": "Diferencia",
       "chart": "Venta por cadena"
+    },
+    "picker": {
+      "placeholder": "Escoger una cadena…"
+    },
+    "offers": {
+      "title": "Ofertas",
+      "subtitle": "Las ofertas vigentes que le aplican a esta cadena (solo lectura).",
+      "name": "Oferta",
+      "validity": "Vigencia",
+      "applies": "Cómo aplica",
+      "items": "Renglones",
+      "fromOpen": "Desde el {from}, sin fecha final",
+      "fromTo": "Del {from} al {to}",
+      "audience": {
+        "ALL": "Todos",
+        "INCLUDE": "Incluida",
+        "EXCLUDE": "Todos menos los excluidos"
+      },
+      "empty": "Sin ofertas vigentes",
+      "emptyBody": "Ninguna oferta activa le aplica a esta cadena hoy.",
+      "open": "Ver todas las ofertas en Precios y ofertas"
     }
   },
   "purchaseQb": {
@@ -14374,5 +14432,64 @@
       "unmarked": "Se quitó la marca de la orden {number}.",
       "editWarning": "Esta orden ya salió hacia QuickBooks: editarla o cancelarla aquí no cambia nada allá. Ciérrela o corríjala en QuickBooks."
     }
+  },
+  "specialPrices": {
+    "title": "Precios especiales",
+    "subtitleClient": "Precios propios de este cliente, antes del IVU. Ganan sobre la lista general cuando son más bajos.",
+    "subtitleChain": "Precios de la cadena, antes del IVU: los reciben todos sus clientes que no tengan precio propio más bajo.",
+    "col": {
+      "product": "Producto",
+      "price": "Precio",
+      "from": "Desde",
+      "to": "Hasta",
+      "state": "Estado",
+      "general": "Lista general",
+      "charged": "Se cobra hoy"
+    },
+    "aboveGeneral": "Más caro que la lista general",
+    "noEnd": "Sin fecha final",
+    "expiresIn": "Vence en {n} d",
+    "source": {
+      "CLIENT_LIST": "Precio especial",
+      "CHAIN_LIST": "Cadena {name}",
+      "OFFER": "Oferta {name}",
+      "GENERAL_LIST": "Lista general",
+      "PRODUCT": "Precio del producto",
+      "NONE": "Sin precio"
+    },
+    "edit": "Cambiar precio",
+    "remove": "Quitar",
+    "removeTitle": "¿Quitar el precio especial?",
+    "removeMessage": "Se quita el precio especial de {sku} · {name}. Desde ese momento se cobra el que corresponda (lista general u oferta).",
+    "removed": "Precio especial quitado.",
+    "added": "Precio especial agregado.",
+    "saved": "Precio especial guardado.",
+    "editTitle": "Cambiar el precio especial de {sku}",
+    "addProduct": "Producto o kit",
+    "add": "Agregar precio especial",
+    "showExpired": "Ver también los vencidos",
+    "empty": "Sin precios especiales",
+    "emptyClientBody": "Agregue un producto y su precio para que este cliente lo pague siempre que sea el más bajo.",
+    "emptyChainBody": "Agregue un producto y su precio: lo recibirán los clientes de la cadena.",
+    "ownerInactive": "Está inactivo: no admite precios nuevos.",
+    "beforeTaxHelp": "El precio es antes del IVU. Las exenciones del cliente se aplican después, sobre el precio que se cobra.",
+    "warningsTitle": "Avisos de precios especiales",
+    "err": {
+      "productRequired": "Escoja el producto o kit.",
+      "priceInvalid": "Escriba un precio mayor que cero (hasta 4 decimales).",
+      "fromRequired": "Escoja la fecha «desde».",
+      "range": "La fecha «hasta» no puede ser anterior a «desde».",
+      "toPast": "La fecha «hasta» ya pasó: un precio especial nuevo tiene que valer hoy o después."
+    },
+    "chainTitle": "De su cadena «{name}»",
+    "openChain": "Abrir la cadena",
+    "chainHelp": "Solo lectura: se cambian en la ficha de la cadena. Un precio propio más bajo gana sobre el de la cadena.",
+    "chainEmpty": "La cadena no tiene precios especiales.",
+    "listsTitle": "Listas de precios que lo incluyen",
+    "listBy": {
+      "CLIENT": "por el cliente",
+      "CHAIN": "por su cadena"
+    },
+    "summary": "{n} precios especiales"
   }
 }

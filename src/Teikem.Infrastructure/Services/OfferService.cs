@@ -6,6 +6,7 @@ using Teikem.Domain.Files;
 using Teikem.Domain.Sales;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
@@ -24,6 +25,8 @@ namespace Teikem.Infrastructure.Services;
 /// - Al pedir gana el precio más bajo entre el negociado y la oferta (OfferRules.Resolve). Choques con otras ofertas o con la lista general no son errores: la
 ///   respuesta los trae en Warnings.
 /// - Las órdenes ya hechas no cambian (la línea guarda la copia del precio). Nunca DELETE: la oferta se desactiva y renglones y clientes se quitan en lógico.
+/// - Lote 247: el público se decide en la cabecera (Offer.AudienceMode): ALL (todos), INCLUDE (solo los clientes y cadenas escogidos) o EXCLUDE (todos menos los
+///   escogidos). Todo cambio de público pasa por Offer.SetAudienceMode, que deja AppliesToAll sincronizado. Las cadenas se escogen como los clientes (OfferChain).
 /// </summary>
 public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITenantClock clock, ILookupCache lookups, StoredFileService files, ProductService products,
     KitService kits)
@@ -32,11 +35,26 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
 
     // ---------------------------------------------------------------- consulta
 
-    /// <summary>Las ofertas (las desactivadas solo con includeInactive), la de vigencia más reciente primero; q = el nombre contiene; state = DRAFT/SCHEDULED/ACTIVE/EXPIRED.</summary>
-    public async Task<IReadOnlyList<OfferListItemDto>> ListAsync(string? q, string? state, bool includeInactive, CancellationToken ct)
+    /// <summary>
+    /// Las ofertas (las desactivadas solo con includeInactive), la de vigencia más reciente primero; q = el nombre contiene; state = DRAFT/SCHEDULED/ACTIVE/EXPIRED.
+    /// Lote 247: chainPublicId = solo las ofertas activas, publicadas y no vencidas que le aplican a la cadena (ALL; INCLUDE que la trae; EXCLUDE que no la excluye);
+    /// 404 «Cadena no encontrada.» si la cadena no es de la compañía (includeInactive no cuenta en ese caso).
+    /// </summary>
+    public async Task<IReadOnlyList<OfferListItemDto>> ListAsync(string? q, string? state, bool includeInactive, CancellationToken ct, Guid? chainPublicId = null)
     {
         var query = db.Set<Offer>().AsNoTracking();
-        if (!includeInactive) query = query.Where(o => o.IsActive);
+        if (chainPublicId is Guid chainPid)
+        {
+            var chainId = await ClientChainQueries.ChainIdByPublicIdAsync(db, chainPid, ct) ?? throw ChainNotFound();
+            var day = clock.Today;
+            query = query.Where(o => o.IsActive && o.IsPublished && (o.ValidTo == null || o.ValidTo >= day)
+                                     && (o.AudienceMode == OfferAudienceModes.All
+                                         || (o.AudienceMode == OfferAudienceModes.Include
+                                             && db.Set<OfferChain>().Any(c => c.OfferId == o.OfferId && c.IsActive && c.ChainId == chainId))
+                                         || (o.AudienceMode == OfferAudienceModes.Exclude
+                                             && !db.Set<OfferChain>().Any(c => c.OfferId == o.OfferId && c.IsActive && c.ChainId == chainId))));
+        }
+        else if (!includeInactive) query = query.Where(o => o.IsActive);
         if (!string.IsNullOrWhiteSpace(q))
         {
             var s = q.Trim();
@@ -48,6 +66,7 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
                 Offer = o,
                 Items = db.Set<OfferItem>().Count(i => i.OfferId == o.OfferId && i.IsActive),
                 Clients = db.Set<OfferClient>().Count(c => c.OfferId == o.OfferId && c.IsActive),
+                Chains = db.Set<OfferChain>().Count(c => c.OfferId == o.OfferId && c.IsActive),
             }).ToListAsync(ct);
         var images = await PriceListQueries.FilePublicIdsAsync(db, rows.Select(r => r.Offer.ImageFileId), ct);
         var today = clock.Today;
@@ -56,7 +75,7 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
             var o = r.Offer;
             return new OfferListItemDto(o.PublicId, o.Name, o.ValidFrom, o.ValidTo, o.ValidTo is not null, OfferRules.RangeText(o.ValidFrom, o.ValidTo), o.IsPublished,
                 PriceListRules.StateOf(o.IsPublished, o.ValidFrom, o.ValidTo, today), InEffect(o, today), o.AppliesToAll, r.Items, r.Clients,
-                o.ImageFileId is int f && images.TryGetValue(f, out var g) ? g : null, o.IsActive, o.CreatedAtUtc, o.UpdatedAtUtc);
+                o.ImageFileId is int f && images.TryGetValue(f, out var g) ? g : null, o.IsActive, o.CreatedAtUtc, o.UpdatedAtUtc, o.AudienceMode, r.Chains);
         });
         if (!string.IsNullOrWhiteSpace(state))
         {
@@ -68,7 +87,8 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
 
     public async Task<OfferDto> GetAsync(Guid publicId, CancellationToken ct)
     {
-        var offer = await db.Set<Offer>().AsNoTracking().Include(o => o.Items).Include(o => o.Clients).FirstOrDefaultAsync(o => o.PublicId == publicId, ct) ?? throw NotFound();
+        var offer = await db.Set<Offer>().AsNoTracking().Include(o => o.Items).Include(o => o.Clients).Include(o => o.Chains)
+            .FirstOrDefaultAsync(o => o.PublicId == publicId, ct) ?? throw NotFound();
         return await ToDtoAsync(offer, ct);
     }
 
@@ -76,11 +96,13 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
 
     /// <summary>
     /// Crea la oferta. Lote 234: nace PUBLICADA (las ofertas ya no tienen borrador: vale según sus fechas desde que se crea; se apaga con «Desactivar»).
-    /// 400: sin nombre, sin «desde», «hasta» antes de «desde».
+    /// 400: sin nombre, sin «desde», «hasta» antes de «desde». Lote 247: público por audienceMode (400 si no es ALL, INCLUDE ni EXCLUDE, o si no coincide con
+    /// appliesToAll); sin audienceMode, appliesToAll como antes (true o sin dato = ALL; false = INCLUDE).
     /// </summary>
     public async Task<OfferDto> CreateAsync(OfferRequest? req, CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        var audience = RequestedAudience(req) ?? OfferAudienceModes.All;
         var (name, nameError) = OfferRules.NormalizeName(req.Name);
         if (nameError is not null) throw new ValidationException("name", nameError);
         if (req.ValidFrom is not DateOnly from) throw new ValidationException("validFrom", OfferRules.ValidFromRequired);
@@ -92,18 +114,25 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
 
         var offer = new Offer
         {
-            PublicId = Guid.NewGuid(), TenantId = T.RequireTenantId(), Name = name!, ValidFrom = from, ValidTo = to, AppliesToAll = req.AppliesToAll ?? true,
+            PublicId = Guid.NewGuid(), TenantId = T.RequireTenantId(), Name = name!, ValidFrom = from, ValidTo = to,
             Notes = notes, IsPublished = true, IsActive = true, CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
         };
+        offer.SetAudienceMode(audience);   // Lote 247: deja AppliesToAll sincronizado
         db.Set<Offer>().Add(offer);
         await db.SaveGuardedAsync(OfferRules.Concurrency, ct);
         return await GetAsync(offer.PublicId, ct);
     }
 
-    /// <summary>PATCH: lo que no viene no cambia. Extender la fecha «hasta» (o quitarla) vuelve a poner a la venta los kits de la oferta.</summary>
+    /// <summary>
+    /// PATCH: lo que no viene no cambia. Extender la fecha «hasta» (o quitarla) vuelve a poner a la venta los kits de la oferta.
+    /// Lote 247, cambio de público: 400 si audienceMode es desconocido o no coincide con appliesToAll; 422 pasar a ALL con clientes o cadenas escogidos; 422 pasar entre
+    /// INCLUDE y EXCLUDE con escogidos. Con solo appliesToAll = false, una oferta EXCLUDE se queda en EXCLUDE (ya «no es para todos»).
+    /// </summary>
     public Task<OfferDto> UpdateAsync(Guid publicId, OfferRequest? req, CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        var (explicitMode, _) = OfferAudienceModes.Normalize(req.AudienceMode);
+        var requested = RequestedAudience(req);
         string? name = null;
         if (req.Name is not null)
         {
@@ -122,11 +151,15 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
             var dateError = OfferRules.DateRangeError(offer.ValidFrom, offer.ValidTo);
             if (dateError is not null) throw new ValidationException("validTo", dateError);
             if (req.Notes is not null) offer.Notes = notes;
-            if (req.AppliesToAll is bool all && all != offer.AppliesToAll)
+            // Lote 247: con solo appliesToAll = false, una EXCLUDE ya «no es para todos»: se queda como está (igual que el «aplica a todos» de antes)
+            var target = explicitMode is null && requested == OfferAudienceModes.Include && offer.AudienceMode != OfferAudienceModes.All ? offer.AudienceMode : requested;
+            if (target is not null && target != offer.AudienceMode)
             {
-                if (all && offer.Clients.Any(c => c.IsActive)) throw new StatusRuleException(OfferRules.GeneralWithClients);
+                var hasRows = offer.Clients.Any(c => c.IsActive) || offer.Chains.Any(c => c.IsActive);
+                if (hasRows && target == OfferAudienceModes.All) throw new StatusRuleException(OfferRules.GeneralWithClients);
+                if (hasRows) throw new StatusRuleException(OfferRules.AudienceChangeWithRows);   // entre INCLUDE y EXCLUDE
                 // Lote 234: sin borrador, una oferta «solo para algunos clientes» puede quedarse un rato sin clientes (no aplica a nadie hasta que se escojan)
-                offer.AppliesToAll = all;
+                offer.SetAudienceMode(target);
             }
         }, ct);
     }
@@ -140,7 +173,9 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
     {
         if (offer.IsPublished) return;   // Lote 234: una oferta nace publicada; publicar otra vez no es un error (quien todavía lo llama después de crear sigue funcionando)
         if (!offer.Items.Any(i => i.IsActive)) throw new StatusRuleException(OfferRules.PublishNeedsItems);
-        if (!offer.AppliesToAll && !offer.Clients.Any(c => c.IsActive)) throw new StatusRuleException(OfferRules.PublishNeedsClients);
+        // Lote 247: una INCLUDE sin escogidos no alcanza a nadie; una EXCLUDE sin escogidos vale para todos y se publica (DECISIÓN 9)
+        if (offer.AudienceMode == OfferAudienceModes.Include && !offer.Clients.Any(c => c.IsActive) && !offer.Chains.Any(c => c.IsActive))
+            throw new StatusRuleException(OfferRules.PublishNeedsClients);
         offer.IsPublished = true;
     }, ct);
 
@@ -267,7 +302,10 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
 
     // ---------------------------------------------------------------- clientes
 
-    /// <summary>Agrega clientes a una oferta que no es para todos (los que ya están se ignoran). Solo clientes activos de la compañía.</summary>
+    /// <summary>
+    /// Agrega clientes a una oferta que no es para todos (los que ya están se ignoran). Solo clientes activos de la compañía. Lote 247: en INCLUDE se incluyen y en
+    /// EXCLUDE se excluyen.
+    /// </summary>
     public async Task<OfferDto> AddClientsAsync(Guid publicId, OfferClientsRequest? req, CancellationToken ct)
     {
         var ids = req?.ClientPublicIds?.Distinct().ToList();
@@ -278,7 +316,7 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         if (clients.Any(c => !c.IsActive)) throw new StatusRuleException(SalesRules.ClientInactive);
         return await MutateAsync(publicId, offer =>
         {
-            if (offer.AppliesToAll) throw new StatusRuleException(OfferRules.ClientsOnGeneral);
+            if (offer.AudienceMode == OfferAudienceModes.All) throw new StatusRuleException(OfferRules.ClientsOnGeneral);
             var active = offer.Clients.Where(c => c.IsActive).Select(c => c.ClientId).ToHashSet();
             foreach (var c in clients)
                 if (active.Add(c.ClientId))
@@ -295,6 +333,45 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         return await MutateAsync(publicId, offer =>
         {
             var row = offer.Clients.FirstOrDefault(c => c.IsActive && c.ClientId == clientId) ?? throw new NotFoundException(OfferRules.ClientNotInOffer);
+            row.IsActive = false;
+        }, ct);
+    }
+
+    // ---------------------------------------------------------------- cadenas (Lote 247)
+
+    /// <summary>
+    /// Agrega cadenas a una oferta que no es para todos: en INCLUDE se incluyen (la oferta alcanza a sus clientes) y en EXCLUDE se excluyen. Las que ya están se
+    /// ignoran. 400 sin cadenas o más de 500; 404 «Cadena no encontrada.» (también si es de otra compañía); 422 cadena desactivada; 422 si la oferta es para todos.
+    /// </summary>
+    public async Task<OfferDto> AddChainsAsync(Guid publicId, OfferChainsRequest? req, CancellationToken ct)
+    {
+        var ids = req?.ChainPublicIds?.Distinct().ToList();
+        if (ids is null || ids.Count == 0) throw new ValidationException("chainPublicIds", OfferRules.ChainsRequired);
+        if (ids.Count > OfferCodes.MaxChains) throw new ValidationException("chainPublicIds", OfferRules.TooManyChains);
+        var chains = await db.Set<ClientChain>().AsNoTracking().Where(c => ids.Contains(c.PublicId)).Select(c => new { c.ClientChainId, c.IsActive }).ToListAsync(ct);
+        if (chains.Count != ids.Count) throw ChainNotFound();
+        if (chains.Any(c => !c.IsActive)) throw new StatusRuleException(ClientChainRules.ChainInactive);
+        return await MutateAsync(publicId, offer =>
+        {
+            if (offer.AudienceMode == OfferAudienceModes.All) throw new StatusRuleException(OfferRules.ChainsOnGeneral);
+            var active = offer.Chains.Where(c => c.IsActive).Select(c => c.ChainId).ToHashSet();
+            foreach (var c in chains)
+                if (active.Add(c.ClientChainId))
+                    offer.Chains.Add(new OfferChain { TenantId = offer.TenantId, ChainId = c.ClientChainId, IsActive = true, CreatedAtUtc = DateTime.UtcNow });
+            if (active.Count > OfferCodes.MaxChains) throw new ValidationException("chainPublicIds", OfferRules.TooManyChains);
+        }, ct);
+    }
+
+    /// <summary>
+    /// Quita una cadena de la oferta (en lógico). 404 «Cadena no encontrada.» si no es de la compañía; 404 «Cadena de la oferta no encontrada.» si no está en la oferta.
+    /// Una INCLUDE puede quedarse sin escogidos (no aplica a nadie) y una EXCLUDE sin escogidos vale para todos.
+    /// </summary>
+    public async Task<OfferDto> RemoveChainAsync(Guid publicId, Guid chainPublicId, CancellationToken ct)
+    {
+        var chainId = await ClientChainQueries.ChainIdByPublicIdAsync(db, chainPublicId, ct) ?? throw ChainNotFound();
+        return await MutateAsync(publicId, offer =>
+        {
+            var row = offer.Chains.FirstOrDefault(c => c.IsActive && c.ChainId == chainId) ?? throw new NotFoundException(OfferRules.ChainNotInOffer, feminine: true);
             row.IsActive = false;
         }, ct);
     }
@@ -500,6 +577,22 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
 
     private static NotFoundException NotFound() => new(OfferRules.NotFound, feminine: true);
 
+    /// <summary>«Cadena no encontrada.» (= ClientChainRules.NotFound).</summary>
+    private static NotFoundException ChainNotFound() => new("Cadena", feminine: true);
+
+    /// <summary>
+    /// Lote 247 — el público que pide el cuerpo: audienceMode normalizado (400 si es desconocido), o el que equivale a appliesToAll si solo viene ese (true = ALL,
+    /// false = INCLUDE); null = no pide cambio. Si vienen los dos y no coinciden, 400 AudienceConflict en «audienceMode» (DECISIÓN 24).
+    /// </summary>
+    private static string? RequestedAudience(OfferRequest req)
+    {
+        var (mode, error) = OfferAudienceModes.Normalize(req.AudienceMode);
+        if (error is not null) throw new ValidationException("audienceMode", error);
+        if (mode is not null && req.AppliesToAll is bool all && all != (mode == OfferAudienceModes.All))
+            throw new ValidationException("audienceMode", OfferRules.AudienceConflict);
+        return mode ?? (req.AppliesToAll is bool a ? OfferAudienceModes.FromAppliesToAll(a) : null);
+    }
+
     private static bool InEffect(Offer o, DateOnly today) => o.IsActive && o.IsPublished && PriceListRules.InEffect(o.ValidFrom, o.ValidTo, today);
 
     private static OfferItem RequireItem(Offer offer, int itemId)
@@ -511,14 +604,15 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         return await db.Set<StoredFile>().AsNoTracking().Where(f => f.PublicId == file.PublicId).Select(f => f.StoredFileId).FirstAsync(ct);
     }
 
-    /// <summary>Carga la oferta (con renglones y clientes) para cambiarla, aplica el cambio y guarda. Una oferta desactivada no se cambia (salvo reactivarla).</summary>
+    /// <summary>Carga la oferta (con renglones, clientes y cadenas) para cambiarla, aplica el cambio y guarda. Una oferta desactivada no se cambia (salvo reactivarla).</summary>
     private async Task<OfferDto> MutateAsync(Guid publicId, Action<Offer> change, CancellationToken ct, bool allowInactive = false)
     {
         try
         {
             await db.RunInTransactionAsync(async ct2 =>
             {
-                var offer = await db.Set<Offer>().AsTracking().Include(o => o.Items).Include(o => o.Clients).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
+                var offer = await db.Set<Offer>().AsTracking().Include(o => o.Items).Include(o => o.Clients).Include(o => o.Chains)
+                    .FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
                 if (!offer.IsActive && !allowInactive) throw new StatusRuleException(OfferRules.Inactive);
                 change(offer);
                 offer.UpdatedAtUtc = DateTime.UtcNow;
@@ -534,10 +628,11 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         return await GetAsync(publicId, ct);
     }
 
-    /// <summary>La oferta vista por las reglas puras: solo renglones y clientes activos.</summary>
+    /// <summary>La oferta vista por las reglas puras: solo renglones, clientes y cadenas activos (Lote 247: con su público).</summary>
     internal static OfferView View(Offer o) => new(o.OfferId, o.Name, o.IsPublished, o.IsActive, o.AppliesToAll, o.ValidFrom, o.ValidTo,
         o.Clients.Where(c => c.IsActive).Select(c => c.ClientId).ToList(),
-        o.Items.Where(i => i.IsActive).Select(i => new OfferItemView(i.ProductId, i.Price, i.ImageFileId)).ToList());
+        o.Items.Where(i => i.IsActive).Select(i => new OfferItemView(i.ProductId, i.Price, i.ImageFileId)).ToList(),
+        o.AudienceMode, o.Chains.Where(c => c.IsActive).Select(c => c.ChainId).Distinct().ToList());
 
     private async Task<OfferDto> ToDtoAsync(Offer offer, CancellationToken ct)
     {
@@ -577,15 +672,26 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
             : await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.Email ?? string.Empty, ct);
         var clientDtos = clients.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).Select(c => new OfferClientDto(c.PublicId, c.Code, c.Name)).ToList();
 
+        // Lote 247: las cadenas incluidas o excluidas, con su estado y sus clientes activos
+        var chainIds = offer.Chains.Where(c => c.IsActive).Select(c => c.ChainId).Distinct().ToList();
+        var chainRefs = await ClientChainQueries.ChainsByIdAsync(db, chainIds, ct);
+        var chainCounts = chainIds.Count == 0 ? new Dictionary<int, int>()
+            : (await db.Clients.AsNoTracking().Where(c => c.IsActive && c.ChainId != null && chainIds.Contains(c.ChainId.Value)).Select(c => c.ChainId!.Value).ToListAsync(ct))
+                .GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
+        var chainDtos = chainRefs.Values.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(c => new OfferChainDto(c.PublicId, c.Name, c.IsActive, chainCounts.GetValueOrDefault(c.Id))).ToList();
+
         return new OfferDto(offer.PublicId, offer.Name, offer.ValidFrom, offer.ValidTo, offer.ValidTo is not null, OfferRules.RangeText(offer.ValidFrom, offer.ValidTo),
             offer.IsPublished, PriceListRules.StateOf(offer.IsPublished, offer.ValidFrom, offer.ValidTo, today), InEffect(offer, today), offer.AppliesToAll, offer.Notes,
             offer.ImageFileId is int img && filePublic.TryGetValue(img, out var gi) ? gi : null, offer.IsActive, itemDtos, clientDtos, warnings,
-            offer.CreatedAtUtc, offer.CreatedBy is int cb ? users.GetValueOrDefault(cb) : null, offer.UpdatedAtUtc, offer.UpdatedBy is int ub ? users.GetValueOrDefault(ub) : null);
+            offer.CreatedAtUtc, offer.CreatedBy is int cb ? users.GetValueOrDefault(cb) : null, offer.UpdatedAtUtc, offer.UpdatedBy is int ub ? users.GetValueOrDefault(ub) : null,
+            offer.AudienceMode, chainDtos);
     }
 
     /// <summary>
     /// Los avisos de la oferta (no son errores): otra oferta publicada y activa, en fechas y clientes que se cruzan, con el mismo producto igual o más barato
-    /// (CHEAPER_OFFER), y los renglones más caros que la lista general (OFFER_ABOVE_GENERAL).
+    /// (CHEAPER_OFFER), y los renglones más caros que la lista general (OFFER_ABOVE_GENERAL). Lote 247: el cruce de públicos considera cadenas y exclusiones, con el
+    /// mapa cliente → cadena ACTIVA (una cadena desactivada no acerca a sus clientes).
     /// </summary>
     private async Task<IReadOnlyList<OfferWarningDto>> WarningsAsync(Offer offer, IReadOnlyDictionary<int, Product> prods, IReadOnlyDictionary<int, decimal?> general, CancellationToken ct)
     {
@@ -597,9 +703,12 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
             .Where(o => o.OfferId != offer.OfferId && o.IsActive && o.IsPublished && (o.ValidTo == null || o.ValidTo >= offer.ValidFrom)
                         && db.Set<OfferItem>().Any(i => i.OfferId == o.OfferId && i.IsActive && productIds.Contains(i.ProductId)));
         if (offer.ValidTo is DateOnly to) query = query.Where(o => o.ValidFrom <= to);
-        var others = await query.Include(o => o.Items).Include(o => o.Clients).ToListAsync(ct);
+        var others = await query.Include(o => o.Items).Include(o => o.Clients).Include(o => o.Chains).ToListAsync(ct);
         var publicIds = others.ToDictionary(o => o.OfferId, o => o.PublicId);
-        foreach (var o in OfferRules.FindCheaperOverlaps(mine, others.Select(View)))
+        var views = others.Select(View).ToList();
+        var clientIds = mine.ClientIds.Concat(views.SelectMany(v => v.ClientIds)).Distinct().ToList();
+        var chainOfClient = await ClientChainQueries.ActiveClientChainMapAsync(db, clientIds, ct);
+        foreach (var o in OfferRules.FindCheaperOverlaps(mine, views, chainOfClient))
         {
             if (!prods.TryGetValue(o.ProductId, out var p)) continue;
             result.Add(new OfferWarningDto(PriceNoticeCodes.CheaperOffer, OfferRules.CheaperOfferMessage(p.Sku, o), p.PublicId, p.Sku, publicIds.GetValueOrDefault(o.OtherOfferId),

@@ -15,11 +15,12 @@ export interface OfferDraft {
   validFrom: string
   /** '' = sin fecha de fin: la oferta vale hasta que se desactive. */
   validTo: string
-  appliesToAll: boolean
+  /** Lote 247: a quién aplica (ALL = todos; INCLUDE = solo los escogidos; EXCLUDE = todos menos los escogidos). */
+  audienceMode: OfferAudience
   notes: string
 }
 
-export const EMPTY_OFFER_DRAFT = (today: string): OfferDraft => ({ name: '', validFrom: today, validTo: '', appliesToAll: true, notes: '' })
+export const EMPTY_OFFER_DRAFT = (today: string): OfferDraft => ({ name: '', validFrom: today, validTo: '', audienceMode: 'ALL', notes: '' })
 
 export type OfferDraftProblem = 'nameRequired' | 'nameLong' | 'fromRequired' | 'range' | 'notesLong'
 
@@ -32,22 +33,44 @@ export function offerDraftError(d: OfferDraft): OfferDraftProblem | null {
   return null
 }
 
-/** Cuerpo de crear/editar: sin «hasta» se manda `clearValidTo` (sin fecha de fin). */
+/** Público de la oferta (Lote 247): todos, solo los escogidos o todos menos los escogidos. */
+export type OfferAudience = 'ALL' | 'INCLUDE' | 'EXCLUDE'
+
+/** Público de una oferta del servidor; sin `audienceMode` (respuesta vieja) se toma de `appliesToAll`. */
+export function offerAudienceKey(o: { audienceMode?: string | null; appliesToAll?: boolean | null }): OfferAudience {
+  if (o.audienceMode === 'INCLUDE' || o.audienceMode === 'EXCLUDE' || o.audienceMode === 'ALL') return o.audienceMode
+  return o.appliesToAll === false ? 'INCLUDE' : 'ALL'
+}
+
+/** Una caja («Incluir» o «Excluir») se deshabilita mientras la otra tenga escogidos (no se pueden mezclar: el servidor da 422). */
+export function audienceBoxDisabled(box: 'INCLUDE' | 'EXCLUDE', mode: OfferAudience, members: number): boolean {
+  return members > 0 && mode !== 'ALL' && mode !== box
+}
+
+/** Al agregar a una caja vacía hay que pasar antes el público de la oferta a esa caja (PATCH audienceMode); null = ya está en ese modo. */
+export function modeBeforeAdd(box: 'INCLUDE' | 'EXCLUDE', mode: OfferAudience): 'INCLUDE' | 'EXCLUDE' | null {
+  return mode === box ? null : box
+}
+
+/** Quitar el último escogido deja la oferta «para todos»: se confirma y se pasa a ALL. */
+export const isLastMember = (members: number): boolean => members === 1
+
+/** Cuerpo de crear/editar: sin «hasta» se manda `clearValidTo` (sin fecha de fin). Solo viaja `audienceMode` (con `appliesToAll` a la vez, el servidor cruza los dos). */
 export function toOfferRequest(d: OfferDraft): OfferRequest {
   return {
     name: d.name.trim(),
     validFrom: d.validFrom,
     validTo: d.validTo || null,
     clearValidTo: !d.validTo,
-    appliesToAll: d.appliesToAll,
+    audienceMode: d.audienceMode,
     notes: d.notes.trim() || null,
   }
 }
 
-/** Para publicar hace falta al menos un renglón y (clientes o «aplica a todos»), como en el servidor. */
-export function offerPublishBlocker(itemCount: number, appliesToAll: boolean, clientCount: number): 'noItems' | 'noClients' | null {
+/** Para publicar hace falta al menos un renglón y, si es solo para algunos (INCLUDE), al menos un cliente o cadena; EXCLUDE sin escogidos vale para todos. */
+export function offerPublishBlocker(itemCount: number, audience: OfferAudience, members: number): 'noItems' | 'noClients' | null {
   if (itemCount < 1) return 'noItems'
-  if (!appliesToAll && clientCount < 1) return 'noClients'
+  if (audience === 'INCLUDE' && members < 1) return 'noClients'
   return null
 }
 

@@ -187,6 +187,7 @@ La cadena no tiene estatus: solo está **activa** o **inactiva**. Nunca se borra
 - Pedir el estado que la cadena ya tiene no cambia nada y no da error.
 - Una cadena **inactiva con venta** en el mes sigue saliendo en «Por cadena».
 - A partir del Lote C, una cadena inactiva cuenta como «sin cadena» para los precios.
+- **Lote 247 (el Lote C):** desactivar una cadena también da 409 si tiene **listas de precios** (incluidos sus precios especiales) publicadas y no vencidas u **ofertas «Incluir»** publicadas y no vencidas con ella: «La cadena tiene precios especiales u ofertas publicados y vigentes ({N} listas de precios y {M} ofertas): quítela de ellos antes de desactivarla.». Primero se revisan los clientes activos. Las ofertas «Excluir» no bloquean. La ficha de la cadena trae ahora los paneles «Precios especiales» y «Ofertas»: ver el [capítulo 55](55-precios-especiales-y-ofertas.md).
 
 ## 9. Análisis de ventas → «Por cadena»
 

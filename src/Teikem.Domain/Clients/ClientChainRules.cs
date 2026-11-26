@@ -97,6 +97,13 @@ public static class ClientChainRules
             ? "La cadena tiene 1 cliente activo: quítelo de la cadena antes de desactivarla."
             : $"La cadena tiene {count} clientes activos: quítelos de la cadena antes de desactivarla.";
 
+    /// <summary>
+    /// Lote 247 (DECISIÓN 13, contrato del Lote 245): 409 al desactivar una cadena que tiene listas de precios (incluidos sus precios especiales) u ofertas INCLUDE
+    /// publicadas y vigentes.
+    /// </summary>
+    public static string HasPricesOrOffers(int lists, int offers)
+        => $"La cadena tiene precios especiales u ofertas publicados y vigentes ({lists} listas de precios y {offers} ofertas): quítela de ellos antes de desactivarla.";
+
     // ---------------------------------------------------------------- nombre, notas y prefijo
 
     /// <summary>Nombre recortado; vacío → <see cref="NameRequired"/>; más de 100 caracteres → <see cref="NameTooLong"/>.</summary>

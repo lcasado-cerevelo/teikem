@@ -18,25 +18,46 @@ public sealed record PriceListItemPriceRequest(decimal? Price = null);
 /// <summary>Clientes a agregar a una lista que no es general (los que ya están se ignoran).</summary>
 public sealed record PriceListClientsRequest(IReadOnlyList<Guid>? ClientPublicIds = null);
 
+/// <summary>Lote 247 — cadenas a agregar a una lista que no es general (las que ya están se ignoran; máximo 500 por lista).</summary>
+public sealed record PriceListChainsRequest(IReadOnlyList<Guid>? ChainPublicIds = null);
+
+/// <summary>Lote 247 — una cadena de la lista: alcanza a sus clientes mientras esté activa (IsActive = la cadena).</summary>
+public sealed record PriceListChainDto(Guid ChainPublicId, string Name, bool IsActive, int ClientCount);
+
+/// <summary>
+/// Lote 247 — aviso de la lista (no es error): SPECIAL_ABOVE_GENERAL = un precio de la lista dedicada sale más caro que la lista general vigente (se cobra el más
+/// bajo). Message = el texto para mostrar (PriceListRules.SpecialAboveGeneral).
+/// </summary>
+public sealed record PriceListWarningDto(string Code, string Message, Guid ProductPublicId, string Sku, decimal Price, decimal? GeneralListPrice);
+
 /// <summary>
 /// Una lista en la lista de listas. State = DRAFT (borrador), SCHEDULED (publicada, empieza más adelante), ACTIVE (vigente hoy) o EXPIRED (vencida); sale de IsPublished
 /// y de las fechas.
 /// </summary>
+/// <remarks>Lote 247: ChainCount = cadenas de la lista; SpecialOwnerKind = CLIENT / CHAIN si es un precio especial (lista dedicada; null = lista normal) y su dueño.</remarks>
 public sealed record PriceListListItemDto(Guid PublicId, string Name, DateOnly ValidFrom, DateOnly? ValidTo, bool IsPublished, string State, bool AppliesToAll,
-    int ItemCount, int ClientCount, bool IsActive, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc);
+    int ItemCount, int ClientCount, bool IsActive, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc,
+    int ChainCount = 0, string? SpecialOwnerKind = null, string? SpecialOwnerName = null);
 
 /// <summary>
 /// Renglón: el producto o kit, su precio de lista (el de venta del producto, para comparar) y la foto opcional. Lote 229: IsPromotion ya no se usa (siempre false: las
 /// ofertas son /offers); EffectiveImagePublicId = la foto que se muestra (renglón → producto → primera pieza con foto si es kit).
 /// </summary>
+/// <remarks>Lote 247: GeneralListPrice = el precio del producto en la lista general vigente hoy (para comparar; null = no está en ninguna).</remarks>
 public sealed record PriceListItemDto(int Id, Guid ProductPublicId, string Sku, string ProductName, string? Brand, bool IsKit, bool IsPromotion, decimal Price,
-    decimal? ProductSalePrice, Guid? ImagePublicId, bool ProductIsActive, Guid? EffectiveImagePublicId = null);
+    decimal? ProductSalePrice, Guid? ImagePublicId, bool ProductIsActive, Guid? EffectiveImagePublicId = null, decimal? GeneralListPrice = null);
 
 public sealed record PriceListClientDto(Guid ClientPublicId, string Code, string Name);
 
+/// <remarks>
+/// Lote 247: Chains = las cadenas de la lista; SpecialOwnerKind (CLIENT / CHAIN), SpecialOwnerPublicId y SpecialOwnerName = el dueño si es un precio especial (lista
+/// dedicada: nombre, fechas y a quién aplica se cambian en «Precios especiales» de su ficha); Warnings = avisos (SPECIAL_ABOVE_GENERAL).
+/// </remarks>
 public sealed record PriceListDto(Guid PublicId, string Name, DateOnly ValidFrom, DateOnly? ValidTo, bool IsPublished, string State, bool AppliesToAll, string? Notes,
     bool IsActive, IReadOnlyList<PriceListItemDto> Items, IReadOnlyList<PriceListClientDto> Clients, DateTime CreatedAtUtc, string? CreatedByName,
-    DateTime? UpdatedAtUtc, string? UpdatedByName);
+    DateTime? UpdatedAtUtc, string? UpdatedByName,
+    IReadOnlyList<PriceListChainDto>? Chains = null, string? SpecialOwnerKind = null, Guid? SpecialOwnerPublicId = null, string? SpecialOwnerName = null,
+    IReadOnlyList<PriceListWarningDto>? Warnings = null);
 
 /// <summary>La oferta de un kit: vigencia (opcional en ambos lados) y la marca «es promoción». Todo se reemplaza (null = sin esa fecha).</summary>
 public sealed record ProductPromoRequest(bool? IsPromotion = null, DateOnly? PromoFrom = null, DateOnly? PromoTo = null);
@@ -50,6 +71,7 @@ public sealed record ProductPromoDto(Guid ProductPublicId, string Sku, string Na
 
 /// <summary>
 /// Un producto o kit del catálogo del pedido con su precio ya resuelto para el cliente: PriceSource = OFFER (oferta vigente, Lote 229), CLIENT_LIST (lista del cliente),
+/// CHAIN_LIST (lista de su cadena, Lote 247),
 /// GENERAL_LIST (lista general), PRODUCT (precio de venta del producto) o NONE (no tiene precio: no se puede pedir sin sales.price).
 /// Lote 229: ImagePublicId = la foto ya resuelta (renglón de la oferta o de la lista → producto → primera pieza con foto si es kit). IsPromotion = el producto está en
 /// una oferta vigente que aplica al cliente (Offer* = esa oferta, la más barata; PromoFrom/PromoTo = sus fechas, por compatibilidad); OfferPrice = el precio de la
@@ -58,7 +80,9 @@ public sealed record ProductPromoDto(Guid ProductPublicId, string Sku, string Na
 public sealed record SalesCatalogItemDto(Guid ProductPublicId, string Sku, string Name, string? Brand, bool IsKit, bool KitAdjustable, bool IsPromotion,
     DateOnly? PromoFrom, DateOnly? PromoTo, decimal? Price, string PriceSource, Guid? PriceListPublicId, string? PriceListName, decimal? SalePrice, Guid? ImagePublicId,
     Guid? OfferPublicId = null, string? OfferName = null, DateOnly? OfferValidFrom = null, DateOnly? OfferValidTo = null, decimal? OfferPrice = null,
-    bool IsOfferKit = false, IReadOnlyList<SalesPriceNoticeDto>? Notices = null);
+    bool IsOfferKit = false, IReadOnlyList<SalesPriceNoticeDto>? Notices = null,
+    // Lote 247: la cadena cuyo precio se aplicó (solo con PriceSource CHAIN_LIST; solo la web del personal la muestra)
+    Guid? ChainPublicId = null, string? ChainName = null);
 
 /// <summary>
 /// Una marca del catálogo (Brand null = productos sin marca, al final): sus ofertas vigentes arriba (Lote 229: los renglones de las ofertas publicadas y vigentes que

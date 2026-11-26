@@ -34,6 +34,8 @@ The screen is in **Accounting → Prices and offers** (`/money/prices`), right b
 
 ## 2. Where the price of a line comes from
 
+> **Batch 247 (2026-11-26): this rule changed.** The price now is **always the lowest** among the client's price, its chain's price (if the chain is active), the offer and the general list, with no hierarchy: the client's negotiated price no longer beats the general list when it is higher (a `SPECIAL_ABOVE_GENERAL` notice is shown), and the source can also be `CHAIN_LIST`. Offers have an «Include» / «Exclude» audience with clients and chains, and lists can apply to chains. The current rule, the special prices and the new messages are in [chapter 55](55-precios-especiales-y-ofertas.md); the points below describe the behavior before the batch and are still to be merged.
+
 When an order line is created or edited (and in the guided order), the server resolves the price like this:
 
 1. **Between the client's negotiated price and the offer in effect, the lowest wins.** The *negotiated* price is the price in a **published** list, **in effect today**, that applies to that client and carries the product (or kit). The *offer* is an offer that is **published, active and in effect today**, that applies to the client (all clients, or him among the chosen ones) and carries the product. **At equal price the negotiated one wins.**

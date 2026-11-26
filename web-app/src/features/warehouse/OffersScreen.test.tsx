@@ -18,7 +18,7 @@ interface Call {
   url: URL
   body: unknown
 }
-const mock = vi.hoisted(() => ({ calls: [] as Call[], kitCreate: null as null | (() => Response) }))
+const mock = vi.hoisted(() => ({ calls: [] as Call[], kitCreate: null as null | (() => Response), o1: {} as Record<string, unknown> }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
@@ -45,6 +45,7 @@ const GUA = 'eeeeeeee-0000-0000-0000-000000000001'
 const MON = 'eeeeeeee-0000-0000-0000-000000000002'
 const TIR = 'eeeeeeee-0000-0000-0000-000000000003'
 const KIT = 'eeeeeeee-0000-0000-0000-000000000004'
+const CHAIN = 'ffffffff-0000-0000-0000-000000000001'
 const KENE = 'eeeeeeee-0000-0000-0000-000000000005'
 
 const LIST_ITEM = (publicId: string, name: string, state: string, extra: object = {}) => ({
@@ -91,11 +92,15 @@ function route({ method, url }: Call): unknown {
   if (method === 'GET' && p === `/api/v1/offers/kits/${KIT}`) return LIB_OF
   if (method === 'PATCH' && p === `/api/v1/offers/kits/${KIT}`) return LIB_OF
   if (method === 'GET' && p === '/api/v1/price-lists') return []
+  if (method === 'GET' && p === '/api/v1/client-chains') return [{ publicId: CHAIN, name: 'Walgreens', isActive: true, clientCount: 3 }]
+  if (method === 'PATCH' && p === `/api/v1/offers/${O1}`) return DETAIL(O1, 'Navidad', 'ACTIVE', { items: ITEMS, ...mock.o1 })
+  if (method === 'POST' && p === `/api/v1/offers/${O1}/chains`) return DETAIL(O1, 'Navidad', 'ACTIVE', { items: ITEMS, ...mock.o1 })
+  if (method === 'DELETE' && p.startsWith(`/api/v1/offers/${O1}/chains/`)) return DETAIL(O1, 'Navidad', 'ACTIVE', { items: ITEMS, ...mock.o1 })
   if (method === 'GET' && p === '/api/v1/offers')
     return [LIST_ITEM(O1, 'Navidad', 'ACTIVE'), LIST_ITEM(O2, 'Verano', 'SCHEDULED', { validTo: '2026-12-31', hasEndDate: true, validityText: 'del 01/11/2026 al 31/12/2026', itemCount: 1 }), LIST_ITEM(OLD, 'Vieja', 'DRAFT', { itemCount: 1 })]
   if (method === 'GET' && p === `/api/v1/offers/${OLD}`) return DETAIL(OLD, 'Vieja', 'DRAFT', { items: ITEMS })
   if (method === 'POST' && p === `/api/v1/offers/${OLD}/publish`) return DETAIL(OLD, 'Vieja', 'ACTIVE', { items: ITEMS })
-  if (method === 'GET' && p === `/api/v1/offers/${O1}`) return DETAIL(O1, 'Navidad', 'ACTIVE', { items: ITEMS, warnings: [{ code: 'CHEAPER_OFFER', message: WARNING, productPublicId: GUA, sku: 'GUA-1', otherOfferName: 'Verano', otherPrice: 8 }] })
+  if (method === 'GET' && p === `/api/v1/offers/${O1}`) return DETAIL(O1, 'Navidad', 'ACTIVE', { items: ITEMS, warnings: [{ code: 'CHEAPER_OFFER', message: WARNING, productPublicId: GUA, sku: 'GUA-1', otherOfferName: 'Verano', otherPrice: 8 }], ...mock.o1 })
   if (method === 'POST' && p === '/api/v1/offers') return DETAIL(NEW, 'Black Friday', 'ACTIVE')
   if (method === 'GET' && p === `/api/v1/offers/${NEW}`) return DETAIL(NEW, 'Black Friday', 'ACTIVE')
   if (method === 'POST' && p === `/api/v1/offers/${O1}/items`) return DETAIL(O1, 'Navidad', 'ACTIVE', { items: ITEMS })
@@ -135,6 +140,7 @@ beforeAll(() => setLang('es'))
 beforeEach(() => {
   mock.calls = []
   mock.kitCreate = null
+  mock.o1 = {}
 })
 
 async function openOffer(user: ReturnType<typeof userEvent.setup>, name: string) {
@@ -150,7 +156,8 @@ describe('Precios y ofertas — Ofertas (lote 229)', () => {
     expect(within(navidad).getByText('Vigente')).toBeInTheDocument()
     expect(within(navidad).getByText('Se aplica hoy')).toBeInTheDocument()
     expect(within(navidad).getByText('Sin fecha de fin: vale hasta que la desactive')).toHaveClass('of-open')
-    expect(within(navidad).getByText(/Todos los clientes · 2 renglón\(es\)/)).toBeInTheDocument()
+    expect(within(navidad).getByText('Todos los clientes')).toBeInTheDocument()
+    expect(within(navidad).getByText(/2 renglón\(es\)/)).toBeInTheDocument()
     const verano = screen.getByRole('article', { name: 'Verano' })
     expect(within(verano).getByText('Programada (todavía no empieza)')).toBeInTheDocument()
     expect(within(verano).getByText('Del 11/01/2026 al 12/31/2026')).toBeInTheDocument()
@@ -176,7 +183,7 @@ describe('Precios y ofertas — Ofertas (lote 229)', () => {
     await user.type(within(dialog).getByLabelText('Nombre de la oferta'), '  Black Friday ')
     await user.click(within(dialog).getByRole('button', { name: 'Crear oferta' }))
     await waitFor(() => expect(posts('/api/v1/offers')).toHaveLength(1))
-    expect(posts('/api/v1/offers')[0].body).toMatchObject({ name: 'Black Friday', validFrom: expect.any(String), validTo: null, clearValidTo: true, appliesToAll: true, notes: null })
+    expect(posts('/api/v1/offers')[0].body).toMatchObject({ name: 'Black Friday', validFrom: expect.any(String), validTo: null, clearValidTo: true, audienceMode: 'ALL', notes: null })
     // creada: ya se agregan renglones de las dos maneras
     const created = await screen.findByRole('dialog', { name: 'Black Friday' })
     expect(await within(created).findByRole('combobox', { name: 'Escoger un producto' })).toBeInTheDocument()
@@ -381,5 +388,35 @@ describe('Precios y ofertas — Ofertas (lote 229)', () => {
     expect(within(dialog).queryByRole('button', { name: 'Guardar datos' })).toBeNull()
     expect(within(dialog).queryByRole('button', { name: 'Desactivar' })).toBeNull()
     expect(within(dialog).getByLabelText('Nombre de la oferta')).toBeDisabled()
+  })
+
+  it('lote 247: «Incluir» y «Excluir»; al agregar a una caja vacía primero pasa el público (PATCH) y luego agrega la cadena', async () => {
+    const user = userEvent.setup()
+    wrap(EDIT)
+    const dialog = await openOffer(user, 'Navidad')
+    const include = await within(dialog).findByRole('region', { name: 'Incluir' })
+    await user.selectOptions(within(include).getByLabelText('Agregar una cadena'), 'Walgreens')
+    await waitFor(() => expect(posts(`/api/v1/offers/${O1}/chains`)).toHaveLength(1))
+    const patch = mock.calls.find((c) => c.method === 'PATCH' && c.url.pathname === `/api/v1/offers/${O1}`)
+    expect(patch?.body).toEqual({ audienceMode: 'INCLUDE' })
+    expect(posts(`/api/v1/offers/${O1}/chains`)[0].body).toEqual({ chainPublicIds: [CHAIN] })
+    // el PATCH va antes del POST
+    expect(mock.calls.indexOf(patch as Call)).toBeLessThan(mock.calls.indexOf(posts(`/api/v1/offers/${O1}/chains`)[0]))
+  })
+
+  it('lote 247: con escogidos en «Excluir», «Incluir» queda deshabilitada; quitar el último confirma y deja la oferta para todos', async () => {
+    mock.o1 = { audienceMode: 'EXCLUDE', appliesToAll: false, chains: [{ chainPublicId: CHAIN, name: 'Walgreens', isActive: true, clientCount: 3 }] }
+    const user = userEvent.setup()
+    wrap(EDIT)
+    const dialog = await openOffer(user, 'Navidad')
+    const include = await within(dialog).findByRole('region', { name: 'Incluir' })
+    expect(within(include).queryByLabelText('Agregar una cadena')).toBeNull()
+    expect(within(include).getByText('Quite lo escogido en la otra caja para usar esta.')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Quitar la cadena Walgreens' }))
+    const confirm = await screen.findByRole('dialog', { name: '¿Quitar el último?' })
+    expect(within(confirm).getByText('La oferta quedará para todos los clientes.')).toBeInTheDocument()
+    await user.click(within(confirm).getByRole('button', { name: 'Dejarla para todos' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'DELETE' && c.url.pathname === `/api/v1/offers/${O1}/chains/${CHAIN}`)).toBe(true))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PATCH' && JSON.stringify(c.body) === '{"audienceMode":"ALL"}')).toBe(true))
   })
 })

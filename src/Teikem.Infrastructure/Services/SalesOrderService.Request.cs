@@ -233,10 +233,14 @@ public sealed partial class SalesOrderService
                     if (req.UnitPrice is decimal price && price != line.UnitPrice)
                     {
                         // Lote 221: «de lista» = el precio resuelto hoy para el cliente de la orden (lista del cliente > lista general > precio de venta del producto)
+                        // Lote 247: con la cadena activa del cliente; la copia del origen se actualiza con la resolución de hoy (ResolvedUnitPrice = el de lista)
                         var lineProduct = await db.Set<Product>().AsNoTracking().FirstAsync(p => p.ProductId == line.ProductId, ct2);
-                        var listPrice = (await PriceListQueries.ResolveAsync(db, new[] { lineProduct }, order.ClientId, clock.Today, ct2))[lineProduct.ProductId].Price;
+                        var chainId = await Teikem.Infrastructure.Clients.ClientChainQueries.ActiveChainOfClientAsync(db, order.ClientId, ct2);
+                        var resolvedToday = (await PriceListQueries.ResolveAsync(db, new[] { lineProduct }, order.ClientId, chainId, clock.Today, ct2))[lineProduct.ProductId];
+                        var listPrice = resolvedToday.Price;
                         if (PriceListRules.NeedsPricePermission(price, listPrice, null) && !await permissions.HasPermissionAsync(PermissionCatalog.SalesPrice, ct2)) throw new ForbiddenException(SalesRules.PriceNeedsPermission);
                         line.UnitPrice = price;
+                        SetPriceOrigin(line, PriceOriginRules.Copy(resolvedToday, chainId));
                     }
                     if (req.Quantity is decimal newQty && newQty != line.QtyOrdered)
                     {

@@ -102,6 +102,46 @@ public sealed class ClientChainQueriesTests
         }
     }
 
+    /// <summary>Lote 247: para precios y ofertas solo cuenta la cadena ACTIVA del cliente; el mapa de siempre no cambia (trae también las inactivas).</summary>
+    [Fact]
+    public async Task Active_chain_helpers_ignore_inactive_chains()
+    {
+        var w = await SeedAsync();
+        Client InOld()
+        {
+            var c = new Client { PublicId = Guid.NewGuid(), TenantId = TenantA, Code = "O1", Name = "Cliente O1", StatusCodeId = 1, IsActive = true, CreatedAtUtc = DateTime.UtcNow, ChainId = w.OldChain.ClientChainId };
+            w.Db.Clients.Add(c);
+            return c;
+        }
+        var inOld = InOld();
+        await w.Db.SaveChangesAsync();
+        w.Db.ChangeTracker.Clear();
+
+        Assert.Equal(w.Walgreens.ClientChainId, await ClientChainQueries.ActiveChainOfClientAsync(w.Db, w.InWalgreens.ClientId));
+        Assert.Equal(w.Walgreens.ClientChainId, await ClientChainQueries.ActiveChainOfClientAsync(w.Db, w.InactiveInWalgreens.ClientId));   // el cliente inactivo conserva la cadena
+        Assert.Null(await ClientChainQueries.ActiveChainOfClientAsync(w.Db, inOld.ClientId));        // cadena inactiva
+        Assert.Null(await ClientChainQueries.ActiveChainOfClientAsync(w.Db, w.NoChain.ClientId));
+        Assert.Null(await ClientChainQueries.ActiveChainOfClientAsync(w.Db, null));
+        Assert.Null(await ClientChainQueries.ActiveChainOfClientAsync(w.Db, w.OtherTenantClient.ClientId));   // de otra compañía
+
+        var active = await ClientChainQueries.ActiveClientChainMapAsync(w.Db, null);
+        Assert.Equal(new[] { w.InWalgreens.ClientId, w.InactiveInWalgreens.ClientId, w.InCvs.ClientId }.OrderBy(x => x), active.Keys.OrderBy(x => x));
+        var some = await ClientChainQueries.ActiveClientChainMapAsync(w.Db, new[] { inOld.ClientId, w.InCvs.ClientId, w.OtherTenantClient.ClientId });
+        Assert.Equal(new[] { w.InCvs.ClientId }, some.Keys);
+        Assert.Empty(await ClientChainQueries.ActiveClientChainMapAsync(w.Db, Array.Empty<int>()));
+
+        // ClientChainMapAsync no cambia: trae también al cliente de la cadena inactiva
+        var all = await ClientChainQueries.ClientChainMapAsync(w.Db, null);
+        Assert.Equal(w.OldChain.ClientChainId, all[inOld.ClientId]);
+        Assert.Equal(4, all.Count);
+
+        using (w.Tenant.As(TenantB))
+        {
+            Assert.Equal(w.OtherTenant.ClientChainId, await ClientChainQueries.ActiveChainOfClientAsync(w.Db, w.OtherTenantClient.ClientId));
+            Assert.Equal(new[] { w.OtherTenantClient.ClientId }, (await ClientChainQueries.ActiveClientChainMapAsync(w.Db, null)).Keys);
+        }
+    }
+
     [Fact]
     public async Task Public_ids_resolve_only_inside_the_tenant()
     {

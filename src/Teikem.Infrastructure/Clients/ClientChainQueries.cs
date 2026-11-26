@@ -27,12 +27,43 @@ public static class ClientChainQueries
     }
 
     /// <summary>
-    /// Cliente → cadena, SOLO los clientes que tienen cadena (activos o no). <paramref name="clientIds"/> null = todos los de la compañía; vacío = ninguno.
+    /// Cliente → cadena, SOLO los clientes que tienen cadena (activos o no; la cadena también, activa o no: para precios y ofertas se usa
+    /// <see cref="ActiveClientChainMapAsync"/>). <paramref name="clientIds"/> null = todos los de la compañía; vacío = ninguno.
     /// </summary>
     public static async Task<Dictionary<int, int>> ClientChainMapAsync(TeikemDbContext db, IReadOnlyCollection<int>? clientIds, CancellationToken ct = default)
     {
         if (clientIds is { Count: 0 }) return new Dictionary<int, int>();
         var q = db.Clients.AsNoTracking().Where(c => c.ChainId != null);
+        if (clientIds is not null)
+        {
+            var ids = clientIds.Distinct().ToList();
+            q = q.Where(c => ids.Contains(c.ClientId));
+        }
+        var rows = await q.Select(c => new { c.ClientId, ChainId = c.ChainId!.Value }).ToListAsync(ct);
+        return rows.ToDictionary(x => x.ClientId, x => x.ChainId);
+    }
+
+    /// <summary>
+    /// Lote 247 — la cadena del cliente SOLO si está activa (la que cuenta para los precios y las ofertas); null = sin cliente, sin cadena, cadena inactiva o
+    /// cliente de otra compañía.
+    /// </summary>
+    public static async Task<int?> ActiveChainOfClientAsync(TeikemDbContext db, int? clientId, CancellationToken ct = default)
+    {
+        if (clientId is not int id) return null;
+        return await db.Clients.AsNoTracking()
+            .Where(c => c.ClientId == id && c.ChainId != null && db.Set<ClientChain>().Any(ch => ch.ClientChainId == c.ChainId && ch.IsActive))
+            .Select(c => c.ChainId)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>
+    /// Lote 247 — como <see cref="ClientChainMapAsync"/>, pero solo con las cadenas ACTIVAS (cliente → cadena activa). <paramref name="clientIds"/> null = todos los de
+    /// la compañía; vacío = ninguno.
+    /// </summary>
+    public static async Task<Dictionary<int, int>> ActiveClientChainMapAsync(TeikemDbContext db, IReadOnlyCollection<int>? clientIds, CancellationToken ct = default)
+    {
+        if (clientIds is { Count: 0 }) return new Dictionary<int, int>();
+        var q = db.Clients.AsNoTracking().Where(c => c.ChainId != null && db.Set<ClientChain>().Any(ch => ch.ClientChainId == c.ChainId && ch.IsActive));
         if (clientIds is not null)
         {
             var ids = clientIds.Distinct().ToList();

@@ -14,6 +14,7 @@ namespace Teikem.Api.Controllers;
 /// una oferta los usa con un renglón). Ver con sales.view; crear y cambiar
 /// con sales.pricelist. Al pedir gana el precio más bajo entre el negociado y la oferta; los choques con otras ofertas o con la lista general salen en Warnings (no son
 /// errores). Nunca se borran: se desactivan; renglones y clientes se quitan en lógico.
+/// Lote 247: público ALL / INCLUDE / EXCLUDE (audienceMode) con clientes y cadenas escogidos; GET ?chainPublicId= = las ofertas que le aplican a la cadena.
 /// </summary>
 [ApiController]
 [Route("api/v1/offers")]
@@ -21,10 +22,14 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.SalesOrders)]
 public sealed class OffersController(OfferService offers, StoredFileService files) : ControllerBase
 {
-    /// <summary>Las ofertas (la de vigencia más reciente primero). q = el nombre contiene; state = DRAFT, SCHEDULED, ACTIVE o EXPIRED; includeInactive = también las desactivadas.</summary>
+    /// <summary>
+    /// Las ofertas (la de vigencia más reciente primero). q = el nombre contiene; state = DRAFT, SCHEDULED, ACTIVE o EXPIRED; includeInactive = también las desactivadas.
+    /// Lote 247: chainPublicId = solo las activas y no vencidas que le aplican a esa cadena (para todos, incluyéndola, o excluyendo a otros); 404 «Cadena no encontrada.».
+    /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.SalesView)]
-    public Task<IReadOnlyList<OfferListItemDto>> List([FromQuery] string? q, [FromQuery] string? state, [FromQuery] bool includeInactive, CancellationToken ct)
-        => offers.ListAsync(q, state, includeInactive, ct);
+    public Task<IReadOnlyList<OfferListItemDto>> List([FromQuery] string? q, [FromQuery] string? state, [FromQuery] bool includeInactive,
+        [FromQuery] Guid? chainPublicId, CancellationToken ct)
+        => offers.ListAsync(q, state, includeInactive, ct, chainPublicId);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.SalesView)]
     public Task<OfferDto> Get(Guid publicId, CancellationToken ct) => offers.GetAsync(publicId, ct);
@@ -58,11 +63,17 @@ public sealed class OffersController(OfferService offers, StoredFileService file
     public Task<OfferKitLibraryItemDto> UpdateLibraryKit(Guid productPublicId, [FromBody] OfferKitUpdateRequest req, CancellationToken ct)
         => offers.UpdateLibraryKitAsync(productPublicId, req, ct);
 
-    /// <summary>Crea la oferta, ya publicada (lote 234: las ofertas no tienen borrador). 400: sin nombre, sin «desde», «hasta» antes de «desde». validTo vacío = sin fecha de fin.</summary>
+    /// <summary>
+    /// Crea la oferta, ya publicada (lote 234: las ofertas no tienen borrador). 400: sin nombre, sin «desde», «hasta» antes de «desde». validTo vacío = sin fecha de fin.
+    /// Lote 247: audienceMode = ALL, INCLUDE o EXCLUDE (400 si es otro o si no coincide con appliesToAll).
+    /// </summary>
     [HttpPost, RequirePermission(PermissionCatalog.SalesPricelist)]
     public Task<OfferDto> Create([FromBody] OfferRequest req, CancellationToken ct) => offers.CreateAsync(req, ct);
 
-    /// <summary>Edita la oferta (lo que no viene no cambia; clearValidTo = sin fecha de fin). 422 si está desactivada o al cambiar «aplica a todos» con clientes.</summary>
+    /// <summary>
+    /// Edita la oferta (lo que no viene no cambia; clearValidTo = sin fecha de fin). 422 si está desactivada o al cambiar «aplica a todos» con clientes. Lote 247:
+    /// audienceMode; 422 al pasar a ALL o entre INCLUDE y EXCLUDE con clientes o cadenas escogidos.
+    /// </summary>
     [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.SalesPricelist)]
     public Task<OfferDto> Update(Guid publicId, [FromBody] OfferRequest req, CancellationToken ct) => offers.UpdateAsync(publicId, req, ct);
 
@@ -126,6 +137,17 @@ public sealed class OffersController(OfferService offers, StoredFileService file
     /// <summary>Quita un cliente de la oferta (en lógico). Sin clientes, la oferta no aplica a nadie hasta que se escoja otro.</summary>
     [HttpDelete("{publicId:guid}/clients/{clientPublicId:guid}"), RequirePermission(PermissionCatalog.SalesPricelist)]
     public Task<OfferDto> RemoveClient(Guid publicId, Guid clientPublicId, CancellationToken ct) => offers.RemoveClientAsync(publicId, clientPublicId, ct);
+
+    /// <summary>
+    /// Lote 247 — agrega cadenas (incluidas en INCLUDE, excluidas en EXCLUDE; las repetidas se ignoran). 400 sin cadenas o más de 500; 404 «Cadena no encontrada.»;
+    /// 422 cadena desactivada o la oferta aplica a todos.
+    /// </summary>
+    [HttpPost("{publicId:guid}/chains"), RequirePermission(PermissionCatalog.SalesPricelist)]
+    public Task<OfferDto> AddChains(Guid publicId, [FromBody] OfferChainsRequest req, CancellationToken ct) => offers.AddChainsAsync(publicId, req, ct);
+
+    /// <summary>Lote 247 — quita una cadena de la oferta (en lógico). 404 «Cadena de la oferta no encontrada.» si no está.</summary>
+    [HttpDelete("{publicId:guid}/chains/{chainPublicId:guid}"), RequirePermission(PermissionCatalog.SalesPricelist)]
+    public Task<OfferDto> RemoveChain(Guid publicId, Guid chainPublicId, CancellationToken ct) => offers.RemoveChainAsync(publicId, chainPublicId, ct);
 
     /// <summary>
     /// Crea un kit de oferta NUEVO y lo pone en esta oferta (SKU, nombre, piezas con cantidades y «no sustituible», precio de oferta; ajustable opcional, por omisión

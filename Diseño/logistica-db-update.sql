@@ -8562,3 +8562,130 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L246_PURCHASING_QUICKBOOKS');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-25 — Lote 247: Precios especiales y ofertas por cliente y por cadena (Lote C del plan docs/plan-rutas-cadenas-precios-ivu-modificaciones.md, §3.2) (docs/lote247-decisiones.md).
+   - dbo.PriceList: UQ_PriceList_IdTenant y dbo.Offer: UQ_Offer_IdTenant (Id, TenantId), destino de las FK compuestas por compañía (patrón UQ_SalesRoute_IdTenant).
+   - Tabla nueva dbo.PriceListChain (cadenas de una lista que no es general) y dbo.OfferChain (cadenas incluidas o excluidas de una oferta), con FK COMPUESTAS a la
+     lista u oferta y a la cadena (ClientChain), UX_*_Chain (una fila activa por cadena) e IX_*_Chain (TenantId, ChainId). Quitar = IsActive 0.
+   - dbo.PriceList.SpecialClientId / SpecialChainId: la lista DEDICADA, el precio especial de un cliente o de una cadena, con FK compuestas (UQ_Client_IdTenant y
+     UQ_ClientChain_IdTenant), CK_PriceList_SpecialOwner (un solo dueño y, con dueño, AppliesToAll = 0) y UX_PriceList_SpecialClient / UX_PriceList_SpecialChain
+     (una dedicada activa por dueño y vigencia; el índice único trata ValidTo NULL como valor).
+   - dbo.Offer.AudienceMode (ALL / INCLUDE / EXCLUDE, ALL por omisión). Datos, una sola vez (marca L247_OFFER_AUDIENCE): las ofertas con AppliesToAll = 0 pasan a
+     INCLUDE (las de AppliesToAll = 1 se quedan en ALL). Después, CK_Offer_AudienceMode ata AudienceMode y AppliesToAll (ALL ⇔ 1).
+   - dbo.SalesOrderLine: PriceSource, PriceListId, OfferId, PriceChainId y ResolvedUnitPrice (copia del origen del precio de la línea; sin CHECK de códigos) con FK
+     compuestas a la lista, la oferta y la cadena. Las líneas de antes quedan en NULL: no se rellenan.
+   - EntityType SPECIAL_PRICE (fuente de datos «Precios especiales», orden 199). Las tablas nuevas auditan con PRICE_LIST y OFFER, que ya existen.
+   - Sin permisos nuevos (se usan sales.view y sales.pricelist): nada que propagar a los roles ya clonados.
+   Solo AGREGA. Idempotente.
+   ---------------------------------------------------------------------------- */
+IF NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_PriceList_IdTenant' AND parent_object_id = OBJECT_ID('dbo.PriceList'))
+    ALTER TABLE dbo.PriceList ADD CONSTRAINT UQ_PriceList_IdTenant UNIQUE (PriceListId, TenantId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_Offer_IdTenant' AND parent_object_id = OBJECT_ID('dbo.Offer'))
+    ALTER TABLE dbo.Offer ADD CONSTRAINT UQ_Offer_IdTenant UNIQUE (OfferId, TenantId);
+GO
+IF OBJECT_ID(N'dbo.PriceListChain', N'U') IS NULL CREATE TABLE dbo.PriceListChain (
+    PriceListChainId INT IDENTITY(1,1) CONSTRAINT PK_PriceListChain PRIMARY KEY,
+    TenantId         INT NOT NULL CONSTRAINT FK_PriceListChain_Tenant REFERENCES dbo.Tenant(TenantId),
+    PriceListId      INT NOT NULL,
+    ChainId          INT NOT NULL,
+    IsActive         BIT NOT NULL CONSTRAINT DF_PriceListChain_IsActive DEFAULT 1,
+    CreatedAtUtc     DATETIME2 NOT NULL CONSTRAINT DF_PriceListChain_At DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_PriceListChain_List FOREIGN KEY (PriceListId, TenantId) REFERENCES dbo.PriceList(PriceListId, TenantId),
+    CONSTRAINT FK_PriceListChain_Chain FOREIGN KEY (ChainId, TenantId) REFERENCES dbo.ClientChain(ClientChainId, TenantId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_PriceListChain_Chain' AND object_id = OBJECT_ID('dbo.PriceListChain'))
+    EXEC(N'CREATE UNIQUE INDEX UX_PriceListChain_Chain ON dbo.PriceListChain(PriceListId, ChainId) WHERE IsActive = 1;');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PriceListChain_Chain' AND object_id = OBJECT_ID('dbo.PriceListChain'))
+    CREATE INDEX IX_PriceListChain_Chain ON dbo.PriceListChain(TenantId, ChainId);
+GO
+IF OBJECT_ID(N'dbo.OfferChain', N'U') IS NULL CREATE TABLE dbo.OfferChain (
+    OfferChainId INT IDENTITY(1,1) CONSTRAINT PK_OfferChain PRIMARY KEY,
+    TenantId     INT NOT NULL CONSTRAINT FK_OfferChain_Tenant REFERENCES dbo.Tenant(TenantId),
+    OfferId      INT NOT NULL,
+    ChainId      INT NOT NULL,
+    IsActive     BIT NOT NULL CONSTRAINT DF_OfferChain_IsActive DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL CONSTRAINT DF_OfferChain_At DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_OfferChain_Offer FOREIGN KEY (OfferId, TenantId) REFERENCES dbo.Offer(OfferId, TenantId),
+    CONSTRAINT FK_OfferChain_Chain FOREIGN KEY (ChainId, TenantId) REFERENCES dbo.ClientChain(ClientChainId, TenantId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_OfferChain_Chain' AND object_id = OBJECT_ID('dbo.OfferChain'))
+    EXEC(N'CREATE UNIQUE INDEX UX_OfferChain_Chain ON dbo.OfferChain(OfferId, ChainId) WHERE IsActive = 1;');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_OfferChain_Chain' AND object_id = OBJECT_ID('dbo.OfferChain'))
+    CREATE INDEX IX_OfferChain_Chain ON dbo.OfferChain(TenantId, ChainId);
+GO
+-- lista dedicada (precio especial) de un cliente o de una cadena
+IF COL_LENGTH(N'dbo.PriceList', N'SpecialClientId') IS NULL
+    ALTER TABLE dbo.PriceList ADD SpecialClientId INT NULL;
+GO
+IF COL_LENGTH(N'dbo.PriceList', N'SpecialChainId') IS NULL
+    ALTER TABLE dbo.PriceList ADD SpecialChainId INT NULL;
+GO
+IF OBJECT_ID(N'dbo.FK_PriceList_SpecialClient', N'F') IS NULL
+    EXEC(N'ALTER TABLE dbo.PriceList ADD CONSTRAINT FK_PriceList_SpecialClient FOREIGN KEY (SpecialClientId, TenantId) REFERENCES dbo.Client(ClientId, TenantId);');
+GO
+IF OBJECT_ID(N'dbo.FK_PriceList_SpecialChain', N'F') IS NULL
+    EXEC(N'ALTER TABLE dbo.PriceList ADD CONSTRAINT FK_PriceList_SpecialChain FOREIGN KEY (SpecialChainId, TenantId) REFERENCES dbo.ClientChain(ClientChainId, TenantId);');
+GO
+IF OBJECT_ID(N'dbo.CK_PriceList_SpecialOwner', N'C') IS NULL
+    EXEC(N'ALTER TABLE dbo.PriceList ADD CONSTRAINT CK_PriceList_SpecialOwner CHECK ((SpecialClientId IS NULL OR SpecialChainId IS NULL) AND ((SpecialClientId IS NULL AND SpecialChainId IS NULL) OR AppliesToAll = 0));');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_PriceList_SpecialClient' AND object_id = OBJECT_ID('dbo.PriceList'))
+    EXEC(N'CREATE UNIQUE INDEX UX_PriceList_SpecialClient ON dbo.PriceList(TenantId, SpecialClientId, ValidFrom, ValidTo) WHERE IsActive = 1 AND SpecialClientId IS NOT NULL;');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_PriceList_SpecialChain' AND object_id = OBJECT_ID('dbo.PriceList'))
+    EXEC(N'CREATE UNIQUE INDEX UX_PriceList_SpecialChain ON dbo.PriceList(TenantId, SpecialChainId, ValidFrom, ValidTo) WHERE IsActive = 1 AND SpecialChainId IS NOT NULL;');
+GO
+-- público de la oferta: ALL / INCLUDE / EXCLUDE
+IF COL_LENGTH(N'dbo.Offer', N'AudienceMode') IS NULL
+    ALTER TABLE dbo.Offer ADD AudienceMode NVARCHAR(10) NOT NULL CONSTRAINT DF_Offer_AudienceMode DEFAULT N'ALL';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L247_OFFER_AUDIENCE')
+BEGIN
+    -- las ofertas de clientes escogidos pasan a INCLUDE; las de todos se quedan en ALL
+    EXEC(N'UPDATE dbo.Offer SET AudienceMode = N''INCLUDE'' WHERE AppliesToAll = 0 AND AudienceMode = N''ALL'';');
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L247_OFFER_AUDIENCE');
+END
+GO
+IF OBJECT_ID(N'dbo.CK_Offer_AudienceMode', N'C') IS NULL
+    EXEC(N'ALTER TABLE dbo.Offer ADD CONSTRAINT CK_Offer_AudienceMode CHECK ((AudienceMode = N''ALL'' AND AppliesToAll = 1) OR (AudienceMode IN (N''INCLUDE'', N''EXCLUDE'') AND AppliesToAll = 0));');
+GO
+-- copia del origen del precio en la línea de la orden de venta
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'PriceSource') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD PriceSource NVARCHAR(20) NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'PriceListId') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD PriceListId INT NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'OfferId') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD OfferId INT NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'PriceChainId') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD PriceChainId INT NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'ResolvedUnitPrice') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD ResolvedUnitPrice DECIMAL(18,4) NULL;
+GO
+IF OBJECT_ID(N'dbo.FK_SalesOrderLine_PriceList', N'F') IS NULL
+    EXEC(N'ALTER TABLE dbo.SalesOrderLine ADD CONSTRAINT FK_SalesOrderLine_PriceList FOREIGN KEY (PriceListId, TenantId) REFERENCES dbo.PriceList(PriceListId, TenantId);');
+GO
+IF OBJECT_ID(N'dbo.FK_SalesOrderLine_Offer', N'F') IS NULL
+    EXEC(N'ALTER TABLE dbo.SalesOrderLine ADD CONSTRAINT FK_SalesOrderLine_Offer FOREIGN KEY (OfferId, TenantId) REFERENCES dbo.Offer(OfferId, TenantId);');
+GO
+IF OBJECT_ID(N'dbo.FK_SalesOrderLine_PriceChain', N'F') IS NULL
+    EXEC(N'ALTER TABLE dbo.SalesOrderLine ADD CONSTRAINT FK_SalesOrderLine_PriceChain FOREIGN KEY (PriceChainId, TenantId) REFERENCES dbo.ClientChain(ClientChainId, TenantId);');
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SPECIAL_PRICE', N'{"es":"Precios especiales","en":"Special prices"}', 199)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO

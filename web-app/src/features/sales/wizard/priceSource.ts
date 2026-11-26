@@ -8,6 +8,10 @@ export interface PriceSourceInfo {
   /** El precio que se cobra sale de una oferta. */
   fromOffer: boolean
   offerName: string | null
+  /** Lote 247: de dónde sale el precio cuando es un precio especial (el del cliente o el de su cadena); null = oferta, lista general o producto. */
+  special: 'CLIENT_LIST' | 'CHAIN_LIST' | null
+  /** Nombre de la cadena cuando `special` = CHAIN_LIST (solo la web del personal lo muestra: el portal del cliente no ve la cadena). */
+  chainName: string | null
   /** Avisos sin repetir (por mensaje), listos para mostrar. */
   notices: string[]
 }
@@ -39,9 +43,12 @@ export function priceSourceOf(productPublicId: string, catalog: SalesCatalogDto 
   const item = catalogItemOf(catalog, productPublicId)
   const source = line?.priceSource ?? item?.priceSource ?? null
   const fromOffer = source === 'OFFER'
+  const special = source === 'CLIENT_LIST' || source === 'CHAIN_LIST' ? source : null
   return {
     fromOffer,
     offerName: fromOffer ? line?.offerName ?? item?.offerName ?? null : null,
+    special,
+    chainName: special === 'CHAIN_LIST' ? line?.chainName ?? item?.chainName ?? null : null,
     notices: unique([...(line?.notices ?? []).map((n) => n.message), ...(item?.notices ?? []).map((n) => n.message)]),
   }
 }
@@ -55,4 +62,18 @@ export function cartPriceNotices(
   return cart
     .map((l) => ({ productPublicId: l.productPublicId, sku: l.sku, notices: priceSourceOf(l.productPublicId, catalog, saved).notices }))
     .filter((x) => x.notices.length > 0)
+}
+
+/**
+ * Lote 247 — origen del precio de una línea ya guardada de la orden, para pintar el chip: manda lo guardado en la línea (`priceSource`, nombres, `isManualPrice`: así
+ * una orden solicitada sigue diciendo «Cadena X» u «Oferta X») y, si la línea no lo trae (borrador recién guardado), lo que devolvió el servidor en `linePrices`.
+ * Sin origen guardado (líneas de antes del lote), todo null y sin chip.
+ */
+export function savedLineOrigin(order: SalesOrderDto | null | undefined, productPublicId: string | null | undefined) {
+  if (!order || !productPublicId) return null
+  const line = (order.lines ?? []).find((l) => l.productPublicId === productPublicId)
+  if (line?.priceSource) return line
+  const priced = (order.linePrices ?? []).find((l) => l.productPublicId === productPublicId)
+  if (!priced?.priceSource) return null
+  return { priceSource: priced.priceSource, offerName: priced.offerName ?? null, priceChainName: priced.chainName ?? null, resolvedUnitPrice: priced.resolvedPrice ?? null, isManualPrice: false }
 }

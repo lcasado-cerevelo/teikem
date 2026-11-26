@@ -17,6 +17,8 @@ import { PackModal } from '../warehouse/PackModal'
 import { ProductPicker, WarehousePicker } from '../warehouse/pickers'
 import { OrderBadges } from './OrderBadges'
 import { offerKitOptions } from './offerKitOptions'
+import { LinePriceOrigin } from './wizard/PriceNotices'
+import { savedLineOrigin } from './wizard/priceSource'
 import { useSalesCatalog } from './wizard/wizardApi'
 import { AUTHORIZED_BY_MAX, authorizerMissing, DELIVERY_MODES, draftError, draftSubtotal, effectivePrice, EXTRA_DEFAULTS, isCreditTerm, lineAmount, parseNumber, paymentChanged, prefillPayment, toRequest, withMethod, type DeliveryMode, type LineDraft, type OrderDraft } from './salesRules'
 import { KitLineBlock, KitComponentsSection } from './KitLineBlock'
@@ -459,6 +461,7 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
                 <span>{effectivePrice(l) === null || parseNumber(l.quantity) === null ? '—' : f.money(lineAmount(l))}</span>
               </div>
               <button type="button" className="btn ghost" aria-label={t('sales.line.remove', { n: i + 1 })} onClick={() => set({ lines: draft.lines.filter((x) => x.key !== l.key) })}>✕</button>
+              {savedLineOrigin(current, l.productPublicId) && <LinePriceOrigin line={savedLineOrigin(current, l.productPublicId) ?? {}} money={f.money} />}
               <StockInfo stock={stock.data} warehousePublicId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} pieces={orderKitPieces(l.components, current?.lines?.find((x) => x.productPublicId === l.productPublicId))} />
               {l.isKit && <KitLineBlock line={l} saved={current?.lines?.find((x) => x.productPublicId === l.productPublicId)} onPieces={(components) => setLine(l.key, { components })} />}
             </div>
@@ -697,7 +700,7 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
         align: 'end',
       },
       { id: 'shipped', header: t('sales.col.shipped'), cell: (l) => f.number(l.qtyShipped ?? 0), sortValue: (l) => l.qtyShipped ?? 0, align: 'end' },
-      { id: 'price', header: t('sales.col.price'), cell: (l) => f.money(l.unitPrice ?? 0), sortValue: (l) => l.unitPrice ?? 0, align: 'end' },
+      { id: 'price', header: t('sales.col.price'), cell: (l) => <span className="so-price-cell">{f.money(l.unitPrice ?? 0)}<LinePriceOrigin line={l} money={f.money} /></span>, exportValue: (l) => l.unitPrice ?? 0, sortValue: (l) => l.unitPrice ?? 0, align: 'end' },
       {
         id: 'tax',
         header: t('sales.col.tax'),

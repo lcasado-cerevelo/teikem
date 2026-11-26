@@ -12,7 +12,23 @@ import { useT } from '../../kernel/i18n'
 import { Chip, ClientPicker, ConfirmDialog, DataTable, DateField, EmptyState, Modal, Spinner, toast, type DataColumn } from '../../kernel/ui'
 import { OfferKitModal, type OfferKitMode } from './OfferKitModal'
 import { useOffer, useOfferActions, type OfferDto, type OfferItemDto, type OfferWarningDto } from './offerApi'
-import { EMPTY_OFFER_DRAFT, offerDraftError, offerPublishBlocker, offerStateKey, offerStateTone, OFFER_NAME_MAX, OFFER_NOTES_MAX, toOfferRequest, type OfferDraft } from './offerRules'
+import { ChainPicker } from '../chains/ChainPicker'
+import {
+  audienceBoxDisabled,
+  EMPTY_OFFER_DRAFT,
+  isLastMember,
+  modeBeforeAdd,
+  offerAudienceKey,
+  offerDraftError,
+  offerPublishBlocker,
+  offerStateKey,
+  offerStateTone,
+  OFFER_NAME_MAX,
+  OFFER_NOTES_MAX,
+  toOfferRequest,
+  type OfferAudience,
+  type OfferDraft,
+} from './offerRules'
 import { parsePrice } from './priceListRules'
 import { ProductPicker } from './pickers'
 import { StoredImage, useProductPhotosEnabled } from './StoredImage'
@@ -51,7 +67,7 @@ export function OfferEditorModal({ publicId: initialId, onClose }: { publicId: s
   const [deactivating, setDeactivating] = useState(false)
 
   useEffect(() => {
-    if (offer) setDraft({ name: offer.name ?? '', validFrom: offer.validFrom ?? '', validTo: offer.validTo ?? '', appliesToAll: offer.appliesToAll !== false, notes: offer.notes ?? '' })
+    if (offer) setDraft({ name: offer.name ?? '', validFrom: offer.validFrom ?? '', validTo: offer.validTo ?? '', audienceMode: offerAudienceKey(offer), notes: offer.notes ?? '' })
   }, [offer])
 
   const busy = Object.values(actions).some((m) => m.isPending)
@@ -96,7 +112,7 @@ export function OfferEditorModal({ publicId: initialId, onClose }: { publicId: s
               <div className="pl-chips">
                 <Chip tone={offerStateTone(offer.state)}>{t(`${O}.state.${offerStateKey(offer.state)}`)}</Chip>
                 {offer.inEffect && <Chip tone="deliv">{t(`${O}.inEffect`)}</Chip>}
-                <Chip tone="neutral">{offer.appliesToAll ? t(`${P}.appliesAll`) : t(`${P}.appliesSome`, { count: offer.clients?.length ?? 0 })}</Chip>
+                <AudienceChip offer={offer} />
                 {offer.isActive === false && <Chip tone="fail">{t(`${O}.inactive`)}</Chip>}
               </div>
             )}
@@ -128,10 +144,6 @@ export function OfferEditorModal({ publicId: initialId, onClose }: { publicId: s
               </p>
             )}
             {offer && offer.validityText && <p className="help">{offer.validityText}</p>}
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-              <input type="checkbox" checked={draft.appliesToAll} disabled={readOnly} onChange={(e) => setDraft({ ...draft, appliesToAll: e.target.checked })} />
-              {t(`${O}.appliesAllToggle`)}
-            </label>
             {canEdit && !readOnly && (
               <p>
                 <button type="button" className="btn flow" disabled={busy} onClick={() => void saveData()}>
@@ -147,7 +159,7 @@ export function OfferEditorModal({ publicId: initialId, onClose }: { publicId: s
             {offer && publicId && (
               <>
                 <OfferPhotoSection offer={offer} editable={editable} onRun={run} />
-                <ClientsSection offer={offer} editable={editable} onRun={run} />
+                <AudienceSection offer={offer} editable={editable} onRun={run} />
                 <ItemsSection offer={offer} editable={editable} onRun={run} onFail={setError} />
                 {canEdit && (
                   <div className="pl-bar">
@@ -158,7 +170,7 @@ export function OfferEditorModal({ publicId: initialId, onClose }: { publicId: s
                         className="btn flow"
                         disabled={busy}
                         onClick={() => {
-                          const blocker = offerPublishBlocker(offer.items?.length ?? 0, offer.appliesToAll !== false, offer.clients?.length ?? 0)
+                          const blocker = offerPublishBlocker(offer.items?.length ?? 0, offerAudienceKey(offer), (offer.clients?.length ?? 0) + (offer.chains?.length ?? 0))
                           if (blocker) return setError(t(`${O}.err.${blocker}`))
                           void run(() => actions.publish.mutateAsync(publicId), `${O}.published`)
                         }}
@@ -252,54 +264,133 @@ function OfferPhotoSection({ offer, editable, onRun }: { offer: OfferDto; editab
   )
 }
 
-function ClientsSection({ offer, editable, onRun }: { offer: OfferDto; editable: boolean; onRun: Run }) {
+/** Chip del público de la oferta: todos, solo N escogidos o todos menos N. */
+export function AudienceChip({ offer }: { offer: Pick<OfferDto, 'audienceMode' | 'appliesToAll' | 'clients' | 'chains'> | { audienceMode?: string | null; appliesToAll?: boolean | null; clientCount?: number; chainCount?: number } }) {
+  const t = useT()
+  const mode = offerAudienceKey(offer)
+  const o = offer as { clients?: unknown[] | null; chains?: unknown[] | null; clientCount?: number; chainCount?: number }
+  const count = o.clients || o.chains ? (o.clients?.length ?? 0) + (o.chains?.length ?? 0) : (o.clientCount ?? 0) + (o.chainCount ?? 0)
+  if (mode === 'ALL') return <Chip tone="neutral">{t(`${P}.appliesAll`)}</Chip>
+  return <Chip tone={mode === 'EXCLUDE' ? 'warn' : 'cap'}>{t(`${O}.audience.${mode}Chip`, { count })}</Chip>
+}
+
+/**
+ * Público de la oferta (Lote 247): dos cajas, «Incluir» (solo para ellos) y «Excluir» (para todos menos ellos), con clientes y cadenas. Llenar una deshabilita
+ * la otra; vacías, la oferta es para todos. Al agregar a una caja vacía primero se pasa el público (PATCH audienceMode) y luego se agrega; al quitar el último
+ * se confirma («La oferta quedará para todos los clientes.») y se pasa a ALL.
+ */
+function AudienceSection({ offer, editable, onRun }: { offer: OfferDto; editable: boolean; onRun: Run }) {
   const t = useT()
   const actions = useOfferActions()
   const id = offer.publicId ?? ''
+  const mode = offerAudienceKey(offer)
   const clients = offer.clients ?? []
-  if (offer.appliesToAll !== false) return <p className="note" style={{ marginTop: 12 }}>{t(`${O}.allClientsNote`)}</p>
-  return (
-    <section className="of-section" aria-labelledby="of-clients-title">
-      <h3 id="of-clients-title">{t(`${O}.clients`)}</h3>
-      <div className="pl-chips">
-        {clients.length === 0 && <span>{t(`${P}.noClients`)}</span>}
-        {clients.map(
-          (c) =>
-            c.clientPublicId && (
-              <Chip key={c.clientPublicId} tone="neutral">
-                {[c.code, c.name].filter(Boolean).join(' · ')}
+  const chains = offer.chains ?? []
+  const members = clients.length + chains.length
+  const [lastRemoval, setLastRemoval] = useState<null | (() => Promise<unknown>)>(null)
+
+  const addTo = (box: 'INCLUDE' | 'EXCLUDE', fn: () => Promise<unknown>) => {
+    const before = modeBeforeAdd(box, mode)
+    return onRun(async () => {
+      if (before) await actions.update.mutateAsync({ publicId: id, body: { audienceMode: before } })
+      await fn()
+    })
+  }
+  const removeFrom = (fn: () => Promise<unknown>) => {
+    if (isLastMember(members)) return setLastRemoval(() => fn)
+    void onRun(fn)
+  }
+
+  const box = (kind: 'INCLUDE' | 'EXCLUDE') => {
+    const own = mode === kind
+    const disabled = !editable || audienceBoxDisabled(kind, mode, members)
+    const ids = own ? chains.map((c) => c.chainPublicId ?? '') : []
+    return (
+      <section className={`of-aud of-aud-${kind.toLowerCase()}${disabled ? ' off' : ''}`} aria-labelledby={`of-aud-${kind}`}>
+        <h4 id={`of-aud-${kind}`}>{t(`${O}.audience.${kind}`)}</h4>
+        <p className="help">{t(`${O}.audience.${kind}Help`)}</p>
+        <div className="pl-chips">
+          {own &&
+            clients.map(
+              (c) =>
+                c.clientPublicId && (
+                  <Chip key={c.clientPublicId} tone="neutral">
+                    {[c.code, c.name].filter(Boolean).join(' · ')}
+                    {editable && (
+                      <button
+                        type="button"
+                        className="btn sm"
+                        aria-label={t(`${P}.removeClient`, { name: c.name ?? c.code ?? '' })}
+                        onClick={() => removeFrom(() => actions.removeClient.mutateAsync({ publicId: id, clientPublicId: c.clientPublicId ?? '' }))}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </Chip>
+                ),
+            )}
+          {own &&
+            chains.map((c) => (
+              <Chip key={c.chainPublicId} tone={c.isActive === false ? 'warn' : 'cap'}>
+                {t(`${O}.audience.chainChip`, { name: c.name ?? '' })}
                 {editable && (
                   <button
                     type="button"
                     className="btn sm"
-                    aria-label={t(`${P}.removeClient`, { name: c.name ?? c.code ?? '' })}
-                    onClick={() => void onRun(() => actions.removeClient.mutateAsync({ publicId: id, clientPublicId: c.clientPublicId ?? '' }))}
+                    aria-label={t(`${O}.audience.removeChain`, { name: c.name ?? '' })}
+                    onClick={() => removeFrom(() => actions.removeChain.mutateAsync({ publicId: id, chainPublicId: c.chainPublicId ?? '' }))}
                   >
                     ×
                   </button>
                 )}
               </Chip>
-            ),
+            ))}
+          {(!own || members === 0) && <span className="help">{t(`${O}.audience.empty`)}</span>}
+        </div>
+        {!disabled && (
+          <div className="of-aud-pick">
+            <div className="f">
+              <label htmlFor={`of-client-${kind}`}>{t(`${P}.addClient`)}</label>
+              <ClientPicker id={`of-client-${kind}`} value={null} onChange={(cid) => cid && void addTo(kind, () => actions.addClients.mutateAsync({ publicId: id, clientPublicIds: [cid] }))} />
+            </div>
+            <ChainPicker id={`of-chain-${kind}`} label={t(`${O}.audience.addChain`)} exclude={ids} onPick={(cid) => void addTo(kind, () => actions.addChains.mutateAsync({ publicId: id, chainPublicIds: [cid] }))} />
+          </div>
         )}
+        {disabled && editable && <p className="help">{t(`${O}.audience.locked`)}</p>}
+      </section>
+    )
+  }
+
+  return (
+    <section className="of-section" aria-labelledby="of-audience-title">
+      <h3 id="of-audience-title">{t(`${O}.audience.title`)}</h3>
+      <p className="note">{mode === 'ALL' ? t(`${O}.allClientsNote`) : t(`${O}.audience.${mode}Note`)}</p>
+      <div className="of-aud-grid">
+        {box('INCLUDE')}
+        {box('EXCLUDE')}
       </div>
-      {/* Lote 234: sin borrador, una oferta «para algunos clientes» sin clientes ya está publicada pero no aplica a nadie: se dice */}
-      {clients.length === 0 && offer.isActive !== false && (
+      {/* sin borrador, una oferta «solo para algunos» sin escogidos ya está publicada pero no aplica a nadie: se dice */}
+      {mode === 'INCLUDE' && members === 0 && offer.isActive !== false && (
         <p className="of-open" role="note">
           {t(`${O}.noClientsYet`)}
         </p>
       )}
-      {editable && (
-        <div className="f" style={{ maxWidth: 420 }}>
-          <label htmlFor="of-client">{t(`${P}.addClient`)}</label>
-          <ClientPicker
-            id="of-client"
-            value={null}
-            onChange={(cid) => {
-              if (cid) void onRun(() => actions.addClients.mutateAsync({ publicId: id, clientPublicIds: [cid] }))
-            }}
-          />
-        </div>
-      )}
+      <ConfirmDialog
+        open={lastRemoval !== null}
+        title={t(`${O}.audience.lastTitle`)}
+        message={t(`${O}.audience.lastMessage`)}
+        confirmLabel={t(`${O}.audience.lastConfirm`)}
+        onClose={() => setLastRemoval(null)}
+        onConfirm={async () => {
+          const fn = lastRemoval
+          if (!fn) return
+          const ok = await onRun(async () => {
+            await fn()
+            await actions.update.mutateAsync({ publicId: id, body: { audienceMode: 'ALL' satisfies OfferAudience } })
+          })
+          if (!ok) throw new Error(t(`${O}.audience.lastFailed`))
+        }}
+      />
     </section>
   )
 }

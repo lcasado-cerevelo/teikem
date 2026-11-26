@@ -123,6 +123,16 @@ public class SalesOrderLine : ITenantScoped
     public decimal TaxRatePct { get; set; }
     public decimal TaxAmount { get; set; }
     public bool IsTaxExempt { get; set; }
+
+    // --- Lote 247 (Lote C): copia del ORIGEN del precio cada vez que se escribe el precio de la línea (DECISIÓN 12). Se guardan ids, no nombres (el nombre se lee
+    // al mostrar). PriceSource = CLIENT_LIST, CHAIN_LIST, OFFER, GENERAL_LIST, PRODUCT o NONE (sin CHECK de códigos); PriceChainId solo con CHAIN_LIST;
+    // ResolvedUnitPrice = el precio que daba la resolución (UnitPrice distinto = precio manual con sales.price). Las líneas de antes del lote quedan en NULL.
+    public string? PriceSource { get; set; }
+    public int? PriceListId { get; set; }
+    public int? OfferId { get; set; }
+    public int? PriceChainId { get; set; }
+    public decimal? ResolvedUnitPrice { get; set; }
+
     /// <summary>Lote 69: si la línea es de un kit, la FOTO de sus componentes al guardar el borrador (cantidad por kit). Vacío = producto normal.</summary>
     public List<SalesOrderLineComponent> Components { get; set; } = new();
 }

@@ -48,9 +48,12 @@ public static class OfferKitRules
     public static OfferKitUse? LastUse(IEnumerable<OfferKitUse> uses)
         => uses.OrderByDescending(u => u.ItemActive && u.OfferActive).ThenByDescending(u => u.OfferItemId).FirstOrDefault();
 
-    /// <summary>¿El kit se vende hoy al cliente? Está en alguna oferta publicada, activa y vigente que le aplica (sin cliente: las de todos).</summary>
-    public static bool IsOnSale(int productId, int? clientId, DateOnly date, IEnumerable<OfferView> offers)
-        => offers.Any(o => OfferRules.InEffect(o, date) && OfferRules.AppliesTo(o, clientId) && o.Items.Any(i => i.ProductId == productId));
+    /// <summary>
+    /// ¿El kit se vende hoy al cliente? Está en alguna oferta publicada, activa y vigente que le aplica (sin cliente: las de todos). Lote 247: también por su cadena
+    /// (<paramref name="chainId"/>; null = sin cadena o cadena inactiva), con el público de la oferta (incluir o excluir, ver <see cref="OfferRules.AppliesTo"/>).
+    /// </summary>
+    public static bool IsOnSale(int productId, int? clientId, DateOnly date, IEnumerable<OfferView> offers, int? chainId = null)
+        => offers.Any(o => OfferRules.InEffect(o, date) && OfferRules.AppliesTo(o, clientId, chainId) && o.Items.Any(i => i.ProductId == productId));
 
     /// <summary>
     /// ¿Cambia la composición? Mismas piezas (sin importar el orden), mismas cantidades y marcas «no sustituible», y el mismo «ajustable al pedir» = no cambia

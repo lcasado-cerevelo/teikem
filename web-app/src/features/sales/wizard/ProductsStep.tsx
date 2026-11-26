@@ -222,6 +222,8 @@ export function ProductsStep({ state, onChange, stock, warehouseId }: ProductsSt
                             {t('salesWizard.products.offerPriceChip')}
                           </Chip>
                         )}
+                        {p.priceSource === 'CHAIN_LIST' && <Chip tone="deliv">{t('salesWizard.cart.originChain', { name: p.chainName ?? '' })}</Chip>}
+                        {p.priceSource === 'CLIENT_LIST' && <Chip tone="deliv">{t('salesWizard.cart.originClient')}</Chip>}
                       </span>
                     )}
                   </li>

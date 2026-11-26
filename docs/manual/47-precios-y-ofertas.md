@@ -32,6 +32,8 @@ La pantalla está en **Contabilidad → Precios y ofertas** (`/money/prices`), j
 
 ## 2. De dónde sale el precio de una línea
 
+> **Lote 247 (2026-11-26): esta regla cambió.** Ahora gana **siempre el precio más bajo** entre el precio del cliente, el de su cadena (si está activa), la oferta y la lista general, sin jerarquía: el negociado del cliente ya no gana sobre la lista general si es más caro (se avisa con `SPECIAL_ABOVE_GENERAL`), y el origen puede ser también `CHAIN_LIST`. Las ofertas tienen público «Incluir» / «Excluir» con clientes y cadenas, y las listas pueden aplicar a cadenas. La regla vigente, los precios especiales y los mensajes nuevos están en el [capítulo 55](55-precios-especiales-y-ofertas.md); los puntos de abajo describen el comportamiento anterior al lote y están pendientes de fundirse.
+
 Al crear o editar una línea de una orden de venta (y en el pedido guiado), el servidor resuelve el precio así:
 
 1. **Entre el precio negociado del cliente y la oferta vigente, gana el más bajo.** El *negociado* es el precio de una lista **publicada**, **vigente hoy**, que aplica a ese cliente y trae el producto (o el kit). La *oferta* es una oferta **publicada, activa y vigente hoy** que aplica al cliente (todos, o él entre los escogidos) y trae el producto. **A igual precio gana el negociado.**

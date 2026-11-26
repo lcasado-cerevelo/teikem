@@ -6,10 +6,14 @@ import { useCan } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
+import { Link } from 'react-router-dom'
 import { Chip, ClientPicker, ConfirmDialog, DataTable, DateField, EmptyState, Modal, Spinner, toast, type DataColumn } from '../../kernel/ui'
-import { usePriceList, usePriceListActions, type PriceListItemDto } from './priceListApi'
+import { ChainPicker } from '../chains/ChainPicker'
+import { usePriceList, usePriceListActions, type PriceListDto, type PriceListItemDto, type PriceListWarningDto } from './priceListApi'
 import {
   EMPTY_LIST_DRAFT,
+  isDedicated,
+  specialOwnerLink,
   listDraftError,
   parsePrice,
   publishBlocker,
@@ -39,6 +43,9 @@ export function PriceListEditorModal({ publicId: initialId, onClose }: { publicI
 
   const busy = Object.values(actions).some((m) => m.isPending)
   const editable = canEdit && list?.isActive !== false
+  // Lote 247: una lista dedicada de «Precios especiales» no cambia nombre, fechas ni público desde aquí (el servidor da 422 DedicatedLocked)
+  const dedicated = list ? isDedicated(list) : false
+  const dataLocked = dedicated || (!editable && !!publicId)
 
   const run = async (fn: () => Promise<unknown>, okKey?: string) => {
     setError(null)
@@ -74,35 +81,41 @@ export function PriceListEditorModal({ publicId: initialId, onClose }: { publicI
             {list && (
               <div className="pl-chips">
                 <Chip tone={stateTone(list.state)}>{t(`warehouse.products.prices.state.${stateKey(list.state)}`)}</Chip>
-                <Chip tone="neutral">{list.appliesToAll ? t('warehouse.products.prices.appliesAll') : t('warehouse.products.prices.appliesSome', { count: list.clients?.length ?? 0 })}</Chip>
+                {dedicated ? (
+                  <Chip tone="cod">{t('warehouse.products.prices.special.chip', { name: list.specialOwnerName ?? '' })}</Chip>
+                ) : (
+                  <Chip tone="neutral">{list.appliesToAll ? t('warehouse.products.prices.appliesAll') : t('warehouse.products.prices.appliesSome', { count: (list.clients?.length ?? 0) + (list.chains?.length ?? 0) })}</Chip>
+                )}
                 {!list.isActive && <Chip tone="fail">{t('warehouse.products.prices.inactive')}</Chip>}
               </div>
             )}
+            {list && <PriceListWarnings warnings={list.warnings} />}
+            {dedicated && list && <DedicatedNote list={list} />}
             <div className="r2">
               <div className="f">
                 <label htmlFor="pl-name">{t('warehouse.products.prices.name')}</label>
-                <input id="pl-name" value={draft.name} maxLength={120} disabled={!editable && !!publicId} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                <input id="pl-name" value={draft.name} maxLength={120} disabled={dataLocked} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
               </div>
               <div className="f">
                 <label htmlFor="pl-notes">{t('warehouse.products.prices.notes')}</label>
-                <input id="pl-notes" value={draft.notes} maxLength={500} disabled={!editable && !!publicId} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
+                <input id="pl-notes" value={draft.notes} maxLength={500} disabled={dataLocked} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
               </div>
             </div>
             <div className="r2">
               <div className="f">
                 <label htmlFor="pl-from">{t('warehouse.products.prices.from')}</label>
-                <DateField id="pl-from" value={draft.validFrom} readOnly={!editable && !!publicId} onChange={(v) => setDraft({ ...draft, validFrom: v })} />
+                <DateField id="pl-from" value={draft.validFrom} readOnly={dataLocked} onChange={(v) => setDraft({ ...draft, validFrom: v })} />
               </div>
               <div className="f">
                 <label htmlFor="pl-to">{t('warehouse.products.prices.to')}</label>
-                <DateField id="pl-to" value={draft.validTo} readOnly={!editable && !!publicId} onChange={(v) => setDraft({ ...draft, validTo: v })} />
+                <DateField id="pl-to" value={draft.validTo} readOnly={dataLocked} onChange={(v) => setDraft({ ...draft, validTo: v })} />
               </div>
             </div>
             <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input type="checkbox" checked={draft.appliesToAll} disabled={!editable && !!publicId} onChange={(e) => setDraft({ ...draft, appliesToAll: e.target.checked })} />
+              <input type="checkbox" checked={draft.appliesToAll} disabled={dataLocked} onChange={(e) => setDraft({ ...draft, appliesToAll: e.target.checked })} />
               {t('warehouse.products.prices.appliesAllToggle')}
             </label>
-            {(editable || !publicId) && canEdit && (
+            {(editable || !publicId) && canEdit && !dedicated && (
               <p>
                 <button type="button" className="btn flow" disabled={busy} onClick={() => void saveData()}>
                   {busy ? t('common.loading') : publicId ? t('warehouse.products.prices.saveData') : t('warehouse.products.prices.create')}
@@ -116,7 +129,8 @@ export function PriceListEditorModal({ publicId: initialId, onClose }: { publicI
             )}
             {list && publicId && (
               <>
-                <ClientsSection listId={publicId} appliesToAll={list.appliesToAll} clients={list.clients ?? []} editable={editable} onRun={run} />
+                {!dedicated && <ClientsSection listId={publicId} appliesToAll={list.appliesToAll} clients={list.clients ?? []} editable={editable} onRun={run} />}
+                {!dedicated && <ChainsSection listId={publicId} appliesToAll={list.appliesToAll} chains={list.chains ?? []} editable={editable} onRun={run} />}
                 <ItemsSection listId={publicId} items={list.items ?? []} editable={editable} onRun={run} onFail={setError} />
                 {canEdit && (
                   <div className="pl-bar">
@@ -126,7 +140,7 @@ export function PriceListEditorModal({ publicId: initialId, onClose }: { publicI
                         className="btn flow"
                         disabled={busy}
                         onClick={() => {
-                          const blocker = publishBlocker(list.items?.length ?? 0, list.appliesToAll, list.clients?.length ?? 0)
+                          const blocker = publishBlocker(list.items?.length ?? 0, list.appliesToAll, (list.clients?.length ?? 0) + (list.chains?.length ?? 0))
                           if (blocker) return setError(t(`warehouse.products.prices.err.${blocker}`))
                           void run(() => actions.publish.mutateAsync(publicId), 'warehouse.products.prices.published')
                         }}
@@ -172,6 +186,34 @@ export function PriceListEditorModal({ publicId: initialId, onClose }: { publicI
   )
 }
 
+/** Avisos del servidor sobre la lista (SPECIAL_ABOVE_GENERAL): informan, no bloquean. */
+function PriceListWarnings({ warnings }: { warnings: PriceListWarningDto[] | null | undefined }) {
+  const t = useT()
+  if (!warnings?.length) return null
+  return (
+    <section className="of-warns" role="status" aria-label={t('warehouse.products.prices.special.warningsTitle')}>
+      <b>{t('warehouse.products.prices.special.warningsTitle')}</b>
+      <ul>
+        {warnings.map((w, i) => (
+          <li key={`${w.code}-${w.productPublicId}-${i}`}>{w.message}</li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/** Nota de una lista dedicada: se cambia desde «Precios especiales» de la ficha de su dueño. */
+function DedicatedNote({ list }: { list: PriceListDto }) {
+  const t = useT()
+  const link = specialOwnerLink(list)
+  return (
+    <p className="note" role="note">
+      {t('warehouse.products.prices.special.note', { name: list.specialOwnerName ?? '' })}{' '}
+      {link && <Link to={link}>{t('warehouse.products.prices.special.openOwner')}</Link>}
+    </p>
+  )
+}
+
 type Run = (fn: () => Promise<unknown>, okKey?: string) => Promise<boolean>
 
 function ClientsSection({ listId, appliesToAll, clients, editable, onRun }: { listId: string; appliesToAll: boolean; clients: { clientPublicId?: string; code?: string | null; name?: string | null }[]; editable: boolean; onRun: Run }) {
@@ -209,6 +251,40 @@ function ClientsSection({ listId, appliesToAll, clients, editable, onRun }: { li
               if (id) void onRun(() => actions.addClients.mutateAsync({ publicId: listId, clientPublicIds: [id] }))
             }}
           />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ChainsSection({ listId, appliesToAll, chains, editable, onRun }: { listId: string; appliesToAll: boolean; chains: { chainPublicId?: string; name?: string | null; isActive?: boolean }[]; editable: boolean; onRun: Run }) {
+  const t = useT()
+  const actions = usePriceListActions()
+  if (appliesToAll) return null
+  return (
+    <div style={{ marginTop: 12 }}>
+      <b>{t('warehouse.products.prices.chains')}</b>
+      <div className="pl-chips">
+        {chains.length === 0 && <span>{t('warehouse.products.prices.noChains')}</span>}
+        {chains.map((c) => c.chainPublicId && (
+          <Chip key={c.chainPublicId} tone={c.isActive === false ? 'warn' : 'cap'}>
+            {c.name}
+            {editable && (
+              <button
+                type="button"
+                className="btn sm"
+                aria-label={t('warehouse.products.prices.removeChain', { name: c.name ?? '' })}
+                onClick={() => void onRun(() => actions.removeChain.mutateAsync({ publicId: listId, chainPublicId: c.chainPublicId ?? '' }))}
+              >
+                ×
+              </button>
+            )}
+          </Chip>
+        ))}
+      </div>
+      {editable && (
+        <div style={{ maxWidth: 420 }}>
+          <ChainPicker id="pl-chain" label={t('warehouse.products.prices.addChain')} exclude={chains.map((c) => c.chainPublicId ?? '')} onPick={(cid) => void onRun(() => actions.addChains.mutateAsync({ publicId: listId, chainPublicIds: [cid] }))} />
         </div>
       )}
     </div>

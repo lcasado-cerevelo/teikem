@@ -3,8 +3,12 @@ namespace Teikem.Infrastructure.Contracts;
 // ---------------------------------------------------------------- Lote 229 — ofertas, kits de oferta, fotos del producto y avisos de precio
 
 /// <summary>Alta o edición (PATCH: lo que no viene no cambia) de una oferta. ValidTo null = sin fecha de fin (la oferta no vence); ClearValidTo la quita al editar.</summary>
+/// <remarks>
+/// Lote 247: AudienceMode = ALL (todos), INCLUDE (solo los clientes y cadenas escogidos) o EXCLUDE (todos menos los escogidos). Con solo AppliesToAll se mapea como
+/// antes (true = ALL, false = INCLUDE); si llegan los dos y no coinciden, 400 en «audienceMode».
+/// </remarks>
 public sealed record OfferRequest(string? Name = null, DateOnly? ValidFrom = null, DateOnly? ValidTo = null, bool? ClearValidTo = null, bool? AppliesToAll = null,
-    string? Notes = null);
+    string? Notes = null, string? AudienceMode = null);
 
 /// <summary>
 /// Un renglón a agregar o cambiar: el producto o kit y su precio de oferta. Lote 231: con un kit de oferta de la biblioteca el precio puede omitirse si el kit ya se usó
@@ -20,6 +24,12 @@ public sealed record OfferItemPriceRequest(decimal? Price = null);
 
 /// <summary>Clientes a agregar a una oferta que no es para todos (los que ya están se ignoran).</summary>
 public sealed record OfferClientsRequest(IReadOnlyList<Guid>? ClientPublicIds = null);
+
+/// <summary>Lote 247 — cadenas a incluir o excluir (según el público de la oferta; las que ya están se ignoran; máximo 500 por oferta).</summary>
+public sealed record OfferChainsRequest(IReadOnlyList<Guid>? ChainPublicIds = null);
+
+/// <summary>Lote 247 — una cadena incluida o excluida de la oferta (IsActive = la cadena; una inactiva no cuenta para los precios).</summary>
+public sealed record OfferChainDto(Guid ChainPublicId, string Name, bool IsActive, int ClientCount);
 
 /// <summary>
 /// POST /offers/{id}/kits — crear un kit de oferta NUEVO y ponerlo en esta oferta: SKU y nombre, sus piezas (cantidad y «no sustituible») y su precio de oferta (el
@@ -61,8 +71,10 @@ public sealed record OfferWarningDto(string Code, string Message, Guid ProductPu
 /// Una oferta en la lista de ofertas. HasEndDate = false → «sin fecha de fin» (ValidTo null: no vence); ValidityText la vigencia en palabras. State = DRAFT, SCHEDULED,
 /// ACTIVE o EXPIRED (sale de IsPublished y de las fechas); InEffect = se aplica hoy (publicada, activa y vigente).
 /// </summary>
+/// <remarks>Lote 247: AudienceMode = ALL, INCLUDE o EXCLUDE; ChainCount = cadenas incluidas o excluidas.</remarks>
 public sealed record OfferListItemDto(Guid PublicId, string Name, DateOnly ValidFrom, DateOnly? ValidTo, bool HasEndDate, string ValidityText, bool IsPublished,
-    string State, bool InEffect, bool AppliesToAll, int ItemCount, int ClientCount, Guid? ImagePublicId, bool IsActive, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc);
+    string State, bool InEffect, bool AppliesToAll, int ItemCount, int ClientCount, Guid? ImagePublicId, bool IsActive, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc,
+    string? AudienceMode = null, int ChainCount = 0);
 
 /// <summary>
 /// Renglón de la oferta. IsOfferKit = kit de oferta (de la biblioteca; Kit trae sus piezas). Lote 231: antes «creado para ESTA oferta»; ahora un mismo kit de oferta
@@ -75,9 +87,11 @@ public sealed record OfferItemDto(int Id, Guid ProductPublicId, string Sku, stri
 public sealed record OfferClientDto(Guid ClientPublicId, string Code, string Name);
 
 /// <summary>La oferta completa, con sus renglones, clientes y los avisos (Warnings) de choques con otras ofertas o con la lista general.</summary>
+/// <remarks>Lote 247: AudienceMode = ALL, INCLUDE o EXCLUDE (Clients y Chains son los incluidos o los excluidos, según el público).</remarks>
 public sealed record OfferDto(Guid PublicId, string Name, DateOnly ValidFrom, DateOnly? ValidTo, bool HasEndDate, string ValidityText, bool IsPublished, string State,
     bool InEffect, bool AppliesToAll, string? Notes, Guid? ImagePublicId, bool IsActive, IReadOnlyList<OfferItemDto> Items, IReadOnlyList<OfferClientDto> Clients,
-    IReadOnlyList<OfferWarningDto> Warnings, DateTime CreatedAtUtc, string? CreatedByName, DateTime? UpdatedAtUtc, string? UpdatedByName);
+    IReadOnlyList<OfferWarningDto> Warnings, DateTime CreatedAtUtc, string? CreatedByName, DateTime? UpdatedAtUtc, string? UpdatedByName,
+    string? AudienceMode = null, IReadOnlyList<OfferChainDto>? Chains = null);
 
 /// <summary>Respuesta de crear un kit para la oferta: el producto nuevo (ya en la biblioteca de kits de oferta) y la oferta como queda.</summary>
 public sealed record OfferKitCreatedDto(Guid ProductPublicId, string Sku, OfferDto Offer);
@@ -86,15 +100,17 @@ public sealed record OfferKitCreatedDto(Guid ProductPublicId, string Sku, OfferD
 /// Aviso de precio de un producto (no es error): TWO_OFFERS (está en dos ofertas vigentes a la vez para el cliente: se aplica la más barata, Offer*) u
 /// OFFER_ABOVE_GENERAL (la oferta sale más cara que la lista general: se aplica el precio más bajo). Message = el texto para mostrar.
 /// </summary>
+/// <remarks>Lote 247: SPECIAL_ABOVE_GENERAL (un precio especial más caro que la lista general: se aplica el de la lista general) trae la lista en PriceList*.</remarks>
 public sealed record SalesPriceNoticeDto(string Code, string Message, Guid ProductPublicId, string Sku, Guid? OfferPublicId, string? OfferName,
-    Guid? OtherOfferPublicId, string? OtherOfferName);
+    Guid? OtherOfferPublicId, string? OtherOfferName, Guid? PriceListPublicId = null, string? PriceListName = null);
 
 /// <summary>
 /// De dónde salió hoy el precio de un producto de la orden (solo en la respuesta de crear o editar el borrador con líneas): PriceSource = OFFER, CLIENT_LIST,
 /// GENERAL_LIST, PRODUCT o NONE; la oferta o la lista; y los avisos.
 /// </summary>
+/// <remarks>Lote 247: PriceSource CHAIN_LIST = la lista de la cadena del cliente (ChainPublicId / ChainName).</remarks>
 public sealed record SalesLinePriceDto(Guid ProductPublicId, string Sku, decimal? ResolvedPrice, string PriceSource, Guid? OfferPublicId, string? OfferName,
-    Guid? PriceListPublicId, string? PriceListName, IReadOnlyList<SalesPriceNoticeDto> Notices);
+    Guid? PriceListPublicId, string? PriceListName, IReadOnlyList<SalesPriceNoticeDto> Notices, Guid? ChainPublicId = null, string? ChainName = null);
 
 /// <summary>La foto del producto: la propia (ImagePublicId; null = no tiene) y la que se muestra (EffectiveImagePublicId: si es un kit sin foto, la de sus piezas).</summary>
 public sealed record ProductImageDto(Guid ProductPublicId, string Sku, bool IsKit, Guid? ImagePublicId, Guid? EffectiveImagePublicId);

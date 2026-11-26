@@ -5321,6 +5321,26 @@
               "nameRequired": "Enter the kit name.",
               "priceRequired": "Enter the kit offer price."
             }
+          },
+          "audience": {
+            "title": "Who it applies to",
+            "INCLUDE": "Include",
+            "EXCLUDE": "Exclude",
+            "INCLUDEHelp": "Only these clients and chains get the offer.",
+            "EXCLUDEHelp": "Everyone gets the offer except these clients and chains.",
+            "INCLUDENote": "The offer is only for the chosen clients and chains.",
+            "EXCLUDENote": "The offer is for everyone except the chosen clients and chains.",
+            "INCLUDEChip": "Chosen only: {count}",
+            "EXCLUDEChip": "Everyone except {count}",
+            "chainChip": "Chain {name}",
+            "removeChain": "Remove the chain {name}",
+            "addChain": "Add a chain",
+            "empty": "Nobody chosen yet.",
+            "locked": "Remove what is chosen in the other box to use this one.",
+            "lastTitle": "Remove the last one?",
+            "lastMessage": "The offer will be for all clients.",
+            "lastConfirm": "Make it for everyone",
+            "lastFailed": "The offer could not be made for everyone."
           }
         },
         "title": "Prices and offers",
@@ -5402,7 +5422,20 @@
           "itemPrice": "Enter a valid price (a number, from 0).",
           "noItems": "Add at least one line before publishing the list.",
           "noClients": "Choose at least one client or check that the list applies to all."
-        }
+        },
+        "special": {
+          "chip": "Special price of {name}",
+          "note": "This list is the special price of \"{name}\": its name, dates and who it applies to are changed in \"Special prices\" on its page. Here you can change prices, publish or deactivate.",
+          "openOwner": "Open the page",
+          "warningsTitle": "List warnings",
+          "showSpecial": "Also show special prices",
+          "appliesChain": "Only that chain",
+          "appliesClient": "Only that client"
+        },
+        "chains": "Chains",
+        "noChains": "No chains.",
+        "removeChain": "Remove the chain {name}",
+        "addChain": "Add a chain"
       },
       "invReport": "Inventory report",
       "invReportHint": "PDF with every product matching the table filters: available, reserved, total, cost and value, by category.",
@@ -11002,7 +11035,11 @@
       "empty": "The cart is empty: type a quantity on a product.",
       "remove": "Remove",
       "removeOf": "Remove {sku} from the cart",
-      "offerOf": "Offer «{name}»"
+      "offerOf": "Offer «{name}»",
+      "originChain": "Chain {name}",
+      "originClient": "Special price",
+      "manualPrice": "Manual price",
+      "listPrice": "List: {price}"
     },
     "delivery": {
       "title": "Delivery",
@@ -14263,6 +14300,27 @@
       "recMonth": "Net sales of {month}",
       "recDifference": "Difference",
       "chart": "Sales by chain"
+    },
+    "picker": {
+      "placeholder": "Choose a chain…"
+    },
+    "offers": {
+      "title": "Offers",
+      "subtitle": "The current offers that apply to this chain (read only).",
+      "name": "Offer",
+      "validity": "Validity",
+      "applies": "How it applies",
+      "items": "Lines",
+      "fromOpen": "From {from}, no end date",
+      "fromTo": "From {from} to {to}",
+      "audience": {
+        "ALL": "Everyone",
+        "INCLUDE": "Included",
+        "EXCLUDE": "Everyone except the excluded"
+      },
+      "empty": "No current offers",
+      "emptyBody": "No active offer applies to this chain today.",
+      "open": "See all offers in Prices and offers"
     }
   },
   "purchaseQb": {
@@ -14371,5 +14429,64 @@
       "unmarked": "The mark was removed from order {number}.",
       "editWarning": "This order already went to QuickBooks: editing or cancelling it here changes nothing there. Close or correct it in QuickBooks."
     }
+  },
+  "specialPrices": {
+    "title": "Special prices",
+    "subtitleClient": "This client's own prices, before IVU. They win over the general list when they are lower.",
+    "subtitleChain": "The chain's prices, before IVU: every client of the chain gets them unless it has a lower price of its own.",
+    "col": {
+      "product": "Product",
+      "price": "Price",
+      "from": "From",
+      "to": "To",
+      "state": "Status",
+      "general": "General list",
+      "charged": "Charged today"
+    },
+    "aboveGeneral": "Higher than the general list",
+    "noEnd": "No end date",
+    "expiresIn": "Expires in {n} d",
+    "source": {
+      "CLIENT_LIST": "Special price",
+      "CHAIN_LIST": "Chain {name}",
+      "OFFER": "Offer {name}",
+      "GENERAL_LIST": "General list",
+      "PRODUCT": "Product price",
+      "NONE": "No price"
+    },
+    "edit": "Change price",
+    "remove": "Remove",
+    "removeTitle": "Remove the special price?",
+    "removeMessage": "The special price of {sku} · {name} is removed. From then on the applicable price is charged (general list or offer).",
+    "removed": "Special price removed.",
+    "added": "Special price added.",
+    "saved": "Special price saved.",
+    "editTitle": "Change the special price of {sku}",
+    "addProduct": "Product or kit",
+    "add": "Add special price",
+    "showExpired": "Also show expired",
+    "empty": "No special prices",
+    "emptyClientBody": "Add a product and its price so this client pays it whenever it is the lowest.",
+    "emptyChainBody": "Add a product and its price: the chain's clients will get it.",
+    "ownerInactive": "It is inactive: it does not accept new prices.",
+    "beforeTaxHelp": "The price is before IVU. The client's exemptions are applied afterwards, on the price charged.",
+    "warningsTitle": "Special price warnings",
+    "err": {
+      "productRequired": "Choose the product or kit.",
+      "priceInvalid": "Enter a price greater than zero (up to 4 decimals).",
+      "fromRequired": "Choose the \"from\" date.",
+      "range": "The \"to\" date cannot be before \"from\".",
+      "toPast": "The \"to\" date has already passed: a new special price must be valid today or later."
+    },
+    "chainTitle": "From its chain \"{name}\"",
+    "openChain": "Open the chain",
+    "chainHelp": "Read only: change them on the chain's page. A lower price of its own wins over the chain's.",
+    "chainEmpty": "The chain has no special prices.",
+    "listsTitle": "Price lists that include it",
+    "listBy": {
+      "CLIENT": "by the client",
+      "CHAIN": "by its chain"
+    },
+    "summary": "{n} special prices"
   }
 }

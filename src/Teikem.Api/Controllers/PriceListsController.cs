@@ -20,10 +20,14 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.SalesOrders)]
 public sealed class PriceListsController(PriceListService lists, SalesCatalogService catalog, StoredFileService files) : ControllerBase
 {
-    /// <summary>Las listas (la de vigencia más reciente primero). q = el nombre contiene; state = DRAFT, SCHEDULED, ACTIVE o EXPIRED; includeInactive = también las desactivadas.</summary>
+    /// <summary>
+    /// Las listas (la de vigencia más reciente primero). q = el nombre contiene; state = DRAFT, SCHEDULED, ACTIVE o EXPIRED; includeInactive = también las desactivadas;
+    /// includeSpecial = también los precios especiales (listas dedicadas de un cliente o de una cadena; Lote 247: ocultas por omisión).
+    /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.SalesView)]
-    public Task<IReadOnlyList<PriceListListItemDto>> List([FromQuery] string? q, [FromQuery] string? state, [FromQuery] bool includeInactive, CancellationToken ct)
-        => lists.ListAsync(q, state, includeInactive, ct);
+    public Task<IReadOnlyList<PriceListListItemDto>> List([FromQuery] string? q, [FromQuery] string? state, [FromQuery] bool includeInactive,
+        [FromQuery] bool includeSpecial, CancellationToken ct)
+        => lists.ListAsync(q, state, includeInactive, ct, includeSpecial);
 
     /// <summary>
     /// OBSOLETO (Lote 229: las ofertas son /api/v1/offers). Los kits marcados como promoción del Lote 221, con su vigencia y su foto; ya no afectan el catálogo ni las
@@ -87,6 +91,17 @@ public sealed class PriceListsController(PriceListService lists, SalesCatalogSer
     /// <summary>Quita un cliente de la lista (en lógico). 422 si es el último de una lista publicada.</summary>
     [HttpDelete("{publicId:guid}/clients/{clientPublicId:guid}"), RequirePermission(PermissionCatalog.SalesPricelist)]
     public Task<PriceListDto> RemoveClient(Guid publicId, Guid clientPublicId, CancellationToken ct) => lists.RemoveClientAsync(publicId, clientPublicId, ct);
+
+    /// <summary>
+    /// Lote 247 — agrega cadenas a una lista que no es general (alcanza a sus clientes mientras la cadena esté activa; máximo 500). 400 sin cadenas o con más de 500;
+    /// 404 cadena; 422 cadena desactivada, lista general o lista dedicada (precio especial).
+    /// </summary>
+    [HttpPost("{publicId:guid}/chains"), RequirePermission(PermissionCatalog.SalesPricelist)]
+    public Task<PriceListDto> AddChains(Guid publicId, [FromBody] PriceListChainsRequest req, CancellationToken ct) => lists.AddChainsAsync(publicId, req, ct);
+
+    /// <summary>Lote 247 — quita una cadena de la lista (en lógico). 404 si no está; 422 si es la última audiencia de una lista publicada o la lista es dedicada.</summary>
+    [HttpDelete("{publicId:guid}/chains/{chainPublicId:guid}"), RequirePermission(PermissionCatalog.SalesPricelist)]
+    public Task<PriceListDto> RemoveChain(Guid publicId, Guid chainPublicId, CancellationToken ct) => lists.RemoveChainAsync(publicId, chainPublicId, ct);
 
     /// <summary>Lee el archivo subido (vacío = 400; más grande que el tope = 400 con el mensaje del almacén).</summary>
     internal static async Task<byte[]> ReadAsync(IFormFile? file, StoredFileService files, CancellationToken ct)

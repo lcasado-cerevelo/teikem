@@ -150,9 +150,14 @@ describe('ProductsStep — ofertas nuevas y avisos de precio (lote 229)', () => 
 
   it('priceSourceOf / cartPriceNotices: lo guardado manda sobre el catálogo', () => {
     const saved = { linePrices: [{ productPublicId: 'p-2', priceSource: 'OFFER', offerName: 'Verano', notices: [] }] } as unknown as SalesOrderDto
-    expect(priceSourceOf('p-2', CATALOG, saved)).toEqual({ fromOffer: true, offerName: 'Verano', notices: [] })
-    expect(priceSourceOf('p-2', CATALOG, null)).toEqual({ fromOffer: false, offerName: null, notices: [] })
-    expect(priceSourceOf('p-1', CATALOG, null)).toEqual({ fromOffer: true, offerName: 'Navidad', notices: [TWO] })
+    expect(priceSourceOf('p-2', CATALOG, saved)).toEqual({ fromOffer: true, offerName: 'Verano', special: null, chainName: null, notices: [] })
+    expect(priceSourceOf('p-2', CATALOG, null)).toEqual({ fromOffer: false, offerName: null, special: 'CLIENT_LIST', chainName: null, notices: [] })
+    expect(priceSourceOf('p-1', CATALOG, null)).toEqual({ fromOffer: true, offerName: 'Navidad', special: null, chainName: null, notices: [TWO] })
+    // Lote 247: el precio de la lista de la cadena o del cliente dice su origen
+    const chain = { linePrices: [{ productPublicId: 'p-2', priceSource: 'CHAIN_LIST', chainName: 'Walgreens', notices: [] }] } as unknown as SalesOrderDto
+    expect(priceSourceOf('p-2', CATALOG, chain)).toMatchObject({ fromOffer: false, special: 'CHAIN_LIST', chainName: 'Walgreens' })
+    const own = { linePrices: [{ productPublicId: 'p-2', priceSource: 'CLIENT_LIST', notices: [] }] } as unknown as SalesOrderDto
+    expect(priceSourceOf('p-2', CATALOG, own)).toMatchObject({ special: 'CLIENT_LIST', chainName: null })
     expect(cartPriceNotices([{ productPublicId: 'p-2', sku: '52810' }, { productPublicId: 'p-3', sku: '070120' }], CATALOG, null)).toEqual([{ productPublicId: 'p-3', sku: '070120', notices: [ABOVE] }])
   })
 })

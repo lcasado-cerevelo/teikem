@@ -3,7 +3,7 @@
 //   tarjeta abren `OfferEditorModal`. (Antes del lote 229 una oferta era un kit marcado «Es promoción»: ese flujo se quitó.)
 // - Listas de precios: nombre, vigencia, estado calculado (borrador / programada / vigente / vencida), a quién aplica y cuántos renglones; la fila abre su editor.
 // La lista no es paginada por el servidor (viene completa): no lleva `exportRows`.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Can } from '../../kernel/access'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
@@ -13,10 +13,20 @@ import { OfferEditorModal } from './OfferEditorModal'
 import { OffersPanel } from './OffersPanel'
 import { PriceListEditorModal } from './PriceListEditorModal'
 import { usePriceLists, type PriceListListItemDto } from './priceListApi'
-import { stateKey, stateTone } from './priceListRules'
+import { isDedicated, listAudienceCount, stateKey, stateTone } from './priceListRules'
 
 const STATES = ['DRAFT', 'SCHEDULED', 'ACTIVE', 'EXPIRED'] as const
 const NO_LISTS: PriceListListItemDto[] = []
+const SPECIAL_KEY = 'teikem.priceLists.includeSpecial'
+
+/** Lote 247: «Ver también los precios especiales» se recuerda en este navegador. */
+function readIncludeSpecial(): boolean {
+  try {
+    return window.localStorage.getItem(SPECIAL_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 export function PriceListsTab() {
   const t = useT()
@@ -24,13 +34,36 @@ export function PriceListsTab() {
   const [q, setQ] = useState('')
   const [state, setState] = useState('')
   const [includeInactive, setIncludeInactive] = useState(false)
+  const [includeSpecial, setIncludeSpecial] = useState(readIncludeSpecial)
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SPECIAL_KEY, includeSpecial ? '1' : '0')
+    } catch {
+      /* sin almacenamiento: no se recuerda */
+    }
+  }, [includeSpecial])
   const [opened, setOpened] = useState<string | null | undefined>(undefined) // undefined = cerrado, null = nueva
   const [offerId, setOfferId] = useState<string | null | undefined>(undefined) // undefined = cerrada, null = nueva
-  const lists = usePriceLists({ q: q.trim() || undefined, state: state || undefined, includeInactive })
+  const lists = usePriceLists({ q: q.trim() || undefined, state: state || undefined, includeInactive, includeSpecial })
 
   const columns = useMemo<DataColumn<PriceListListItemDto>[]>(
     () => [
-      { id: 'name', header: t('warehouse.products.prices.name'), cell: (l) => <b>{l.name}</b>, sortValue: (l) => l.name ?? '', card: 'title' },
+      { id: 'name', header: t('warehouse.products.prices.name'), cell: (l) => (
+          <span className="pl-namecell">
+            {/* la lista dedicada se llama «Precio especial — dueño (fechas)»: el chip ya lo dice, el nombre completo queda en el título */}
+            {isDedicated(l) ? (
+              <Chip tone="cod" title={l.name ?? undefined}>
+                {t('warehouse.products.prices.special.chip', { name: l.specialOwnerName ?? '' })}
+              </Chip>
+            ) : (
+              <b>{l.name}</b>
+            )}
+          </span>
+        ),
+        sortValue: (l) => l.name ?? '',
+        exportValue: (l) => l.name ?? '',
+        card: 'title',
+      },
       {
         id: 'validity',
         header: t('warehouse.products.prices.validity'),
@@ -50,8 +83,13 @@ export function PriceListsTab() {
       {
         id: 'applies',
         header: t('warehouse.products.prices.applies'),
-        cell: (l) => (l.appliesToAll ? t('warehouse.products.prices.appliesAll') : t('warehouse.products.prices.appliesSome', { count: l.clientCount })),
-        sortValue: (l) => (l.appliesToAll ? -1 : l.clientCount),
+        cell: (l) =>
+          isDedicated(l)
+            ? t(`warehouse.products.prices.special.applies${l.specialOwnerKind === 'CHAIN' ? 'Chain' : 'Client'}`)
+            : l.appliesToAll
+              ? t('warehouse.products.prices.appliesAll')
+              : t('warehouse.products.prices.appliesSome', { count: listAudienceCount(l) }),
+        sortValue: (l) => (l.appliesToAll ? -1 : listAudienceCount(l)),
       },
       { id: 'items', header: t('warehouse.products.prices.itemsCol'), cell: (l) => f.number(l.itemCount), sortValue: (l) => l.itemCount, align: 'end' },
     ],
@@ -82,6 +120,7 @@ export function PriceListsTab() {
           setQ('')
           setState('')
           setIncludeInactive(false)
+          setIncludeSpecial(false)
         }}
       >
         <div className="f">
@@ -101,6 +140,7 @@ export function PriceListsTab() {
         </div>
         {/* Lote 228: el interruptor de los filtros del almacén (etiqueta arriba, a la altura de los campos); la casilla suelta quedaba descuadrada */}
         <ToggleFilter label={t('warehouse.products.prices.showInactive')} checked={includeInactive} onChange={setIncludeInactive} />
+        <ToggleFilter label={t('warehouse.products.prices.special.showSpecial')} checked={includeSpecial} onChange={setIncludeSpecial} />
       </Filters>
       <Panel flush icon={<IconTag />} title={t('warehouse.products.prices.lists')} badge={lists.data?.length}>
         {lists.error ? (

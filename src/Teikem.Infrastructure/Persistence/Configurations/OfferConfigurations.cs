@@ -21,6 +21,9 @@ public sealed class OfferConfiguration : IEntityTypeConfiguration<Offer>
         b.HasOne<Teikem.Domain.Files.StoredFile>().WithMany().HasForeignKey(o => o.ImageFileId).OnDelete(DeleteBehavior.NoAction);
         b.HasMany(o => o.Items).WithOne().HasForeignKey(i => i.OfferId).OnDelete(DeleteBehavior.NoAction);
         b.HasMany(o => o.Clients).WithOne().HasForeignKey(c => c.OfferId).OnDelete(DeleteBehavior.NoAction);
+        // Lote 247: público de la oferta (ALL / INCLUDE / EXCLUDE; CK_Offer_AudienceMode en la base lo ata a AppliesToAll) y cadenas incluidas o excluidas
+        b.Property(o => o.AudienceMode).HasMaxLength(10).IsRequired().HasDefaultValue(OfferAudienceModes.All);
+        b.HasMany(o => o.Chains).WithOne().HasForeignKey(c => c.OfferId).OnDelete(DeleteBehavior.NoAction);
         b.HasIndex(o => o.PublicId).IsUnique().HasDatabaseName("UQ_Offer_PublicId");
         b.HasIndex(o => new { o.TenantId, o.IsActive, o.IsPublished }).HasDatabaseName("IX_Offer_Tenant");
     }
@@ -49,5 +52,18 @@ public sealed class OfferClientConfiguration : IEntityTypeConfiguration<OfferCli
         b.HasOne<Teikem.Domain.Clients.Client>().WithMany().HasForeignKey(c => c.ClientId).OnDelete(DeleteBehavior.NoAction);
         b.HasIndex(c => new { c.OfferId, c.ClientId }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_OfferClient_Client");
         b.HasIndex(c => new { c.TenantId, c.ClientId }).HasDatabaseName("IX_OfferClient_Client");
+    }
+}
+
+/// <summary>Lote 247 — cadena incluida o excluida de una oferta (FK compuestas por compañía en la base: FK_OfferChain_Offer y FK_OfferChain_Chain).</summary>
+public sealed class OfferChainConfiguration : IEntityTypeConfiguration<OfferChain>
+{
+    public void Configure(EntityTypeBuilder<OfferChain> b)
+    {
+        b.ToTable("OfferChain");
+        b.HasKey(c => c.OfferChainId);
+        b.HasOne<Teikem.Domain.Clients.ClientChain>().WithMany().HasForeignKey(c => c.ChainId).OnDelete(DeleteBehavior.NoAction);
+        b.HasIndex(c => new { c.OfferId, c.ChainId }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_OfferChain_Chain");
+        b.HasIndex(c => new { c.TenantId, c.ChainId }).HasDatabaseName("IX_OfferChain_Chain");
     }
 }
