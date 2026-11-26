@@ -317,4 +317,27 @@ describe('OrderModal — Lote 222', () => {
     expect(within(dialog).getByText('Precio manual')).toBeInTheDocument()
     expect(within(dialog).getByText(/Lista: \$14\.00/)).toBeInTheDocument()
   })
+
+  it('lote 247: el borrador muestra junto a la línea el aviso «precio especial más caro que la lista general» (catálogo del cliente y lo guardado), como el pedido guiado', async () => {
+    const ABOVE = 'El precio especial «Precio especial — Farmacia Central (desde el 26/10/2026, sin fecha de fin)» pone MED a $15.00, más caro que la lista general ($14.00): se aplica el de la lista general. Corrija el precio especial.'
+    const SAVED = 'Precio especial más caro que la lista general: MED a $15.00 y en la lista general a $14.00. Se cobra el más bajo; corrija el precio especial.'
+    mock.catalog = {
+      brands: [{ brand: 'PRODIGY', offers: [], products: [{ productPublicId: PROD, sku: 'MED', name: 'Medidor', isKit: false, isOfferKit: false, isPromotion: false, price: 14, priceSource: 'GENERAL_LIST', notices: [{ code: 'SPECIAL_ABOVE_GENERAL', message: ABOVE }] }] }],
+    }
+    DRAFT_ORDER = { ...BASE, linePrices: [{ productPublicId: PROD, sku: 'MED', priceSource: 'GENERAL_LIST', resolvedPrice: 14, notices: [{ code: 'SPECIAL_ABOVE_GENERAL', message: SAVED }, { code: 'SPECIAL_ABOVE_GENERAL', message: ABOVE }] }] }
+    wrap(DRAFT)
+    const dialog = await screen.findByRole('dialog', { name: /Orden OV-00001/ })
+    const list = await within(dialog).findByRole('list', { name: 'Avisos de precio de MED' })
+    // los dos avisos, sin repetir el que viene del catálogo y de lo guardado
+    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([SAVED, ABOVE])
+    expect(list.closest('.so-line-notices')).not.toBeNull()
+  })
+
+  it('lote 247: sin avisos de precio, la línea del borrador no pinta la lista de avisos', async () => {
+    mock.catalog = { brands: [{ brand: 'PRODIGY', offers: [], products: [{ productPublicId: PROD, sku: 'MED', name: 'Medidor', isKit: false, isOfferKit: false, isPromotion: false, price: 12.5, priceSource: 'PRODUCT', notices: [] }] }] }
+    wrap(DRAFT)
+    const dialog = await screen.findByRole('dialog', { name: /Orden OV-00001/ })
+    await waitFor(() => expect(sent('GET', '/api/v1/sales-orders/catalog')).toHaveLength(1))
+    expect(within(dialog).queryByRole('list', { name: /Avisos de precio/ })).toBeNull()
+  })
 })

@@ -24,6 +24,8 @@ public static class SpecialPriceRules
 {
     public const string ValidFromRequired = "Indique desde qué fecha vale el precio especial.";
     public const string ValidToPast = "La fecha «hasta» ya pasó: un precio especial nuevo tiene que valer hoy o después.";
+    /// <summary>400 (alta o cambio de precio): el precio especial es cero o negativo. Es lo mismo que pide la pantalla de «Precios especiales».</summary>
+    public const string PriceNotPositive = "El precio especial debe ser mayor que cero (hasta 4 decimales).";
     /// <summary>404: «Precio especial no encontrado.»</summary>
     public const string RowNotFound = "Precio especial";
 
@@ -56,6 +58,13 @@ public static class SpecialPriceRules
         if (isCreate && to is DateOnly t && t < today) return ("validTo", ValidToPast);
         return null;
     }
+
+    /// <summary>
+    /// Precio válido de un precio especial: mayor que cero (cero o negativo = <see cref="PriceNotPositive"/>), hasta 4 decimales y dentro del tope de
+    /// <see cref="SalesRules.PriceError"/>. Solo para los precios especiales: las listas normales y las ofertas siguen aceptando 0. Null = sin precio o sin error.
+    /// </summary>
+    public static string? PriceError(decimal? price)
+        => price is decimal p && p <= 0m ? PriceNotPositive : SalesRules.PriceError(price);
 
     /// <summary>Días que le quedan a un precio especial (0 = vence hoy; negativo = ya venció); null = sin «hasta» (no vence).</summary>
     public static int? DaysToExpire(DateOnly? validTo, DateOnly today) => validTo is DateOnly t ? t.DayNumber - today.DayNumber : null;

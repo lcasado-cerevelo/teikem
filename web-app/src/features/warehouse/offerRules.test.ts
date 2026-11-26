@@ -17,6 +17,7 @@ import {
   audienceBoxDisabled,
   modeBeforeAdd,
   isLastMember,
+  canRemoveMember,
   offerStateKey,
   piecesFromKit,
   suggestedKitPrice,
@@ -144,5 +145,13 @@ describe('público de la oferta (Lote 247)', () => {
     expect(modeBeforeAdd('EXCLUDE', 'EXCLUDE')).toBeNull()
     expect(isLastMember(1)).toBe(true)
     expect(isLastMember(2)).toBe(false)
+  })
+
+  it('el último de «Incluir» no se ofrece quitar (el servidor da 409); en «Excluir» sí', () => {
+    expect(canRemoveMember('INCLUDE', 1)).toBe(false)
+    expect(canRemoveMember('INCLUDE', 0)).toBe(false)
+    expect(canRemoveMember('INCLUDE', 2)).toBe(true)
+    expect(canRemoveMember('EXCLUDE', 1)).toBe(true)
+    expect(canRemoveMember('ALL', 0)).toBe(true)
   })
 })

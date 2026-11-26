@@ -18,7 +18,7 @@ namespace Teikem.Infrastructure.Services;
 /// exenciones del cliente se aplican después, sin cambiar el cálculo (DECISIÓN 20).
 /// <list type="bullet">
 /// <item>Ver: sales.view o sales.pricelist. Escribir: sales.pricelist. El dueño de otra compañía da 404; para escribir, el dueño inactivo da 422.</item>
-/// <item>Alta: busca la dedicada ACTIVA del dueño con esas mismas fechas (o la crea) y agrega el renglón o le cambia el precio; el mismo producto para el mismo
+/// <item>Alta: busca la dedicada ACTIVA del dueño con esas mismas fechas (o la crea; si estaba en borrador, la publica) y agrega el renglón o le cambia el precio; el mismo producto para el mismo
 /// dueño en fechas que se cruzan da 409 (Overlap); dos altas a la vez de la misma dedicada, 409 (Concurrency, por el índice único filtrado).</item>
 /// <item>Cambio: solo el precio se cambia ahí; con fechas, el renglón pasa a la dedicada de esas fechas. Quitar: en lógico. La dedicada que se queda sin renglones
 /// activos se desactiva sola (DECISIÓN 17).</item>
@@ -60,7 +60,7 @@ public sealed partial class PriceListService
         => RemoveSpecialPriceAsync(SpecialPriceOwnerKinds.Chain, chainPublicId, itemId, includeExpired, ct);
 
     /// <summary>
-    /// Alta (o cambio de precio, si el producto ya está en la dedicada de esas fechas). 400: sin producto, sin precio o precio inválido, sin «desde», «hasta» antes de
+    /// Alta (o cambio de precio, si el producto ya está en la dedicada de esas fechas). 400: sin producto, sin precio o precio inválido (cero o menos incluido), sin «desde», «hasta» antes de
     /// «desde» o ya pasado; 404 dueño o producto; 422 dueño inactivo, producto ajeno, inactivo o kit de oferta; 409 cruce o alta simultánea.
     /// </summary>
     private async Task<SpecialPricesDto> AddSpecialPriceAsync(string kind, Guid ownerPublicId, SpecialPriceRequest? req, bool includeExpired, CancellationToken ct)
@@ -68,7 +68,7 @@ public sealed partial class PriceListService
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         if (SpecialPriceRules.RowError(req.ProductPublicId, req.Price, req.ValidFrom, req.ValidTo, clock.Today, isCreate: true) is { } error)
             throw new ValidationException(error.Field, error.Message);
-        if (SalesRules.PriceError(req.Price) is { } priceError) throw new ValidationException("price", priceError);
+        if (SpecialPriceRules.PriceError(req.Price) is { } priceError) throw new ValidationException("price", priceError);   // > 0, como pide la pantalla
         var owner = await OwnerAsync(kind, ownerPublicId, ct);
         EnsureOwnerWritable(owner);
         var product = await SpecialProductAsync(req.ProductPublicId!.Value, ct);
@@ -95,7 +95,7 @@ public sealed partial class PriceListService
         CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
-        if (req.Price is not null && SalesRules.PriceError(req.Price) is { } priceError) throw new ValidationException("price", priceError);
+        if (req.Price is not null && SpecialPriceRules.PriceError(req.Price) is { } priceError) throw new ValidationException("price", priceError);   // > 0
         var owner = await OwnerAsync(kind, ownerPublicId, ct);
         EnsureOwnerWritable(owner);
 
@@ -196,14 +196,24 @@ public sealed partial class PriceListService
 
     /// <summary>
     /// La dedicada ACTIVA del dueño con esas fechas, rastreada (con renglones, clientes y cadenas); si no hay, la crea publicada, con su nombre y su fila de cliente o
-    /// de cadena (se guarda con el trabajo).
+    /// de cadena (se guarda con el trabajo). Si la que hay está en BORRADOR (alguien la devolvió a borrador en «Precios y ofertas»), se vuelve a publicar: lo que se
+    /// agrega en «Precios especiales» es para cobrarse (decisión 31 del Lote 247).
     /// </summary>
     private async Task<PriceList> DedicatedListAsync(SpecialOwner owner, DateOnly from, DateOnly? to, CancellationToken ct)
     {
         var query = DedicatedOf(owner).AsTracking().Where(l => l.IsActive && l.ValidFrom == from);
         query = to is DateOnly t ? query.Where(l => l.ValidTo == t) : query.Where(l => l.ValidTo == null);
         var list = await query.Include(l => l.Items).Include(l => l.Clients).Include(l => l.Chains).FirstOrDefaultAsync(ct);
-        if (list is not null) return list;
+        if (list is not null)
+        {
+            // Decisión 31 (Lote 247): antes se reutilizaba la dedicada sin mirar si estaba publicada y el renglón nuevo caía en un borrador (no se cobraba). No se
+            // puede crear otra con las mismas fechas (UX_PriceList_SpecialClient / UX_PriceList_SpecialChain son únicos por dueño y vigencia entre las activas, sin
+            // mirar IsPublished), así que se publica. Las listas no pasan por StatusService: «publicada» es la bandera IsPublished, igual que en PublishAsync, y aquí
+            // se cumplen sus condiciones (el renglón se agrega ahora y la dedicada siempre lleva su fila de cliente o de cadena). Al quedar publicada, el
+            // EnsureNoConflictsAsync que corre el que llama revisa el cruce de TODOS sus renglones con lo publicado (409 Overlap, sin guardar nada), como al publicar.
+            if (!list.IsPublished) list.IsPublished = true;
+            return list;
+        }
 
         var now = DateTime.UtcNow;
         list = new PriceList

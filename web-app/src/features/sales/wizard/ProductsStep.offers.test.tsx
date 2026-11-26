@@ -134,6 +134,30 @@ describe('ProductsStep — ofertas nuevas y avisos de precio (lote 229)', () => 
     expect(items[1]).toHaveTextContent(`070120 ${ABOVE}`)
   })
 
+  it('con la interfaz en inglés el aviso de precio especial sale en inglés, con el nombre de la lista y las fechas armados en la web', async () => {
+    setLang('en')
+    try {
+      const saved = {
+        linePrices: [
+          {
+            productPublicId: 'p-9', sku: 'MED', resolvedPrice: 14, priceSource: 'GENERAL_LIST',
+            notices: [{ code: 'SPECIAL_ABOVE_GENERAL', message: 'El precio especial «Precio especial — Farmacia Central (desde el 26/10/2026, sin fecha de fin)» pone MED a $15.00 (texto en español)', sku: 'MED', price: 15, otherPrice: 14, priceListIsSpecial: true, priceListOwnerName: 'Farmacia Central', priceListValidFrom: '2026-10-26', priceListValidTo: null }],
+          },
+        ],
+      } as unknown as SalesOrderDto
+      render(
+        <WizardProviders>
+          <DeliveryPriceNotices cart={[{ productPublicId: 'p-9', sku: 'MED' }]} clientPublicId="c-1" saved={saved} />
+        </WizardProviders>,
+      )
+      const box = await screen.findByRole('region', { name: 'Price warnings' })
+      expect(box).toHaveTextContent('Special price “Special price — Farmacia Central (from 10/26/2026, no end date)” puts MED at $15.00, higher than the general list ($14.00)')
+      expect(box.textContent).not.toMatch(/Precio especial|desde el|sin fecha/)
+    } finally {
+      setLang('es')
+    }
+  })
+
   it('lote 231: el mismo kit de oferta en dos ofertas sale una vez, con la más barata y el aviso', async () => {
     const twoKit = 'El producto KIT-NAV está en dos ofertas a la vez: «Navidad» a $41.94 y «Enero» a $44.00. Se aplica la más barata («Navidad»).'
     const kit = { ...OFFER_KIT, notices: [{ code: 'TWO_OFFERS', message: twoKit, productPublicId: 'k-1', sku: 'KIT-NAV' }] }

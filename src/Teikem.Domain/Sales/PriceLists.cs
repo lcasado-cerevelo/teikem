@@ -124,7 +124,7 @@ public sealed record PriceListItemView(int ProductId, decimal Price, int? ImageF
 /// IsSpecial = es el precio especial (lista dedicada) de un cliente o de una cadena.
 /// </summary>
 public sealed record PriceListView(int PriceListId, string Name, bool IsPublished, bool AppliesToAll, DateOnly ValidFrom, DateOnly? ValidTo,
-    IReadOnlyCollection<int> ClientIds, IReadOnlyList<PriceListItemView> Items, IReadOnlyCollection<int>? ChainIds = null, bool IsSpecial = false);
+    IReadOnlyCollection<int> ClientIds, IReadOnlyList<PriceListItemView> Items, IReadOnlyCollection<int>? ChainIds = null, bool IsSpecial = false, string? OwnerName = null);   // OwnerName: el cliente o la cadena dueña de la lista dedicada (para armar el aviso en el idioma de la web)
 
 /// <summary>Lote 247 — el renglón que ganó dentro de un nivel (cliente, cadena o general) y su lista.</summary>
 public sealed record PriceLevelPick(PriceListView List, PriceListItemView Item);

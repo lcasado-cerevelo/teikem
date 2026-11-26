@@ -13,8 +13,10 @@ import { Chip, ClientPicker, ConfirmDialog, DataTable, DateField, EmptyState, Mo
 import { OfferKitModal, type OfferKitMode } from './OfferKitModal'
 import { useOffer, useOfferActions, type OfferDto, type OfferItemDto, type OfferWarningDto } from './offerApi'
 import { ChainPicker } from '../chains/ChainPicker'
+import { offerValidityText } from '../sales/priceText'
 import {
   audienceBoxDisabled,
+  canRemoveMember,
   EMPTY_OFFER_DRAFT,
   isLastMember,
   modeBeforeAdd,
@@ -61,6 +63,7 @@ export function OfferEditorModal({ publicId: initialId, onClose }: { publicId: s
   const canEdit = useCan('sales.pricelist')
   const [publicId, setPublicId] = useState<string | null>(initialId)
   const { data: offer, isLoading } = useOffer(publicId)
+  const validity = offerValidityText(t, f, offer ?? {})
   const actions = useOfferActions()
   const [draft, setDraft] = useState<OfferDraft>(() => EMPTY_OFFER_DRAFT(f.today()))
   const [error, setError] = useState<string | null>(null)
@@ -143,7 +146,7 @@ export function OfferEditorModal({ publicId: initialId, onClose }: { publicId: s
                 {t(`${O}.openEndedEditor`)}
               </p>
             )}
-            {offer && offer.validityText && <p className="help">{offer.validityText}</p>}
+            {offer && validity && <p className="help">{validity}</p>}
             {canEdit && !readOnly && (
               <p>
                 <button type="button" className="btn flow" disabled={busy} onClick={() => void saveData()}>
@@ -276,8 +279,9 @@ export function AudienceChip({ offer }: { offer: Pick<OfferDto, 'audienceMode' |
 
 /**
  * Público de la oferta (Lote 247): dos cajas, «Incluir» (solo para ellos) y «Excluir» (para todos menos ellos), con clientes y cadenas. Llenar una deshabilita
- * la otra; vacías, la oferta es para todos. Al agregar a una caja vacía primero se pasa el público (PATCH audienceMode) y luego se agrega; al quitar el último
- * se confirma («La oferta quedará para todos los clientes.») y se pasa a ALL.
+ * la otra; vacías, la oferta es para todos. Al agregar a una caja vacía primero se pasa el público (PATCH audienceMode) y luego se agrega. Al quitar el último
+ * de «Excluir» se confirma («La oferta quedará para todos los clientes.») y se pasa a ALL; el último de «Incluir» no se quita (el servidor da 409): no hay botón y
+ * se dice por qué.
  */
 function AudienceSection({ offer, editable, onRun }: { offer: OfferDto; editable: boolean; onRun: Run }) {
   const t = useT()
@@ -287,6 +291,7 @@ function AudienceSection({ offer, editable, onRun }: { offer: OfferDto; editable
   const clients = offer.clients ?? []
   const chains = offer.chains ?? []
   const members = clients.length + chains.length
+  const removable = canRemoveMember(mode, members)
   const [lastRemoval, setLastRemoval] = useState<null | (() => Promise<unknown>)>(null)
 
   const addTo = (box: 'INCLUDE' | 'EXCLUDE', fn: () => Promise<unknown>) => {
@@ -297,7 +302,7 @@ function AudienceSection({ offer, editable, onRun }: { offer: OfferDto; editable
     })
   }
   const removeFrom = (fn: () => Promise<unknown>) => {
-    if (isLastMember(members)) return setLastRemoval(() => fn)
+    if (mode === 'EXCLUDE' && isLastMember(members)) return setLastRemoval(() => fn)
     void onRun(fn)
   }
 
@@ -316,7 +321,7 @@ function AudienceSection({ offer, editable, onRun }: { offer: OfferDto; editable
                 c.clientPublicId && (
                   <Chip key={c.clientPublicId} tone="neutral">
                     {[c.code, c.name].filter(Boolean).join(' · ')}
-                    {editable && (
+                    {editable && removable && (
                       <button
                         type="button"
                         className="btn sm"
@@ -333,7 +338,7 @@ function AudienceSection({ offer, editable, onRun }: { offer: OfferDto; editable
             chains.map((c) => (
               <Chip key={c.chainPublicId} tone={c.isActive === false ? 'warn' : 'cap'}>
                 {t(`${O}.audience.chainChip`, { name: c.name ?? '' })}
-                {editable && (
+                {editable && removable && (
                   <button
                     type="button"
                     className="btn sm"
@@ -347,6 +352,7 @@ function AudienceSection({ offer, editable, onRun }: { offer: OfferDto; editable
             ))}
           {(!own || members === 0) && <span className="help">{t(`${O}.audience.empty`)}</span>}
         </div>
+        {own && editable && !removable && members > 0 && <p className="help of-aud-keep">{t(`${O}.audience.includeNeedsMember`)}</p>}
         {!disabled && (
           <div className="of-aud-pick">
             <div className="f">
@@ -356,7 +362,7 @@ function AudienceSection({ offer, editable, onRun }: { offer: OfferDto; editable
             <ChainPicker id={`of-chain-${kind}`} label={t(`${O}.audience.addChain`)} exclude={ids} onPick={(cid) => void addTo(kind, () => actions.addChains.mutateAsync({ publicId: id, chainPublicIds: [cid] }))} />
           </div>
         )}
-        {disabled && editable && <p className="help">{t(`${O}.audience.locked`)}</p>}
+        {disabled && editable && <p className="help">{t(mode === 'INCLUDE' ? `${O}.audience.lockedByInclude` : `${O}.audience.locked`)}</p>}
       </section>
     )
   }

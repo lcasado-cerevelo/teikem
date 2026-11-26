@@ -169,7 +169,8 @@ public sealed record OfferView(int OfferId, string Name, bool IsPublished, bool 
 /// lista en PriceListId / PriceListName, su precio en OfferPrice y el de la lista general en OtherPrice; OfferId = 0 y OfferName vacío (no hay oferta).
 /// </summary>
 public sealed record PriceNotice(string Code, int OfferId, string OfferName, decimal OfferPrice, int? OtherOfferId = null, string? OtherOfferName = null, decimal? OtherPrice = null,
-    int? PriceListId = null, string? PriceListName = null);
+    int? PriceListId = null, string? PriceListName = null, string? PriceListOwnerName = null, DateOnly? PriceListValidFrom = null, DateOnly? PriceListValidTo = null,
+    bool PriceListIsSpecial = false);
 
 /// <summary>Un cruce de una oferta con otra publicada (fechas y clientes que se cruzan) que trae el mismo producto igual o más barato.</summary>
 public sealed record OfferOverlap(int OtherOfferId, string OtherName, DateOnly OtherFrom, DateOnly? OtherTo, int ProductId, decimal MyPrice, decimal OtherPrice);
@@ -207,6 +208,8 @@ public static class OfferRules
     public const string AudienceInvalid = "El público de la oferta debe ser ALL (todos), INCLUDE (solo los escogidos) o EXCLUDE (todos menos los escogidos).";
     public const string AudienceConflict = "“Aplica a todos” no coincide con el público escogido: indique solo el público (todos, solo los escogidos o todos menos los escogidos).";
     public const string AudienceChangeWithRows = "Quite los clientes y cadenas de la oferta antes de cambiar entre incluir y excluir.";
+    /// <summary>409 (Lote 247, decisión 10 corregida): quitar el último cliente o cadena de una oferta INCLUDE la dejaría sin público.</summary>
+    public const string IncludeNeedsMember = "Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.";
     public const string ChainsRequired = "Escoja las cadenas de la oferta.";
     public static readonly string TooManyChains = $"Una oferta admite como máximo {OfferCodes.MaxChains} cadenas.";
     public const string ChainsOnGeneral = "La oferta aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.";
@@ -322,7 +325,8 @@ public static class OfferRules
         foreach (var level in new[] { levels.Client, levels.Chain })
             if (level is not null && generalPrice is decimal g && level.Item.Price > g)
                 notices.Add(new PriceNotice(PriceNoticeCodes.SpecialAboveGeneral, 0, string.Empty, level.Item.Price, OtherPrice: g,
-                    PriceListId: level.List.PriceListId, PriceListName: level.List.Name));
+                    PriceListId: level.List.PriceListId, PriceListName: level.List.Name, PriceListOwnerName: level.List.OwnerName,
+                    PriceListValidFrom: level.List.ValidFrom, PriceListValidTo: level.List.ValidTo, PriceListIsSpecial: level.List.IsSpecial));
         var n = notices.Count == 0 ? null : notices;
 
         ResolvedPrice? winner = null;

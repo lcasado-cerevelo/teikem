@@ -13,6 +13,7 @@ import { OfferEditorModal } from './OfferEditorModal'
 import { OffersPanel } from './OffersPanel'
 import { PriceListEditorModal } from './PriceListEditorModal'
 import { usePriceLists, type PriceListListItemDto } from './priceListApi'
+import { dedicatedListName } from '../sales/priceText'
 import { isDedicated, listAudienceCount, stateKey, stateTone } from './priceListRules'
 
 const STATES = ['DRAFT', 'SCHEDULED', 'ACTIVE', 'EXPIRED'] as const
@@ -52,7 +53,7 @@ export function PriceListsTab() {
           <span className="pl-namecell">
             {/* la lista dedicada se llama «Precio especial — dueño (fechas)»: el chip ya lo dice, el nombre completo queda en el título */}
             {isDedicated(l) ? (
-              <Chip tone="cod" title={l.name ?? undefined}>
+              <Chip tone="cod" title={dedicatedListName(t, f, l) || undefined}>
                 {t('warehouse.products.prices.special.chip', { name: l.specialOwnerName ?? '' })}
               </Chip>
             ) : (
@@ -60,8 +61,8 @@ export function PriceListsTab() {
             )}
           </span>
         ),
-        sortValue: (l) => l.name ?? '',
-        exportValue: (l) => l.name ?? '',
+        sortValue: (l) => dedicatedListName(t, f, l),
+        exportValue: (l) => dedicatedListName(t, f, l),
         card: 'title',
       },
       {

@@ -51,6 +51,7 @@ Capturas de las pantallas: [L246](frontend/l246-compras.md). Cada mensaje de err
 - Compras → **Importar** → origen **«Plantilla (la del usuario)»** → **«Nueva plantilla»** (o **«Editar»** sobre la elegida). La ventana se abre ahí mismo y, al guardar, la plantilla queda elegida.
 - O **Sistema → Plantillas → «Órdenes de compra» → «Nueva plantilla»**. La pestaña no tiene columna «Cliente»: las plantillas de compras no llevan cliente.
 - La ventana pide **Nombre**, **Delimitador** (coma, punto y coma, tabulador…), si **la primera fila es el encabezado**, y una tabla «Columna N → Campo destino». Los **valores por defecto** se usan cuando la celda viene vacía o el campo no tiene columna.
+- **Textos de la ventana (corregido después del cierre del Lote 246).** El título y las ayudas dicen lo que la plantilla importa: «Nueva plantilla de importación de órdenes de compra» / «Editar plantilla de importación de órdenes de compra», y las ayudas de «campos obligatorios» y «valores por defecto» hablan del número de la orden, el SKU, la cantidad y el proveedor. Antes decían «de envíos» y nombraban al consignatario y al paquete. Lo mismo vale para las plantillas de **productos, proveedores, almacenes y posiciones** (cada una con su título y sus ayudas); las de **envíos** y **consignatarios** no cambiaron.
 
 **Campos de la plantilla.**
 

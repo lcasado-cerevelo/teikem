@@ -102,7 +102,11 @@ public sealed record OfferKitCreatedDto(Guid ProductPublicId, string Sku, OfferD
 /// </summary>
 /// <remarks>Lote 247: SPECIAL_ABOVE_GENERAL (un precio especial más caro que la lista general: se aplica el de la lista general) trae la lista en PriceList*.</remarks>
 public sealed record SalesPriceNoticeDto(string Code, string Message, Guid ProductPublicId, string Sku, Guid? OfferPublicId, string? OfferName,
-    Guid? OtherOfferPublicId, string? OtherOfferName, Guid? PriceListPublicId = null, string? PriceListName = null);
+    Guid? OtherOfferPublicId, string? OtherOfferName, Guid? PriceListPublicId = null, string? PriceListName = null,
+    // Datos estructurados para que la web arme el texto en su idioma (Message queda en español como respaldo): Price = el precio de la oferta o del precio
+    // especial, OtherPrice = el de la otra oferta o el de la lista general; PriceListIsSpecial = la lista es dedicada (dueño y fechas ISO).
+    decimal? Price = null, decimal? OtherPrice = null, bool PriceListIsSpecial = false, string? PriceListOwnerName = null, DateOnly? PriceListValidFrom = null,
+    DateOnly? PriceListValidTo = null);
 
 /// <summary>
 /// De dónde salió hoy el precio de un producto de la orden (solo en la respuesta de crear o editar el borrador con líneas): PriceSource = OFFER, CLIENT_LIST,

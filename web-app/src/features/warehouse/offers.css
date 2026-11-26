@@ -47,6 +47,8 @@
 .of-aud>h4{margin:0 0 2px;font-size:13px}
 .of-aud .help{margin:0 0 6px}
 .of-aud-pick{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+/* Lote 247: por qué el último de «Incluir» no tiene botón de quitar */
+.of-aud .of-aud-keep{margin:6px 0 0;overflow-wrap:anywhere}
 .of-aud-pick .f{flex:1 1 160px;min-width:0;margin:0}
 @media (max-width:720px){.of-aud-grid{grid-template-columns:minmax(0,1fr)}}
 .pl-namecell{display:inline-flex;flex-wrap:wrap;gap:4px 8px;align-items:center;min-width:0}

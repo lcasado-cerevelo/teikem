@@ -164,6 +164,8 @@ public sealed class ChainPriceResolutionTests
         Assert.Equal(PriceNoticeCodes.SpecialAboveGeneral, n.Code);
         Assert.Equal($"El precio especial «{special.Name}» pone A-10 a $10.50, más caro que la lista general ($9.00): se aplica el de la lista general. Corrija el precio especial.", n.Message);
         Assert.Equal((special.PublicId, special.Name, (Guid?)null), (n.PriceListPublicId!.Value, n.PriceListName, n.OfferPublicId));
+        // datos estructurados para que la web arme el texto en su idioma: precios, lista dedicada con su dueño y fechas
+        Assert.Equal((10.5m, 9m, true, x.C1.Name, special.ValidFrom, special.ValidTo), (n.Price, n.OtherPrice, n.PriceListIsSpecial, n.PriceListOwnerName, n.PriceListValidFrom, n.PriceListValidTo));
         // el catálogo trae el mismo aviso
         var item = await x.CatalogItemAsync(x.C1, a);
         Assert.Equal((9m, PriceSources.GeneralList), (item.Price, item.PriceSource));

@@ -14,7 +14,7 @@ Batch 247 (Batch C of the Solutions plan). Three new things in **Sales orders �
 
 > **The lowest price always wins.** If a special price is **higher** than the general list, the general list price is charged and the system warns («Higher than the general list»). Nothing is blocked: fix the special price.
 
-Screens: [L247](../frontend/l247-precios-especiales.md) (Spanish edition; the captures `img/l247-*-en-*.png` in that folder were taken in English). Every error message is in the [FAQ](faq.md). This chapter completes [47 — Price lists and offers](47-precios-y-ofertas.md) (its section 2 describes the previous rule) and chapter 53 (Client chains, Spanish only so far).
+Screens: [L247](../frontend/l247-precios-especiales.md) (Spanish edition; the captures `img/l247-*-en-*.png` in that folder were taken in English). Every error message is in the [FAQ](faq.md). This chapter completes [47 — Price lists and offers](47-precios-y-ofertas.md) (which explains lists, offers and kits, and now summarizes the «lowest wins» rule) and [53 — Client chains](53-cadenas.md).
 
 ## 1. Where it is and who can
 
@@ -71,11 +71,11 @@ They arrive with code 200 and do not prevent saving, publishing or sending.
 | Notice (code) | When | Where | Text |
 |---|---|---|---|
 | Special price higher than the general list, in the list (`SPECIAL_ABOVE_GENERAL`) | A line of a list that is not general costs more than the same product in the in-effect general list | The list's page («List warnings») and the «Special prices» panel («Special price warnings») | `Precio especial más caro que la lista general: SPX-B a $15.00 y en la lista general a $14.00. Se cobra el más bajo; corrija el precio especial.` |
-| Special price higher than the general list, in the order (`SPECIAL_ABOVE_GENERAL`) | When pricing a product whose client or chain price is higher than the general list | Catalog, guided order and draft (next to the product) | `El precio especial «Precio especial — Walgreens SPX (desde el 26/10/2026, sin fecha de fin)» pone SPX-B a $15.00, más caro que la lista general ($14.00): se aplica el de la lista general. Corrija el precio especial.` |
+| Special price higher than the general list, in the order (`SPECIAL_ABOVE_GENERAL`) | When pricing a product whose client or chain price is higher than the general list | Catalog, guided order and, on the desktop, the order window (next to each draft line) | `El precio especial «Precio especial — Walgreens SPX (desde el 26/10/2026, sin fecha de fin)» pone SPX-B a $15.00, más caro que la lista general ($14.00): se aplica el de la lista general. Corrija el precio especial.` (with the interface in English and the company's dates as month/day/year, the web builds it in English and with those dates; see below) |
 
 The offer notices of chapter 47 (`TWO_OFFERS`, `OFFER_ABOVE_GENERAL`, `CHEAPER_OFFER`) stay the same.
 
-> **Language of the server's texts.** The name of the dedicated list («Precio especial — … (del 26/10/2026 al 30/11/2026)»), the notice above (which quotes that name) and an offer's validity («desde el …, sin fecha de fin») are built by the server **in Spanish and as day/month/year**, even when the screen is in English or shows dates as month/day/year. It is a known pending item.
+> **Language and dates of the price texts (fixed after the batch closed).** The server still sends these texts in Spanish and as day/month/year, but **as a fallback**: the staff web builds them **in the interface language and with the company's date format** from the data the server sends along with the text (code, SKU, prices and, for the dedicated list, its owner and dates). Built this way: the **price notice** (`TWO_OFFERS`, `OFFER_ABOVE_GENERAL` and `SPECIAL_ABOVE_GENERAL`; in the guided order, the draft and the order window), the **list notice**, the **dedicated list's name** («Special price — {owner} ({validity})», in the list table, on the list's page and in the notice) and an **offer's validity** («from … to …» / «from …, no end date»). If any piece of data is missing, the web shows the server's text. **Still shown as the server sends them, in Spanish:** error messages, the notices in the offer window («another cheaper offer», «offer higher than the general list» when building it), the dedicated list's stored name (the one in the database and in the `PriceListName` field of the `SPECIAL_PRICE` source) and any screen that is not the staff web.
 
 ## 3. Special prices (client's and chain's page)
 
@@ -130,7 +130,7 @@ PATCH /api/v1/special-prices/clients/{clientPublicId}/{itemId}
 | Field | Rule |
 |---|---|
 | `productPublicId` | Required. A product of the company itself (not a client's), active, and not an offer kit (an offer kit is changed in an offer). A normal kit is fine. |
-| `price` | Required. Before IVU. Up to 4 decimals, not negative. **The screen asks for a price greater than zero; the API accepts 0.** |
+| `price` | Required. Before IVU. **Greater than zero** (0 or negative gives 400 «El precio especial debe ser mayor que cero (hasta 4 decimales).»), up to 4 decimals and no more than 9,999,999,999. This rule is **only for special prices**: normal lists and offers still accept 0. It applies when adding and when changing the price. |
 | `validFrom` | Required. |
 | `validTo` | Optional (no «To» = does not expire). Cannot be before «From». **When creating**, it cannot be before today; when editing it can (that is how a running price is closed). |
 | Same product, same owner, same dates | Not an error: it **changes the price** of that row. |
@@ -140,6 +140,7 @@ PATCH /api/v1/special-prices/clients/{clientPublicId}/{itemId}
 What happens inside (useful for support):
 - Each **owner** (client or chain) has **one dedicated list per validity** (a «from / to» pair), published. It is named «Precio especial — {owner} ({validity})» and never exceeds 120 characters.
 - Adding a price with new dates **creates** the dedicated list for those dates; with the same dates it **adds the line** to the existing one.
+- **If that list was in draft** (someone put it back to draft in Prices and offers), adding a price with those dates, or moving a line to those dates, **publishes it again**. Before, the new price landed in the draft and was not charged (a second list with the same dates cannot be created for the same owner). When it is published, **the other lines the list had in draft are charged again too**. The server checks the overlap of **all** its lines with what is published: if one clashes, 409 with the overlap message of section 9, **nothing is saved** and the list stays in draft. Changing only the price of a line of a draft list does not publish it (that is how the code works; there is no separate test).
 - **Changing only the price** changes it in its list. **Changing the dates** moves the line to the dedicated list of the new dates (created if missing); a list left without active lines is **deactivated by itself**.
 - **Removing** deactivates the line (it stays in the history); a list without active lines is deactivated.
 - The price engine sees the dedicated list like any published list: that is why the lowest wins just like with the others.
@@ -192,8 +193,11 @@ Before the batch only «all» and «chosen only» existed. Offers that were «ch
 **How to use it (screen).** Accounting → Prices and offers → open the offer → **«Who it applies to»** section: two boxes, **«Include»** («Only these clients and chains get the offer.») and **«Exclude»** («Everybody gets the offer except these clients and chains.»). Each admits clients (**«Add client»**) and chains (**«Add a chain»**).
 - **Filling one box disables the other** («Remove what is chosen in the other box to use this one.»). With both empty, the offer is for everybody.
 - When adding to an empty box, the screen changes the audience and adds.
-- **Removing the last** client or chain asks for confirmation (**«Remove the last one?» / «The offer will be for all clients.»**, button «Make it for everyone»). If you confirm, the offer becomes `ALL`. **Careful:** an offer «only for chain X» from which the chain is removed ends up **for all clients**, not for nobody.
-- An `INCLUDE` offer with nobody chosen is published but **applies to nobody**; the screen says so.
+- **Removing the last client or chain of «Include» is not possible** (fixed after the batch closed). The screen does not show the × of the last one and says why: «An offer «only for» the chosen ones needs at least one client or chain: add another one before removing the last, or deactivate the offer.» (server text: «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.»). Through the API, removing the last client or chain of an `INCLUDE` offer gives **409** with that same text and changes nothing. To replace the only one, add the new one first and then remove the old one.
+- An «Include» offer **stays «Include»**: it no longer turns into «for all» by itself. To turn it into «everyone except some», deactivate it and create another one; while «Include» has someone, the «Exclude» box is disabled and says so: «This offer is only for the chosen ones and cannot be left without them: to make it for everyone except some, deactivate it and create another one.»
+- **Removing the last one of «Exclude» is allowed** and asks for confirmation: **«The offer will be for all clients.»** (button «Make it for everyone»). If you confirm, the offer becomes `ALL`.
+- **This changes an earlier decision.** Batch 234 decided that an offer of chosen ones could be left with nobody and, in the first version of this batch, that removing the last one turned the offer into «for all». Both were replaced by the 409. Pending Luis's review (decision 10 of `docs/lote247-decisiones.md`).
+- An `INCLUDE` offer with nobody chosen (just created, or from before this fix, which has no migration) is published but **applies to nobody**; the screen says so.
 - The chain in the offer shows as «Chain {name}»; if it is deactivated, in amber.
 
 **How to use it (API).**
@@ -214,6 +218,7 @@ Rules:
 - **Switching to `ALL` with chosen clients or chains** gives 422; **switching between `INCLUDE` and `EXCLUDE` with chosen ones** gives 422: remove them first.
 - **Publishing:** an `INCLUDE` with nobody chosen is not published (422). An `EXCLUDE` with nobody chosen **is**: it applies to everybody.
 - Adding clients or chains to an `ALL` offer gives 422. Up to **500 chains** and 2000 clients per offer. Repeated ones are ignored.
+- Removing a client (`DELETE /api/v1/offers/{publicId}/clients/{clientPublicId}`) or a chain (`…/chains/{chainPublicId}`) from an `INCLUDE` offer that **would be left with no client or chain** gives 409 and changes nothing. An `EXCLUDE` can be emptied: it applies to everybody.
 - **Without a client** (generic catalog, no client chosen): `ALL` offers, `INCLUDE` offers that have the chain and `EXCLUDE` offers that do not exclude it apply.
 - `GET /offers?chainPublicId=` returns only the **active, published, not expired** offers that apply to the chain: for everybody, including it, or excluding others without excluding it.
 - The «clash with a cheaper offer» notices (`CHEAPER_OFFER`) now consider chains and exclusions. It is a conservative estimate: when in doubt it warns. It prevents nothing.
@@ -262,9 +267,9 @@ Actions and what each one triggers:
 
 | Action | Who can | What it validates | Effect |
 |---|---|---|---|
-| Add a special price | `sales.pricelist` | Active owner, valid product, dates, no overlap with another validity of the same product and owner | Creates the dedicated list of those dates (published) or adds the line to the existing one |
-| Change the price | `sales.pricelist` | Valid price; no overlap | Changes the line |
-| Change the dates | `sales.pricelist` | «to» not before «from»; no overlap | Moves the line to the dedicated list of the new dates; the emptied one is deactivated |
+| Add a special price | `sales.pricelist` | Active owner, valid product, price greater than zero, dates, no overlap with another validity of the same product and owner (if the list of those dates was in draft, the overlap of all its lines) | Creates the dedicated list of those dates (published) or adds the line to the existing one; if it was in draft, publishes it again |
+| Change the price | `sales.pricelist` | Price greater than zero; no overlap | Changes the line |
+| Change the dates | `sales.pricelist` | «to» not before «from»; no overlap | Moves the line to the dedicated list of the new dates (publishing it if it was in draft); the emptied one is deactivated |
 | Remove | `sales.pricelist` | The line is an active special price of that owner | Deactivates the line (stays in the history); the empty list is deactivated |
 | Publish / Back to draft / Deactivate the dedicated list (in Prices and offers) | `sales.pricelist` | The usual list rules | Changes whether it is charged |
 | Deactivate the chain | `sales.chain` | Zero active clients and **no published, in-effect list or `INCLUDE` offer with the chain** (409 in either case) | The chain leaves the pick lists; its clients become «no chain» for prices |
@@ -286,7 +291,8 @@ The message comes as-is in the error's `title` field (and in red on the screen, 
 | (body) | Must come | `El cuerpo de la solicitud es obligatorio.` | 400 | The request body is required |
 | `productPublicId` | Required | `Escoja el producto o kit de cada renglón.` | 400 | Choose the product or kit |
 | `price` | Required | `Indique el precio de cada renglón.` | 400 | Enter the price |
-| `price` | Not negative, up to 9,999,999,999 | `El precio no es válido.` | 400 | The price is not valid |
+| `price` | Greater than zero (add and price change) | `El precio especial debe ser mayor que cero (hasta 4 decimales).` | 400 | The special price must be greater than zero |
+| `price` | Up to 9,999,999,999 | `El precio no es válido.` | 400 | The price is not valid |
 | `price` | Up to 4 decimals | `El precio admite como máximo 4 decimales.` | 400 | At most 4 decimals |
 | `validFrom` | Required | `Indique desde qué fecha vale el precio especial.` | 400 | Enter the «from» date |
 | `validTo` | Not before «from» | `La fecha «hasta» no puede ser anterior a la fecha «desde».` | 400 | «To» before «from» |
@@ -302,6 +308,7 @@ The message comes as-is in the error's `title` field (and in red on the screen, 
 | Product | Active | `El producto {SKU} está inactivo: no se puede poner en la lista.` | 422 | Product inactive |
 | Product | Not an offer kit | `El kit {SKU} es un kit de oferta: su precio va en una oferta, no en una lista de precios.` | 422 | Offer kits are priced in an offer |
 | Dates | Do not overlap another price of the same product and owner | `La lista se cruza con «{lista}» en las mismas fechas y para los mismos clientes o cadenas en: {SKU, …}. Cambie las fechas o quite esos productos de una de las dos.` (up to 5 SKUs and «y N más») | 409 | Overlap with another list |
+| Draft list published again | The list's lines do not overlap what is published for the same owner | The same overlap message (above); nothing is saved | 409 | Overlap with another list |
 | Simultaneous add | Two adds at once to the same list | `La lista cambió al mismo tiempo. Recárguela e intente de nuevo.` | 409 | The list changed at the same time |
 | Simultaneous change | Someone changed the list at once | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 | Modified by another user |
 | Permission | `sales.pricelist` to write; `sales.view` or `sales.pricelist` to see | `Falta el permiso '…'.` | 403 | Missing permission |
@@ -337,6 +344,7 @@ Screen warnings before sending (not from the server): «Choose the product or ki
 | `chainPublicIds` | At most 500 | `Una oferta admite como máximo 500 cadenas.` | 400 | At most 500 chains |
 | Chain | Exists in the company (also in `?chainPublicId=`) | `Cadena no encontrada.` | 404 | Chain not found |
 | Offer's chain | Is in the offer (when removing) | `Cadena de la oferta no encontrada.` | 404 | The offer's chain not found |
+| Removing the last client or chain | An `INCLUDE` offer keeps at least one | `Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.` | 409 | An «only for» offer needs at least one client or chain |
 | Chain | Active | `La cadena está desactivada: actívela o escoja otra.` | 422 | Chain deactivated |
 | Offer | Not for all (chains) | `La oferta aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.` | 422 | `ALL` offers carry no chains |
 | Offer | Not for all (clients) | `La oferta aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.` | 422 | `ALL` offers carry no clients |
@@ -365,8 +373,14 @@ Check the **Status**: a special price is charged only when **In effect** (publis
 **The offer does not show for an excluded client (or does show for one I did not choose).**
 An **`EXCLUDE`** offer applies to everybody **except** the chosen clients and chains; if the client, or its **chain**, is excluded, it does not get it. An `INCLUDE` offer applies only to the chosen ones or to the clients of the chosen chains. See the offer's «Who it applies to» section.
 
-**I removed the last chain of an offer and now it applies to everybody.**
-That is what the confirmation says («The offer will be for all clients.»). An offer with nobody chosen does not stay «chosen only». If you do not want it for everybody, deactivate it, or choose again who it applies to before removing the last one.
+**It does not let me remove the last chain (or the last client) of an offer.**
+An «Include» («only for» the chosen ones) offer is not left with nobody: the server answers 409 «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.» and the screen no longer shows the × of the last one. Add the next one first and then remove the previous one; or deactivate the offer. In an «Exclude» offer the last one can be removed: the offer becomes for everybody, with confirmation.
+
+**I gave a special price 0 and it does not let me.**
+A special price must be greater than zero (400 «El precio especial debe ser mayor que cero (hasta 4 decimales).»), on the screen and through the API. A normal list or an offer does accept 0.
+
+**A client's dedicated list was in «Draft» and when I added another special price it became «In effect». Why?**
+Adding a special price with the same dates as a dedicated list in draft **publishes it again** (and the lines it had start being charged). If its lines overlap another published price of the same owner, nothing is saved and it gives 409 (section 9).
 
 **How do I change only a special price's date?**
 In the panel, **Change price** (pencil) and change «From» or «To». The line moves to the list of those dates by itself; if it overlaps another validity of the same product for the same owner, it gives 409. To remove the «To», leave it empty.
@@ -386,8 +400,8 @@ From that moment, the new chain's. Drafts that already had a price keep it (chan
 **An old order does not show where the price came from.**
 Lines from before Batch 247 did not store the source. Only lines written or changed since the batch have it.
 
-**The dedicated list's date shows differently from the screen's (26/10/2026 vs 10/26/2026).**
-The dedicated list's name and some notices are built by the server as day/month/year and in Spanish. It is a known pending item; the data is the same.
+**The dedicated list's name or the notice shows in Spanish, or with a date different from the screen's.**
+On the staff web they now come out in the interface language and with the company's dates (section 2). If you still see them in Spanish and as day/month/year, a piece of data is missing in the response (the web then shows the server's text) or you are looking somewhere else: the `SPECIAL_PRICE` source, the notice in the offer window, or a screen that is not the staff web. The data is the same.
 
 ## 12. For support
 

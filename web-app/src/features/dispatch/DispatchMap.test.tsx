@@ -87,7 +87,9 @@ describe('plano de la ruta activa', () => {
     expect(order()).toEqual(['OT-0101', 'OT-0102', 'OT-0103'])
     expect(rows()[2]).toHaveTextContent('Sin pin')
     expect(rows()[1]).toHaveTextContent('Ubicación aproximada')
-    expect(screen.getByText(/Plano esquemático/)).toBeInTheDocument()
+    // con mosaicos del mapa real se muestra la atribución de OpenStreetMap; «Plano esquemático» solo sale cuando no hay mosaicos
+    expect(screen.getByText('Mapa © colaboradores de OpenStreetMap.')).toBeInTheDocument()
+    expect(screen.queryByText(/Plano esquemático/)).toBeNull()
     // sin conmutador 2D / Sat ni «tracking»: no existen
     expect(screen.queryByText(/^2D$/)).toBeNull()
     expect(screen.queryByText(/^Sat$/)).toBeNull()

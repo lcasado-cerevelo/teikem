@@ -179,7 +179,7 @@ public sealed class SpecialPriceServiceTests
         await Bad(() => x.Lists.AddClientSpecialPriceAsync(x.C1.PublicId, null, default), "body", "El cuerpo de la solicitud es obligatorio.");
         await Bad(() => x.Lists.AddClientSpecialPriceAsync(x.C1.PublicId, new SpecialPriceRequest(null, 1m, today), default), "productPublicId", PriceListRules.ItemProductRequired);
         await Bad(() => AddClientAsync(x, x.C1, p, null, today), "price", PriceListRules.ItemPriceRequired);
-        await Bad(() => AddClientAsync(x, x.C1, p, -1m, today), "price", SalesRules.PriceError(-1m)!);
+        await Bad(() => AddClientAsync(x, x.C1, p, -1m, today), "price", SpecialPriceRules.PriceNotPositive);
         await Bad(() => AddClientAsync(x, x.C1, p, 1m, null), "validFrom", "Indique desde qué fecha vale el precio especial.");
         await Bad(() => AddClientAsync(x, x.C1, p, 1m, today, today.AddDays(-1)), "validTo", PriceListRules.DateRange);
         await Bad(() => AddClientAsync(x, x.C1, p, 1m, today.AddDays(-10), today.AddDays(-1)), "validTo",
@@ -239,6 +239,83 @@ public sealed class SpecialPriceServiceTests
         Assert.False((await x.Lists.GetClientSpecialPricesAsync(x.C1.PublicId, false, default)).OwnerIsActive);
         var chain = await x.ChainAsync("Inactiva", isActive: false);
         Assert.Equal(ClientChainRules.ChainInactive, (await Assert.ThrowsAsync<StatusRuleException>(() => AddChainAsync(x, chain, p, 1m, today))).Message);
+    }
+
+    [Fact]
+    public async Task Zero_or_negative_price_is_400_on_add_and_on_change()
+    {
+        await using var x = await PriceWorld.CreateAsync();
+        var p = await x.ProductAsync("P", 10m);
+        var chain = await x.ChainAsync("Walgreens");
+
+        async Task Bad(Func<Task> act)
+        {
+            var ex = await Assert.ThrowsAsync<ValidationException>(act);
+            Assert.Equal("El precio especial debe ser mayor que cero (hasta 4 decimales).", ex.Message);
+            Assert.True(ex.Errors!.ContainsKey("price"));
+        }
+
+        // alta: 0 y negativos no, del cliente y de la cadena; no se crea ninguna dedicada
+        await Bad(() => AddClientAsync(x, x.C1, p, 0m, x.Today));
+        await Bad(() => AddClientAsync(x, x.C1, p, -0.01m, x.Today));
+        await Bad(() => AddChainAsync(x, chain, p, 0m, x.Today));
+        Assert.Empty(await ClientDedicatedAsync(x, x.C1));
+        Assert.False(await x.F.Db.Set<PriceList>().AsNoTracking().AnyAsync(l => l.SpecialChainId == chain.ClientChainId));
+        // lo demás de siempre sigue: más de 4 decimales
+        Assert.Equal(SalesRules.PriceDecimals, (await Assert.ThrowsAsync<ValidationException>(() => AddClientAsync(x, x.C1, p, 1.23456m, x.Today))).Message);
+
+        // cambio: 0 no; el precio no cambia
+        var dto = await AddClientAsync(x, x.C1, p, 0.0001m, x.Today);   // el mínimo positivo con 4 decimales sí vale
+        var id = ItemOf(dto, p);
+        await Bad(() => x.Lists.UpdateClientSpecialPriceAsync(x.C1.PublicId, id, new SpecialPricePatchRequest(0m), default));
+        Assert.Equal(0.0001m, (await x.Lists.GetClientSpecialPricesAsync(x.C1.PublicId, false, default)).Rows.Single(r => r.ItemId == id).Price);
+        // sin precio en el cambio (solo fechas) no se valida el precio
+        dto = await x.Lists.UpdateClientSpecialPriceAsync(x.C1.PublicId, id, new SpecialPricePatchRequest(ValidTo: x.Today.AddDays(5)), default);
+        Assert.Equal(0.0001m, Assert.Single(dto.Rows).Price);
+
+        // la regla es solo de los precios especiales: una lista normal sigue aceptando 0
+        var normal = await x.PublishedListAsync("Normal", x.Today, null, new[] { x.C2 }, (await x.ProductAsync("N", 5m), 0m));
+        Assert.Equal(0m, Assert.Single(normal.Items).Price);
+    }
+
+    [Fact]
+    public async Task Adding_to_a_dedicated_list_returned_to_draft_publishes_it_so_the_new_price_is_charged()
+    {
+        await using var x = await PriceWorld.CreateAsync();
+        var p1 = await x.ProductAsync("P1", 10m);
+        var p2 = await x.ProductAsync("P2", 10m);
+        var dto = await AddClientAsync(x, x.C1, p1, 8m, x.Today);
+        var listId = dto.Rows[0].PriceListPublicId;
+
+        // alguien la devuelve a borrador en «Precios y ofertas»: deja de cobrarse
+        await x.Lists.UnpublishAsync(listId, default);
+        Assert.Equal(10m, await DraftPriceAsync(x, x.C1, p1));
+
+        // agregar un precio especial con las mismas fechas cae en esa misma dedicada (no puede haber otra) y la vuelve a publicar: se cobran los dos
+        dto = await AddClientAsync(x, x.C1, p2, 7m, x.Today);
+        Assert.All(dto.Rows, r => Assert.Equal((PriceListStates.Active, listId), (r.State, r.PriceListPublicId)));
+        var list = Assert.Single(await ClientDedicatedAsync(x, x.C1));
+        Assert.True(list.IsPublished && list.IsActive);
+        Assert.Equal(7m, await DraftPriceAsync(x, x.C1, p2));
+        Assert.Equal(8m, await DraftPriceAsync(x, x.C1, p1));
+
+        // mover un renglón a las fechas de una dedicada en borrador también la publica
+        var other = await AddClientAsync(x, x.C1, await x.ProductAsync("P3", 10m), 6m, x.Today.AddDays(40), x.Today.AddDays(50));
+        var otherList = other.Rows.Single(r => r.Sku == "P3").PriceListPublicId;
+        await x.Lists.UnpublishAsync(otherList, default);
+        dto = await x.Lists.UpdateClientSpecialPriceAsync(x.C1.PublicId, ItemOf(dto, p2), new SpecialPricePatchRequest(ValidFrom: x.Today.AddDays(40), ValidTo: x.Today.AddDays(50)), default);
+        Assert.All(dto.Rows.Where(r => r.PriceListPublicId == otherList), r => Assert.Equal(PriceListStates.Scheduled, r.State));
+        Assert.True((await x.F.Db.Set<PriceList>().AsNoTracking().SingleAsync(l => l.PublicId == otherList)).IsPublished);
+
+        // si al publicarla un renglón suyo que estaba en borrador se cruza con otra dedicada publicada del mismo dueño: 409 y no se guarda nada
+        var p4 = await x.ProductAsync("P4", 10m);
+        var a = await AddClientAsync(x, x.C1, p4, 5m, x.Today.AddDays(100), x.Today.AddDays(110));
+        var draftList = a.Rows.Single(r => r.Sku == "P4").PriceListPublicId;
+        await x.Lists.UnpublishAsync(draftList, default);
+        await AddClientAsync(x, x.C1, p4, 4m, x.Today.AddDays(105));   // en borrador la otra no choca
+        var p5 = await x.ProductAsync("P5", 10m);
+        await Assert.ThrowsAsync<ConflictException>(() => AddClientAsync(x, x.C1, p5, 3m, x.Today.AddDays(100), x.Today.AddDays(110)));
+        Assert.False((await x.F.Db.Set<PriceList>().AsNoTracking().SingleAsync(l => l.PublicId == draftList)).IsPublished);
     }
 
     // ---------------------------------------------------------------- la vista

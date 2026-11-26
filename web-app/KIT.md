@@ -90,6 +90,10 @@ separadores de números, la hora de 12/24, la zona y la moneda.** Nunca `Intl.Da
   `numberLocale(lang)` queda solo para nombres de meses; no lo use para números. Los PDF/Excel (`exportTable`, `reportPdf`,
   `exportGrouped`) formatean y leen números y fechas con los ajustes de la compañía; el nombre del archivo lleva el día de la
   compañía.
+- **Textos de precios que el servidor genera en español** (`features/sales/priceText.ts`, claves `pricing.*`): el servidor sigue mandando `message` / `name` /
+  `validityText` como respaldo, pero también datos (código, `sku`, `price`/`otherPrice`, dueño y fechas ISO). `priceNoticeText`/`usePriceNoticeText()` (aviso de precio),
+  `priceListWarningText` (aviso de lista), `dedicatedListName` («Precio especial — dueño (vigencia)» de una lista dedicada) y `offerValidityText` los arman con
+  `t(...)` y `useFormat()`; si falta algún dato devuelven el texto del servidor. Un texto generado por el servidor nuevo debe seguir este patrón.
 - `createApiClient({ baseUrl, fetch })` solo para pruebas (cliente con la misma política sobre un `fetch` simulado).
 
 ## Marca de la compañía: colores y logos (`src/kernel/ui`, lotes F8a/F9/19)

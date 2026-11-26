@@ -11635,7 +11635,7 @@ Se marcó «Aplica a todos» en una oferta que ya tiene clientes (422). Quite lo
 Se intentó publicar una oferta vacía (422). Agregue renglones y publique.
 
 **¿Qué significa "Escoja al menos un cliente o marque que la oferta aplica a todos los clientes."?**
-Se intentó publicar una oferta de clientes escogidos sin clientes, o quitar el último cliente de una oferta publicada, o desmarcar «Aplica a todos» en una oferta ya publicada (422). Agregue clientes, o pase la oferta a borrador primero.
+Se intentó publicar una oferta de clientes escogidos sin clientes, o quitar el último cliente de una oferta publicada, o desmarcar «Aplica a todos» en una oferta ya publicada (422). Agregue clientes, o pase la oferta a borrador primero. *(Desde el Lote 234 las ofertas no tienen borrador y, desde el 247, quitar al último cliente o cadena de una oferta «Incluir» da 409 «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.»; ver el Lote 247.)*
 
 **¿Qué significa "La oferta cambió al mismo tiempo. Recárguela e intente de nuevo."?**
 Otra persona guardó la misma oferta a la vez (409). Recargue y repita el cambio.
@@ -12031,7 +12031,7 @@ Con **Desactivar** (se puede **Reactivar** después). Deja de aplicarse a los pe
 Era de antes del Lote 234. El script de cambios publicó una sola vez las ofertas activas que estaban en borrador; si queda alguna (por ejemplo, una que estaba desactivada y se reactivó), ábrala y pulse **Publicar**: es el único botón que la saca de ahí.
 
 **La oferta es para clientes escogidos y todavía no escogí ninguno. ¿Aplica?**
-No aplica a nadie hasta que escoja al menos un cliente; la ventana lo avisa («Esta oferta todavía no aplica a nadie: escoja al menos un cliente.»). Ya no se rechaza quitar el último cliente ni desmarcar «Aplica a todos los clientes».
+No aplica a nadie hasta que escoja al menos un cliente; la ventana lo avisa («Esta oferta todavía no aplica a nadie: escoja al menos un cliente.»). Ya no se rechaza desmarcar «Aplica a todos los clientes». **Cambió en el Lote 247:** quitar al último cliente o cadena de una oferta «Incluir» ya no se puede (409 «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.»); vea el Lote 247 abajo.
 
 **Las fotos de la oferta o del producto salían rotas (el cuadrito con el texto) «a veces sí y a veces no».**
 Eran dos fallas, corregidas en el Lote 234: (1) la pantalla soltaba la foto que tenía en memoria cuando se cerraba una ventana que la mostraba, aunque otra parte de la pantalla (la tarjeta, el renglón, el pedido) la siguiera usando; al reabrir salía rota hasta recargar la página. (2) Una foto subida con un nombre de archivo con **acentos o eñe** («Diseño sin título.png», «Promoción.jpg») nunca cargaba: el servidor fallaba al contestarla. Ya no hace falta renombrar los archivos ni volver a subirlos: las fotos que ya estaban guardadas vuelven a verse.
@@ -12900,6 +12900,9 @@ Se pidió desactivar una plantilla que ya estaba inactiva, o reactivar una que y
 **¿Qué significa «Campo desconocido: X.», «El campo X está repetido.», «La posición N está repetida.» o «El campo X no admite valor por defecto.»? (HTTP 400)**
 Son errores de la definición de columnas. Los campos válidos son proveedor, número de documento, fecha de la orden, fecha esperada, SKU, descripción, cantidad y costo unitario; cada campo y cada posición van una sola vez, y **solo el proveedor** admite valor fijo.
 
+**La ventana «Nueva plantilla» de compras decía «de envíos» y hablaba de consignatario y paquete.**
+Era un defecto de los textos, ya corregido: el título y las ayudas del editor son propios de cada tipo. Compras dice «Nueva plantilla de importación de órdenes de compra» (y habla del número de la orden, el SKU, la cantidad y el proveedor); productos, proveedores, almacenes y posiciones tienen los suyos; envíos y consignatarios no cambiaron. Los nombres de los campos no cambiaron.
+
 ### Importar con plantilla
 
 **¿Qué significa «Elija la plantilla de importación.»? (HTTP 400)**
@@ -13020,8 +13023,11 @@ Quiso agregar un precio especial sin producto. Escójalo en «Producto o kit» (
 **¿Qué significa «Indique el precio de cada renglón.»? (HTTP 400)**
 Falta el precio. Escríbalo (en pantalla: «Escriba un precio mayor que cero (hasta 4 decimales).»).
 
+**¿Qué significa «El precio especial debe ser mayor que cero (hasta 4 decimales).»? (HTTP 400)**
+El precio especial es 0 o negativo. Escriba un precio mayor que cero, con hasta 4 decimales. Vale al agregar y al cambiar el precio, en la pantalla (que avisa «Escriba un precio mayor que cero (hasta 4 decimales).») y por API. Es regla solo de los precios especiales: una lista normal o una oferta sí aceptan 0.
+
 **¿Qué significa «El precio no es válido.»? (HTTP 400)**
-El precio es negativo o pasa de 9 999 999 999. Corríjalo. La pantalla además pide un precio mayor que cero; el API acepta 0.
+El precio pasa de 9 999 999 999 (en un precio especial, un precio 0 o negativo da el mensaje de arriba). Corríjalo.
 
 **¿Qué significa «El precio admite como máximo 4 decimales.»? (HTTP 400)**
 Escribió más de 4 decimales (por ejemplo 7.12345). Redondee a 4 o menos.
@@ -13063,7 +13069,7 @@ El producto está inactivo. Reactívelo en Productos o escoja otro.
 Un kit de oferta no tiene precio especial: su precio se pone dentro de una oferta (Precios y ofertas → la oferta → renglones). Un kit normal sí se puede.
 
 **¿Qué significa «La lista se cruza con «…» en las mismas fechas y para los mismos clientes o cadenas en: …. Cambie las fechas o quite esos productos de una de las dos.»? (HTTP 409)**
-El mismo producto ya tiene un precio, para el **mismo cliente** o la **misma cadena**, en fechas que se cruzan con las que escribió; el mensaje cita la lista y hasta 5 SKU («y N más»). Cambie las fechas para que no se pisen, o quite el otro precio. **No** choca un precio de la cadena con uno del cliente, ni un precio especial con una lista normal: en esos casos conviven y se cobra el más bajo. Con las **mismas** fechas tampoco es un error: se cambia el precio de ese renglón.
+El mismo producto ya tiene un precio, para el **mismo cliente** o la **misma cadena**, en fechas que se cruzan con las que escribió; el mensaje cita la lista y hasta 5 SKU («y N más»). Cambie las fechas para que no se pisen, o quite el otro precio. **No** choca un precio de la cadena con uno del cliente, ni un precio especial con una lista normal: en esos casos conviven y se cobra el más bajo. Con las **mismas** fechas tampoco es un error: se cambia el precio de ese renglón. También puede salir al agregar un precio con las fechas de una lista dedicada que estaba **en borrador**: al agregarlo la lista se vuelve a publicar y se revisa el cruce de **todos** sus renglones; si alguno choca, no se guarda nada y la lista sigue en borrador.
 
 **¿Qué significa «La lista cambió al mismo tiempo. Recárguela e intente de nuevo.»? (HTTP 409)**
 Dos personas agregaron al mismo tiempo el mismo precio especial (mismo dueño y fechas). Una lo guardó y la otra recibe este mensaje. Recargue la ficha: el precio ya está; si hacía falta otro valor, cámbielo.
@@ -13118,7 +13124,7 @@ La llamada trae `appliesToAll` y `audienceMode` contradictorios (por ejemplo `ap
 La oferta tiene clientes o cadenas escogidos y quiso pasarla de «Incluir» a «Excluir» (o al revés). Quite lo escogido y cambie. En la pantalla, llenar una caja deshabilita la otra.
 
 **¿Qué significa «La oferta tiene clientes o cadenas escogidos: quítelos antes de hacerla para todos.»? (HTTP 422)**
-Quiso pasar a «para todos» una oferta con escogidos, por API. En la pantalla, **quitar al último** pide confirmar y deja la oferta para todos.
+Quiso pasar a «para todos» una oferta con escogidos, por API. En la pantalla, quitar al último de «Excluir» pide confirmar y deja la oferta para todos; el último de «Incluir» no se puede quitar (ver abajo).
 
 **¿Qué significa «Escoja al menos un cliente o una cadena, o marque que la oferta aplica a todos los clientes.»? (HTTP 422)**
 Quiso publicar una oferta «solo para los escogidos» (`INCLUDE`) sin nadie escogido. Escoja clientes o cadenas, o pásela a «para todos». Una oferta `EXCLUDE` sin nadie excluido sí se publica: vale para todos.
@@ -13135,6 +13141,9 @@ Quiso quitar de la oferta una cadena que no está en ella. Recargue la oferta.
 **¿Qué significa «La oferta aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.»? (HTTP 422)**
 La oferta es para todos (`ALL`). Primero escoja «Incluir» o «Excluir» (por API, `PATCH` con `audienceMode`) y luego agregue las cadenas. La pantalla lo hace sola al agregar a una caja vacía. (El mismo caso con clientes dice «…no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.».)
 
+**¿Qué significa «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.»? (HTTP 409)**
+Quiso quitar al **último** cliente o cadena de una oferta «Incluir» («solo para» los escogidos); la oferta se quedaría sin público. No se cambió nada. En la pantalla el último no tiene la ×: agregue primero a quien sigue y luego quite al anterior, o desactive la oferta. Para que sea «todos menos algunos», desactívela y cree otra con «Excluir». En una oferta «Excluir» sí se puede quitar al último (vale para todos, con confirmación). **Cambió una decisión anterior** (Lote 234: «ya no se rechaza quitar el último cliente»).
+
 ### Desactivar una cadena
 
 **¿Qué significa «La cadena tiene precios especiales u ofertas publicados y vigentes (N listas de precios y M ofertas): quítela de ellos antes de desactivarla.»? (HTTP 409)**
@@ -13150,18 +13159,21 @@ No bloquean las ofertas «Excluir», las listas vencidas, en borrador o ya desac
 Es un aviso, no un error (HTTP 200): el precio especial de ese producto es más caro que el de la lista general. Se cobra el de la lista general. Baje el precio especial o quítelo. Sale en el recuadro de avisos de la lista y del panel «Precios especiales».
 
 **¿Qué significa «El precio especial «…» pone {SKU} a {precio}, más caro que la lista general ({precio}): se aplica el de la lista general. Corrija el precio especial.»?**
-El mismo aviso, visto desde el pedido: el producto del cliente (o de su cadena) tiene un precio especial más caro que la lista general y se le cobra el de la lista general. No impide guardar ni solicitar el pedido. El nombre entre comillas es el de la lista dedicada («Precio especial — {dueño} (desde el …)»), que el servidor escribe siempre en español.
+El mismo aviso, visto desde el pedido: el producto del cliente (o de su cadena) tiene un precio especial más caro que la lista general y se le cobra el de la lista general. No impide guardar ni solicitar el pedido. El nombre entre comillas es el de la lista dedicada («Precio especial — {dueño} (desde el …)»). En la web del personal el aviso sale en el idioma de la interfaz y con las fechas de la compañía; el texto del servidor, en español, es solo el respaldo. También sale junto a cada línea en la ventana de la orden de escritorio.
 
 ### Casos frecuentes
 
 **¿Por qué se le cobra la lista general a un cliente que tiene precio especial?**
-Porque la lista general es **más barata o igual**. Gana siempre el más bajo. La fila del panel lo marca («Más caro que la lista general»). Revise también el **Estado**: solo se cobra el precio **Vigente**. «Programada» aún no empieza, «Vencida» ya pasó y **«Borrador»** quiere decir que alguien volvió la lista dedicada a borrador (Precios y ofertas → «Ver también los precios especiales» → abrir → «Publicar»).
+Porque la lista general es **más barata o igual**. Gana siempre el más bajo. La fila del panel lo marca («Más caro que la lista general»). Revise también el **Estado**: solo se cobra el precio **Vigente**. «Programada» aún no empieza, «Vencida» ya pasó y **«Borrador»** quiere decir que alguien volvió la lista dedicada a borrador (Precios y ofertas → «Ver también los precios especiales» → abrir → «Publicar»; agregar otro precio especial con las mismas fechas también la vuelve a publicar).
 
 **¿Por qué no me sale la oferta si el cliente está excluido?**
 Una oferta «Excluir» vale para todos **menos** los clientes y cadenas escogidos. Si el cliente, o su cadena, está en esa caja, no le sale. Una oferta «Incluir» solo vale para los escogidos y para los clientes de las cadenas escogidas. Y si la cadena del cliente está **desactivada**, cuenta como sin cadena.
 
 **¿Cómo cambio solo la fecha de un precio especial?**
 En el panel, **Cambiar precio** (lápiz) y cambie «Desde» o «Hasta». El renglón pasa solo a la lista de esas fechas. Si se cruza con otra vigencia del mismo producto para el mismo dueño, da 409.
+
+**Agregué un precio especial y otros que estaban en «Borrador» empezaron a cobrarse. ¿Por qué?**
+Agregar un precio especial (o mover uno) con las fechas de una lista dedicada que estaba en borrador la **vuelve a publicar**, y con ella empiezan a cobrar todos sus renglones. Antes el precio nuevo quedaba en el borrador y no se cobraba. Si no quería que cobrara alguno, quítelo del panel «Precios especiales» o cambie sus fechas.
 
 **¿Por qué no veo las listas «Precio especial de …» en Precios y ofertas?**
 Están ocultas por omisión (pueden ser cientos). Encienda **«Ver también los precios especiales»**.
@@ -13172,8 +13184,8 @@ Vea «La cadena tiene precios especiales u ofertas publicados y vigentes …» a
 **¿El precio especial lleva IVU?**
 Es un precio **antes del IVU**: el impuesto se calcula después sobre el precio que se cobra, y las exenciones del cliente (estatal, municipal, los dos o total) se aplican sobre ese impuesto. Pendiente de confirmar con el contable; no se cambió el cálculo.
 
-**Quité a la última cadena de una oferta y ahora le sale a todos.**
-Es lo que dice la confirmación «La oferta quedará para todos los clientes.»: una oferta sin escogidos no se queda «solo para los escogidos». Si no la quiere para todos, desactívela antes de quitar al último.
+**No me deja quitar la última cadena (o el último cliente) de una oferta.**
+Es por diseño: una oferta «Incluir» no se queda sin nadie (409, mensaje de arriba) y el editor no muestra la × del último. Agregue primero a quien sigue y luego quite al anterior, o desactive la oferta. En «Excluir» sí se puede, con la confirmación «La oferta quedará para todos los clientes.».
 
-**¿Por qué el aviso o el nombre de la lista dedicada salen en español con la pantalla en inglés?**
-Los arma el servidor y todavía no tienen versión en inglés (tampoco la vigencia de una oferta: «desde el …, sin fecha de fin»). Usan fecha día/mes/año. Los datos son los mismos.
+**¿Por qué el aviso o el nombre de la lista dedicada salen en español, o con la fecha distinta a la de la pantalla?**
+En la web del personal ya salen en el idioma de la interfaz y con las fechas de la compañía (el aviso de precio, el nombre de la lista dedicada y la vigencia de una oferta). Si los ve en español y con día/mes/año es porque falta algún dato en la respuesta (la web muestra entonces el texto del servidor) o porque están en otro sitio: los avisos de la ventana de la oferta, los mensajes de error, la fuente `SPECIAL_PRICE` o una pantalla que no es la web del personal. Los datos son los mismos.

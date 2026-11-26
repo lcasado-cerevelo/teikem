@@ -225,6 +225,42 @@ public sealed class OfferAudienceServiceTests
     }
 
     [Fact]
+    public async Task Removing_the_last_client_or_chain_of_an_INCLUDE_offer_is_409_and_EXCLUDE_can_be_emptied()
+    {
+        await using var x = await PriceWorld.CreateAsync();
+        var p = await x.ProductAsync("A", 10m);
+        var walg = await ChainAsync(x, "Walgreens");
+
+        async Task Last(Func<Task> act)
+        {
+            var ex = await Assert.ThrowsAsync<ConflictException>(act);
+            Assert.Equal("Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.", ex.Message);
+        }
+
+        // un cliente y una cadena: se quita uno; el que queda, no (ni el cliente ni la cadena)
+        var inc = await ItemAsync(x, await CreateAsync(x, "Solo C1 y Walgreens", OfferAudienceModes.Include), p, 5m);
+        await AddClientsAsync(x, inc, x.C1);
+        await AddChainsAsync(x, inc, walg);
+        var left = await x.Offers.RemoveClientAsync(inc.PublicId, x.C1.PublicId, default);
+        Assert.Equal((0, 1), (left.Clients.Count, left.Chains!.Count));
+        await Last(() => x.Offers.RemoveChainAsync(inc.PublicId, walg.PublicId, default));
+        await AddClientsAsync(x, inc, x.C2);
+        await x.Offers.RemoveChainAsync(inc.PublicId, walg.PublicId, default);
+        await Last(() => x.Offers.RemoveClientAsync(inc.PublicId, x.C2.PublicId, default));
+        // nada cambió: sigue «solo para» C2, no para todos
+        var stored = await x.Offers.GetAsync(inc.PublicId, default);
+        Assert.Equal((OfferAudienceModes.Include, false, 1), (stored.AudienceMode, stored.AppliesToAll, stored.Clients.Count));
+        Assert.Equal(5m, Assert.Single((await x.DraftAsync(x.C2, new SalesOrderLineRequest(p.PublicId, 1m))).Lines).UnitPrice);
+        Assert.Equal(10m, Assert.Single((await x.DraftAsync(x.C1, new SalesOrderLineRequest(p.PublicId, 1m))).Lines).UnitPrice);
+
+        // una EXCLUDE sí se vacía (vale para todos)
+        var exc = await CreateAsync(x, "Todos menos Walgreens", OfferAudienceModes.Exclude);
+        await AddChainsAsync(x, exc, walg);
+        var emptied = await x.Offers.RemoveChainAsync(exc.PublicId, walg.PublicId, default);
+        Assert.Equal((OfferAudienceModes.Exclude, 0), (emptied.AudienceMode, emptied.Chains!.Count));
+    }
+
+    [Fact]
     public async Task Publish_include_without_rows_is_422_exclude_without_rows_publishes()
     {
         await using var x = await PriceWorld.CreateAsync();
@@ -268,9 +304,10 @@ public sealed class OfferAudienceServiceTests
         Assert.DoesNotContain((await x.Offers.GetAsync(a.PublicId, default)).Warnings, k => k.Code == PriceNoticeCodes.CheaperOffer);
         await SetChainActiveAsync(x, walg, true);
 
-        // B pasa a excluir: excluye a C1 → A (solo la cadena Walgreens, que no está excluida) sigue cruzándose
-        await x.Offers.RemoveClientAsync(b.PublicId, x.C1.PublicId, default);
-        await x.Offers.UpdateAsync(b.PublicId, new OfferRequest(AudienceMode: OfferAudienceModes.Exclude), default);
+        // B pasa a excluir (el último escogido de una INCLUDE no se quita: se desactiva y se arma otra B que excluye a C1) → A (solo la cadena Walgreens, que no
+        // está excluida) sigue cruzándose
+        await x.Offers.DeactivateAsync(b.PublicId, default);
+        b = await ItemAsync(x, await CreateAsync(x, "B excluye", OfferAudienceModes.Exclude), p, 4m);
         await AddClientsAsync(x, b, x.C1);
         Assert.Contains((await x.Offers.GetAsync(a.PublicId, default)).Warnings, k => k.Code == PriceNoticeCodes.CheaperOffer);
         // B excluye además la cadena Walgreens: A no alcanza a nadie de B
@@ -308,8 +345,8 @@ public sealed class OfferAudienceServiceTests
         await x.Offers.DeactivateAsync(deactivated.PublicId, default);
         var draft = await CreateAsync(x, "Borrador");
         await x.Offers.UnpublishAsync(draft.PublicId, default);
-        // una fila quitada no cuenta: incluye Walgreens y la quita
-        var removed = await AddChainsAsync(x, await CreateAsync(x, "Quitada", OfferAudienceModes.Include), walg);
+        // una fila quitada no cuenta: incluye Walgreens y CVS y quita Walgreens (el último de una INCLUDE no se quita)
+        var removed = await AddChainsAsync(x, await CreateAsync(x, "Quitada", OfferAudienceModes.Include), walg, cvs);
         await x.Offers.RemoveChainAsync(removed.PublicId, walg.PublicId, default);
 
         var forWalg = await x.Offers.ListAsync(null, null, false, default, walg.PublicId);
@@ -392,7 +429,8 @@ public sealed class OfferAudienceServiceTests
         // las piezas de archivos, productos y kits no se usan en estos caminos
         var svc = new OfferService(db, tenant, TenantClock.Default, lookups, null!, null!, null!);
 
-        var offer = await svc.CreateAsync(new OfferRequest("Circular", TenantClock.Default.Today, AudienceMode: OfferAudienceModes.Include), default);
+        // EXCLUDE: el último escogido de una INCLUDE no se quita (Lote 247)
+        var offer = await svc.CreateAsync(new OfferRequest("Circular", TenantClock.Default.Today, AudienceMode: OfferAudienceModes.Exclude), default);
         var before = await db.AuditLogs.IgnoreQueryFilters().AsNoTracking().CountAsync(l => l.EntityTypeLookupId == 1);
         await svc.AddChainsAsync(offer.PublicId, new OfferChainsRequest(new[] { chain.PublicId }), default);
         var logs = await db.AuditLogs.IgnoreQueryFilters().AsNoTracking().Where(l => l.EntityTypeLookupId == 1).OrderBy(l => l.AuditLogId).ToListAsync();

@@ -325,7 +325,10 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         }, ct);
     }
 
-    /// <summary>Quita un cliente de la oferta (en lógico). Lote 234: puede quedarse sin clientes (entonces no aplica a nadie hasta que se escoja otro).</summary>
+    /// <summary>
+    /// Quita un cliente de la oferta (en lógico). Una EXCLUDE puede quedarse sin escogidos (vale para todos). Lote 247: el último cliente o cadena de una INCLUDE no
+    /// se quita (409 <see cref="OfferRules.IncludeNeedsMember"/>); antes la oferta se quedaba sin público y el editor la pasaba a «para todos».
+    /// </summary>
     public async Task<OfferDto> RemoveClientAsync(Guid publicId, Guid clientPublicId, CancellationToken ct)
     {
         var clientId = await db.Set<Client>().AsNoTracking().Where(c => c.PublicId == clientPublicId).Select(c => (int?)c.ClientId).FirstOrDefaultAsync(ct)
@@ -334,7 +337,18 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         {
             var row = offer.Clients.FirstOrDefault(c => c.IsActive && c.ClientId == clientId) ?? throw new NotFoundException(OfferRules.ClientNotInOffer);
             row.IsActive = false;
+            EnsureIncludeKeepsMember(offer);
         }, ct);
+    }
+
+    /// <summary>
+    /// Lote 247: una oferta INCLUDE («solo para» los escogidos) no se queda sin clientes ni cadenas: 409 <see cref="OfferRules.IncludeNeedsMember"/>. Se llama
+    /// después de marcar la fila como quitada (MutateAsync no guarda nada si esto lanza).
+    /// </summary>
+    private static void EnsureIncludeKeepsMember(Offer offer)
+    {
+        if (offer.AudienceMode == OfferAudienceModes.Include && !offer.Clients.Any(c => c.IsActive) && !offer.Chains.Any(c => c.IsActive))
+            throw new ConflictException(OfferRules.IncludeNeedsMember);
     }
 
     // ---------------------------------------------------------------- cadenas (Lote 247)
@@ -364,7 +378,7 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
 
     /// <summary>
     /// Quita una cadena de la oferta (en lógico). 404 «Cadena no encontrada.» si no es de la compañía; 404 «Cadena de la oferta no encontrada.» si no está en la oferta.
-    /// Una INCLUDE puede quedarse sin escogidos (no aplica a nadie) y una EXCLUDE sin escogidos vale para todos.
+    /// Una EXCLUDE sin escogidos vale para todos; el último cliente o cadena de una INCLUDE no se quita (409 <see cref="OfferRules.IncludeNeedsMember"/>).
     /// </summary>
     public async Task<OfferDto> RemoveChainAsync(Guid publicId, Guid chainPublicId, CancellationToken ct)
     {
@@ -373,6 +387,7 @@ public sealed class OfferService(TeikemDbContext db, ITenantContext tenant, ITen
         {
             var row = offer.Chains.FirstOrDefault(c => c.IsActive && c.ChainId == chainId) ?? throw new NotFoundException(OfferRules.ChainNotInOffer, feminine: true);
             row.IsActive = false;
+            EnsureIncludeKeepsMember(offer);
         }, ct);
     }
 

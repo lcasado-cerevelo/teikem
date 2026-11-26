@@ -169,6 +169,21 @@ describe('Precios y ofertas — Ofertas (lote 229)', () => {
     expect(mock.calls.some((c) => c.url.pathname === '/api/v1/price-lists/offers')).toBe(false)
   })
 
+  it('con la interfaz en inglés la vigencia de la oferta se arma con las fechas, no con el texto en español del servidor', async () => {
+    setLang('en')
+    try {
+      const user = userEvent.setup()
+      wrap(EDIT)
+      const card = await screen.findByRole('article', { name: 'Navidad' })
+      await user.click(within(card).getByRole('button', { name: /Open offer|View offer/ }))
+      const dialog = await screen.findByRole('dialog', { name: 'Navidad' })
+      expect(await within(dialog).findByText('from 11/01/2026, no end date')).toBeInTheDocument()
+      expect(dialog.textContent).not.toMatch(/desde el|sin fecha de fin/)
+    } finally {
+      setLang('es')
+    }
+  })
+
   it('Nueva oferta: valida el nombre, avisa que sin «hasta» no vence y manda el cuerpo de crear', async () => {
     const user = userEvent.setup()
     wrap(EDIT)
@@ -418,5 +433,31 @@ describe('Precios y ofertas — Ofertas (lote 229)', () => {
     await user.click(within(confirm).getByRole('button', { name: 'Dejarla para todos' }))
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'DELETE' && c.url.pathname === `/api/v1/offers/${O1}/chains/${CHAIN}`)).toBe(true))
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'PATCH' && JSON.stringify(c.body) === '{"audienceMode":"ALL"}')).toBe(true))
+  })
+
+  it('lote 247: el último de «Incluir» no tiene botón de quitar y se dice por qué; con dos, se quita uno sin pasar a todos', async () => {
+    const WALG = { chainPublicId: CHAIN, name: 'Walgreens', isActive: true, clientCount: 3 }
+    mock.o1 = { audienceMode: 'INCLUDE', appliesToAll: false, chains: [WALG] }
+    const user = userEvent.setup()
+    const view = wrap(EDIT)
+    let dialog = await openOffer(user, 'Navidad')
+    const include = await within(dialog).findByRole('region', { name: 'Incluir' })
+    expect(within(include).queryByRole('button', { name: 'Quitar la cadena Walgreens' })).toBeNull()
+    expect(within(include).getByText('Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.')).toBeInTheDocument()
+    // «Excluir» queda deshabilitada y no dice «quite lo escogido» (no se puede quitar el último)
+    const exclude = within(dialog).getByRole('region', { name: 'Excluir' })
+    expect(within(exclude).getByText(/desactívela y cree otra/)).toBeInTheDocument()
+    expect(within(exclude).queryByText('Quite lo escogido en la otra caja para usar esta.')).toBeNull()
+    view.unmount()
+
+    // con un cliente y la cadena: los dos se pueden quitar y no se pide confirmar ni se pasa a «para todos»
+    mock.calls.length = 0
+    mock.o1 = { audienceMode: 'INCLUDE', appliesToAll: false, chains: [WALG], clients: [{ clientPublicId: 'c-1', code: 'FARM', name: 'Farmacia Central' }] }
+    wrap(EDIT)
+    dialog = await openOffer(user, 'Navidad')
+    await user.click(await within(dialog).findByRole('button', { name: 'Quitar la cadena Walgreens' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'DELETE' && c.url.pathname === `/api/v1/offers/${O1}/chains/${CHAIN}`)).toBe(true))
+    expect(screen.queryByRole('dialog', { name: '¿Quitar el último?' })).toBeNull()
+    expect(mock.calls.some((c) => c.method === 'PATCH' && JSON.stringify(c.body) === '{"audienceMode":"ALL"}')).toBe(false)
   })
 })

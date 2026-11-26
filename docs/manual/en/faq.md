@@ -11668,7 +11668,7 @@ Publishing an empty offer was attempted (422). Add lines and publish.
 
 **What does "Escoja al menos un cliente o marque que la oferta aplica a todos los clientes." mean?**
 (Choose at least one client or mark that the offer applies to all clients.)
-Publishing a chosen-clients offer without clients, removing the last client of a published offer, or unchecking «Applies to all» on an already published offer was attempted (422). Add clients, or move the offer to draft first.
+Publishing a chosen-clients offer without clients, removing the last client of a published offer, or unchecking «Applies to all» on an already published offer was attempted (422). Add clients, or move the offer to draft first. *(Since Batch 234 offers have no draft and, since Batch 247, removing the last client or chain of an «Include» offer gives 409 «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.»; see Batch 247.)*
 
 **What does "La oferta cambió al mismo tiempo. Recárguela e intente de nuevo." mean?**
 (The offer changed at the same time. Reload it and try again.)
@@ -12138,7 +12138,7 @@ With **Deactivate** (you can **Reactivate** it later). It stops applying to new 
 It is from before Batch 234. The update script published, once, the active offers that were drafts; if one remains (for example, one that was deactivated and was reactivated), open it and press **Publish**: it is the only button that takes it out of there.
 
 **The offer is for chosen clients and I have not chosen any yet. Does it apply?**
-It applies to no one until you choose at least one client; the window says so (“This offer does not apply to anyone yet: choose at least one client.”). Removing the last client or unchecking “Applies to all clients” is no longer rejected.
+It applies to no one until you choose at least one client; the window says so (“This offer does not apply to anyone yet: choose at least one client.”). Unchecking “Applies to all clients” is no longer rejected. **Changed in Batch 247:** removing the last client or chain of an «Include» offer is no longer possible (409 «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.» = “An offer «only for» the chosen ones needs at least one client or chain: add another one before removing the last, or deactivate the offer.”); see Batch 247 below.
 
 **The offer or product photos showed as broken (the little box with the text) “sometimes yes, sometimes no”.**
 There were two faults, fixed in Batch 234: (1) the screen released the photo it held in memory when a window showing it was closed, even though another part of the screen (the card, the line, the order) was still using it; on reopening it showed as broken until the page was reloaded. (2) A photo uploaded with a file name with **accents or ñ** (“Diseño sin título.png”, “Promoción.jpg”) never loaded: the server failed when answering it. You do not need to rename the files or upload them again: the photos already saved show again.
@@ -12566,10 +12566,532 @@ In «Charts» press «Print presentation or save PDF» and in the browser's dial
 **The Pulse «Month sales vs quota» figure does not match the sum of the sales reps.**
 The Pulse sales also include clients without a sales rep, and the quota is the sum of the active sales reps. Assign sales reps to all clients.
 
+## Batch 242 — Dispatching from Picking and packing
+
+**Where do I dispatch a sales order from the warehouse?**
+In Warehouse → Picking & packing, «By document» panel: open the order (click its number) and press **«Dispatch»**. It is the same dispatch as Sales → the order → «Dispatch»: it takes the inventory out of the reserved bins and creates the EMP-##### pick.
+
+**What is the difference between «Dispatch» and «Collect» on the record?**
+«Dispatch» takes the goods out against the order (it uses the reservation and leaves the order dispatched). «Collect» only fills in the manual pick form on the left; that pick is manual: it does not use the reservation or change the order's status.
+
+**The «Dispatch» button does not show.**
+It only shows on sales orders and exit notices that have something reserved still to take out, and for someone with the pick permission (warehouse.pick). An already packed shipment or an order with nothing reserved (for example, with backorder) does not show it.
+
+**What is «Pack» for?**
+To create the transport order (the shipment) of what was picked when the order goes out for delivery. If the client picks it up («Pickup»), it is not packed: when dispatching choose «Pickup» and that is it.
+
+**I dispatched and I do not know whether the inventory went out.**
+The order becomes «Dispatched» (or «Partially dispatched» if it left quantities not taken out), the list says «Taken out N of M» and the record shows the EMP-##### pick; the inventory goes down in Products & inventory and in the movement ledger.
+
+## Batch 243 — E-mail with the complete sales order when it is requested
+
+**How do I make the e-mail with the order go out when it is requested?**
+In System → Notification rules create a rule for the event «Sales order requested» (it already brings «Order's seller» and the e-mail text with `{orderDetail}`), turn on the EMAIL channel and activate the rule. For the client to also get a copy, add the recipient «Order's client». With no active rule nothing goes out. Detail: [14 §3.1 bis](../14-avisos.md#31-bis-el-correo-con-la-orden-de-venta-completa-lote-243-2026-11-25) (Spanish edition).
+
+**What does «Este evento no admite vista previa con un documento real.» mean? (HTTP 400)**
+You put an order number (`reference`) in the preview or in «Send test» of an event that cannot read documents. Today only «Sales order requested» accepts it. Delete the number and use the example, or choose that event.
+
+**What does «La variable {orderDetail} es un bloque y solo puede ir en el texto, no en el asunto.» mean? (HTTP 400)**
+`{orderDetail}` is the whole order as a table and does not fit in a subject line. Remove it from the subject and leave it in the e-mail text.
+
+**What does «Este evento no tiene el destinatario 'X'.» mean? (HTTP 400)**
+The rule asks for an «of the event» recipient that this event does not offer. For «Sales order requested» only `SELLER` (Order's seller) and `CLIENT` (Order's client) exist. Choose it from the rule's «Of the event» list instead of typing it.
+
+**What does «Tipo de destinatario desconocido: 'X'. Use ROLE, USER, EMAIL, PHONE o CONTEXT.» mean? (HTTP 400)**
+The recipient type you sent does not exist. Use role, user, e-mail, phone or «Of the event» (`CONTEXT`). It does not happen from the screen; only when calling the API by hand.
+
+**What does «Destinatario de la vista previa desconocido: 'X'. Use STAFF o CUSTOMER.» mean? (HTTP 400)**
+There are only two versions of the e-mail: the staff's (`STAFF`) and the client's copy (`CUSTOMER`). In the «Preview» window it is chosen in «For whom».
+
+**What does «Idioma no válido: 'X'. Use es o en.» mean? (HTTP 400)**
+The preview is only built in Spanish (`es`) or English (`en`). With no language it uses the company's.
+
+**What does «Orden de venta no encontrada.» or «Orden de venta 'OV-X' no encontrada.» mean in the preview? (HTTP 404)**
+The number does not exist in your company, is misspelled, or the order is outside your warehouse or client scope. Check the number (for example `OV-00012`) and try again; with no number an example is used.
+
+**The preview with a real order says «Falta el permiso 'sales.view'.» (HTTP 403).**
+Seeing the e-mail of a real order requires, besides `notifications.manage`, the `sales.view` permission. Ask the administrator for it, or use the preview without a number (with the example).
+
+**The preview with a real order says «El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» (HTTP 403).**
+The company does not have the Sales orders module turned on. The platform administrator turns it on.
+
+**In the preview «La orden OV-00012 se canceló antes de enviar el aviso.» or «La orden OV-00012 sigue en borrador.» shows (HTTP 400, field `reference`).**
+The e-mail is only built from requested orders. A cancelled or draft one does not produce an e-mail; choose another order.
+
+**In the Notice log I see «La orden OV-00012 se canceló antes de enviar el aviso.» (SKIPPED).**
+The order was cancelled in the seconds between being requested and the system building the e-mail. It is correct: the e-mail of a cancelled order is not sent. There is nothing to resend.
+
+**In the log I see «La orden OV-00012 sigue en borrador.» (SKIPPED).**
+When building the e-mail the order was a draft. It is not sent. If the order is requested again, the notice goes out then.
+
+**In the log I see «La orden no tiene un vendedor con usuario activo en la compañía.» (SKIPPED, recipient «(Order's seller)»).**
+Neither whoever requested the order nor the user of the client's representative is active and with access to the company. Check in Roles & users that they are active, or add to the rule an e-mail or a role that receives the notice.
+
+**In the log I see «El cliente no tiene correo principal ni contactos marcados con correo.» (SKIPPED, recipient «(Order's client)»).**
+There is nobody to send the copy to. On the client's record put an e-mail on the primary contact (or on the client) or mark a person with an e-mail in «Receives email notices».
+
+**In the log I see ««Vendedor de la orden» no tiene correo.» or ««Cliente de la orden» no tiene teléfono.» or «… no tiene usuario en Teikem.» (SKIPPED).**
+The event's recipient exists but lacks the data that channel needs: e-mail (EMAIL), phone (SMS) or a Teikem user (bell and push). Add the data to their profile or to the client's record.
+
+**I see «Marcado para avisos pero sin correo: agréguele un correo.» on a client's contact.**
+You ticked «Receives email notices» but the person has no e-mail. It can be saved like this, but they will receive nothing until you add an e-mail (with the `contacts.manage` permission). The «Email notices» chip in the list shows in warning tone while it is missing.
+
+**The e-mail says «Esta orden cambió después de solicitarse; el correo muestra los datos vigentes.»**
+Someone modified the lines, quantities, prices or total between the order being requested and the e-mail being built. The e-mail's data is the current data. Only staff see it; the client's copy does not carry this notice.
+
+**The client did not receive the «Open the order in Teikem» button.**
+It is by design: the button and the internal notes only go in the staff version. Also, without `Notifications:WebBaseUrl` configured (nor `Auth:PasswordReset:WebBaseUrl`) the staff e-mail does not carry the button either.
+
+**The e-mail has no signature.**
+The signature is attached only if the order has one, it can be read from the file store and the attachments do not exceed 5 MB. If not, the e-mail goes out anyway, without an attachment.
+
+**The e-mail of a very large order shows cut off in Gmail («Message clipped»).**
+Teikem always sends all the lines. Gmail clips by itself e-mails over about 102 KB (orders of about 300 lines or more): press «View entire message». The whole order is also in Teikem.
+
+**I requested the order again and no other e-mail arrived.**
+It is correct: an order's e-mail goes out only once.
+
+**In TEST the e-mails are redirected to teikem@cerevelo.com. Is it an error?**
+No. In the test environment every e-mail to an address that is not `@cerevelo.com` is redirected to `teikem@cerevelo.com` so as not to write to real clients. The subject starts with `[TEST → original address]` and the e-mail carries a red band saying who it was going to. The client's copy of an order tested in TEST therefore reaches the test mailbox and not the client. It is by design; it is not fixed by adding real domains to the exceptions.
+
+**How do I see the e-mail on my computer without sending it to anybody?**
+In Notification rules open the rule and press «Preview» (with or without an order number). Support can also start the API with the local mailbox (Mailpit; development only) and see the whole e-mail at http://localhost:8025.
+
+## Batch 244 — Sales routes
+<!-- kemi:staff -->
+
+Chapter: [52 — Sales routes](52-rutas-de-venta.md). Screens: [L244](../frontend/l244-rutas-de-venta.md) (Spanish edition). **The API returns its messages in Spanish only**, so each question quotes the exact Spanish message. A sales route is not the delivery route or the trip: it only decides whose a sale is.
+
+### People on the route
+
+**What does «El papel debe ser PRIMARY (titular) o SUPPORT (apoyo).» mean? (HTTP 400)**
+The role sent when adding a person to the route is neither of the two. On screen it is chosen from a list («Primary» or «Support»); it only shows when calling the API by hand with another value.
+
+**What does «Escoja el usuario.» mean? (HTTP 400)**
+You tried to add a person to the route without choosing who. Look for the person by name or e-mail in «Add person» and choose them.
+
+**What does «El usuario no pertenece a esta compañía.» mean? (HTTP 400)**
+The user has no membership in the company (belongs to another company, to the portal, or does not exist). Choose someone from the people list; if missing, ask the administrator to add them to the company in Users.
+
+**What does «El usuario no está activo en esta compañía: actívelo o escoja otro.» mean? (HTTP 400)**
+The person exists but is suspended, invited (has not accepted yet) or inactive. A person on the route must be active. Activate them in Users or choose another. The same goes for a representative's user.
+
+**What does «La ruta está desactivada: actívela o escoja otra.» mean? (HTTP 400)**
+You tried to add people to a deactivated route, or to choose it as a client's or a representative's route. Reactivate it in Settings → Routes or choose another. Remember that deactivating a route closed its people and reactivating it does not reopen them.
+
+**What does «La fecha de inicio no puede ser futura.» mean? (HTTP 400)**
+The «From» date of a person on the route is after today. Assignments are not scheduled in the future: put today or a past date.
+
+**What does «La fecha de inicio no puede ser anterior a la del titular actual (AAAA-MM-DD).» mean? (HTTP 400)**
+You tried to put a new primary with a «From» date before the one of the primary the route has today. Use that date or a later one; the previous primary is closed when the new one starts.
+
+**What does «La fecha de cierre no puede ser anterior a la de inicio.» mean? (HTTP 400)**
+When closing an assignment, the «Closing date» is before that person's «From» date. Choose an equal or later date.
+
+**What does «La fecha de cierre no puede ser futura.» mean? (HTTP 400)**
+When closing an assignment, the «Closing date» is after today. Put today or a past date.
+
+**What does «rowVersion inválido: se espera el valor base64 devuelto por la ficha.» mean? (HTTP 400)**
+A `rowVersion` that is not the value the record returned was sent. It only happens when calling the API by hand: use the value exactly as it came.
+
+**What does «La persona ya es titular de esta ruta.» mean? (HTTP 409)**
+You are making primary someone who already is. Nothing needs to be done.
+
+**What does «La persona ya es apoyo de esta ruta.» mean? (HTTP 409)**
+You are adding as support someone who already is current support. If you want them to be primary, add them with the «Primary» role: the support row closes by itself.
+
+**What does «La persona es la titular de esta ruta: cierre su asignación antes de ponerla de apoyo.» mean? (HTTP 409)**
+The person is today's primary and you tried to also add them as support. To turn them into support, first close their assignment as primary (the route is left without a primary until you put another).
+
+**What does «La asignación ya está cerrada.» mean? (HTTP 409)**
+That person already left the route. Reload the window. A closed assignment is not reopened: if they came back, add them again.
+
+**What does «La asignación ya está anulada.» mean? (HTTP 409)**
+The assignment was voided earlier (it was registered by mistake). It no longer counts and cannot be closed or voided again. Reload the window.
+
+**What does «Otra persona cambió las personas de la ruta al mismo tiempo: recargue e intente de nuevo.» mean? (HTTP 409)**
+Two people modified the same route at once (or an old value was used). There are never two primaries: the first wins. Reload the «People» window, check how it ended up and repeat your change if needed.
+
+**What does «Ruta no encontrada.» mean? (HTTP 404)**
+The route does not exist in your company (or belongs to another). Refresh the route list.
+
+**What does «Asignación no encontrada.» mean? (HTTP 404)**
+The assignment does not exist or does not belong to that route. Reload the people window.
+
+**How do I change the primary?** Add the new person with the «Primary» role: the previous primary is closed by itself when the new one starts. **Close or void?** Close when the person left the route (the history counts up to that date). Void only if it was registered by mistake: it stops counting in the history and in the analysis.
+
+### Sales reps and routes
+
+**What does «Escoja el usuario del representante: el vendedor siempre es un usuario de Teikem.» mean? (HTTP 400)**
+A new sales rep needs a user, and an existing one cannot have it removed. If the person has no user yet, create the user in System → Users and then choose it here (the list has the link «Go to Users to create the user»).
+
+**What does «El usuario ya es el representante «X».» mean? (HTTP 409)**
+That user is already the user of another active sales rep. A user can only be in one active sales rep. Deactivate the other sales rep (if it has no clients) or choose another user. It also shows when reactivating a sales rep whose user another one has taken.
+
+**What does «La ruta tiene clientes asignados: páselos a otra ruta antes de desactivarla.» mean? (HTTP 409)**
+There are active clients with that route as their own route. In Settings → Clients without a rep, use «Assign route» in bulk to move them to another route (or «Remove own route») and deactivate again.
+
+**What does «La ruta tiene representantes activos: páselos a otra ruta antes de desactivarla.» mean? (HTTP 409)**
+There are active sales reps on that route. Change their route in Settings → Sales reps and deactivate again.
+
+**What does «Ya hay una ruta activa con ese nombre.» mean? (HTTP 409)**
+When reactivating a route, another active route already uses its name. Change the name of one of the two.
+
+**What does «Representante no encontrado.» mean? (HTTP 404)**
+When loading quotas, a row carries a sales rep that does not exist in the company. Reload the Quotas screen.
+
+**I created a sales rep and it became the primary of its route. Why?** If its route was active and without a primary, its user becomes the automatic primary from today (the screen says «{name} became the primary of its route.»). If the route already had a primary, it is not touched. To change it, see «How do I change the primary?».
+
+**The route still has no primary even though it has sales reps.** If it has **several** sales reps with a user, all become support and you choose the primary (Settings → Routes → «People»). If none has a user, they cannot be people on the route: give them a user.
+
+**What does «Pass routes from representatives» do?** It passes each sales rep's route to their clients without a route and makes the only sales rep with a user of each route without a primary its primary (with several, support). Press «Simulate» first: it saves nothing. Running it again changes nothing more. It lists apart the sales reps without a user, which cannot be passed.
+
+### Client: route and preferred seller
+
+**What does «El cliente necesita una ruta antes de asignarle un vendedor preferido.» mean? (HTTP 400)**
+The client has no sales route (neither its own nor its sales rep's). First choose its route in the «Sales» panel (or assign it a sales rep with a route) and then the preferred one.
+
+**What does «El vendedor preferido debe ser una persona activa de la ruta del cliente.» mean? (HTTP 400)**
+The person you chose is neither a primary nor a current support of the client's route, or is not active. Choose someone from the route's list, or first add that person to the route in Settings → Routes → «People». If you change the route and the preferred seller in the same save, the preferred one is compared with the new route.
+
+**The record says «El vendedor preferido ya no pertenece a la ruta del cliente.» (it is a warning, not an error)**
+The preferred seller left the route (closed or voided), was deactivated, or the client's route was changed. Nothing is blocked: save the record with other changes without a problem. Choose another preferred seller from the current route or remove it with «Remove the preferred seller».
+
+**What does «Cliente no encontrado.» mean? (HTTP 404)**
+When viewing or changing a client's sales data, assigning route in bulk or asking for the seller options, the client does not exist in your company. In the bulk case it is enough that **one** is missing for none to be assigned. Reload the client list.
+
+**What does «Indique los clientes (clientIds).» mean? (HTTP 400)**
+You tried to assign route in bulk without ticking any client. Tick at least one.
+
+**What does «No se pueden mandar más de 2000 renglones en una sola llamada.» mean? (HTTP 400)**
+You ticked more than 2000 clients (or quotas) in a single operation. Do it in rounds. It also applies to the quota upload.
+
+**What does «El registro fue modificado por otro usuario; recargue e intente de nuevo.» mean? (HTTP 409)**
+Someone else changed the client while you were editing its sales data. Reload the record and repeat the change.
+
+**I assigned the route to several clients and their preferred seller ended up «outside the route».** It is normal: assigning route in bulk does not touch the preferred seller. Each client's record points it out; choose another or leave it.
+
+### Sales order: seller
+
+**What does «El vendedor debe ser el vendedor preferido del cliente o una persona vigente de su ruta.» mean? (HTTP 400)**
+In the draft you chose as seller someone who is neither the client's active preferred seller nor a current primary or support of its route. Choose from the «Seller» field's list. If you need someone else, add them as support of the client's route.
+
+**What does «Escoja el cliente que compra.» mean? (HTTP 400, field `client`)**
+The seller options (`seller-options`) were asked for without a client. In the order, first choose the client: the «Seller» field is filled with its sales team.
+
+**What does «Solo se puede editar una orden en borrador.» mean? (HTTP 422)**
+You tried to change the seller (or any data) of an already requested order. The seller and the route are frozen when requested and do not change. If the order went wrong, cancel it and create another.
+
+**Why does my earlier order have no route or seller?** Orders requested before Batch 244 were not backfilled: the list shows «—». New ones save route and seller when requested.
+
+**I changed the client's route or preferred seller and the requested order did not change.** It is on purpose: the order keeps forever the route and seller of the moment it was requested.
+
+**The «Seller» field is empty or says «No seller».** The client has no route, or its route has no active people, and whoever creates the order is not on the route. Assign a route to the client and put a primary. It can be requested anyway.
+
+### Quota by route or by person
+
+**What does «La cuota se lleva por ruta (ROUTE) o por persona (REP).» mean? (HTTP 400)**
+The `quotaBy` setting, or the `by` parameter of the quotas, carries another value. On screen it is chosen from a list («Sales route» or «Person (representative)»); it only shows when calling the API by hand.
+
+**What does «Cada renglón lleva el representante (repId) o la ruta (routeId), uno de los dos.» mean? (HTTP 400)**
+A row of the quota upload carries both ids or neither. Send `repId` or `routeId`, not both. It does not happen from the screen.
+
+**What does «La cuota debe ser cero o mayor, con hasta 2 decimales.» mean? (HTTP 400)**
+A quota amount is negative or has more than 2 decimals. Fix it; to remove the month's own quota, leave the amount empty.
+
+**What does «El mes debe tener la forma AAAA-MM (por ejemplo 2026-10).» mean? (HTTP 400)**
+The month of «By route», of its transactions or of the quotas is not in year-hyphen-month form. It is chosen from a list, so it only shows when calling the API by hand.
+
+**I changed to «The quota is measured by Sales route» and the compliance came out zero or «No quota».** Route quotas are loaded apart from the person ones. Load them in Settings → Quotas → «Quotas by sales route». The person ones stay saved.
+
+### Analysis by route and notices
+
+**A client's sale shows under «No route» or «No route or seller».** The client has no sales route (neither its own nor via a sales rep), or it is imported history that was not matched. Assign the route («Sales» panel or «Assign sales routes») or match the name. «No route or seller» goes into the reconciliation so that the month's total adds up.
+
+**A person shows as «No seller» inside a route.** That sale has no copied seller, nor an active sales rep of that route, and the route had no primary that day. Put a primary that starts earlier if the past needs fixing.
+
+**In the analysis, «No seller» carries the «Support» label.** It is a known visual defect of the screen; the figures are right.
+
+**«N rutas activas sin titular: …» or «N clientes activos sin ruta: …» showed up.** They are warnings, not errors, of the analysis (at the top, «For the analysis to add up, this is missing»). Put a primary on every route and a route on every client. «N rutas con el titular inactivo: …», «N representantes sin usuario: …» and «El usuario «X» está en varios representantes activos (…): su venta se cuenta en el primero que se creó.» also show.
+
+**What is «Sales route without a primary: {route}» in «Needs your attention»?** An active route has no current primary («It has no current primary») or its primary is no longer active («Its primary is no longer active»). Whoever administers the sales analysis sees it. Red if the route has clients. «Review the sales route» opens Settings → Routes: add a primary and the row disappears. It does not block requesting orders.
+
+**What happened to «By representative»?** It is still there, next to «By route». «By route» is the one that opens by default.
+
+**Is a sales route the same as a delivery route?** No. The sales route decides whose the sale is and against which quota it is measured. The delivery route and the trip belong to Transport.
+
+**Is «Cadenas» special?** No: it is just one more sales route.
+
+### Shared with Batch 241 that can also show here
+
+These messages are the same as Batch 241's ([section «Batch 241»](#batch-241--sales-analysis)): «El cuerpo de la solicitud es obligatorio.» (400), «Ya hay un representante activo con ese nombre.» (409) and «El representante tiene clientes asignados: páselos a otro representante antes de desactivarlo.» (409). And the module-off one: «El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» (403). Without permission, the API answers 403 with no message of its own and a `PERMISSION_DENIED` event is left.
+
+## Batch 245 — Client chains
+<!-- kemi:staff -->
+
+Chapter: [53 — Client chains](53-cadenas.md). Screens: [L245](../frontend/l245-cadenas.md) (Spanish edition). **The API returns its messages in Spanish only**, so each question quotes the exact Spanish message. A chain groups clients (Walgreens, CVS…); it is not a sales route and does not change the client's route.
+
+### Creating and editing a chain
+
+**What does «Escriba el nombre de la cadena.» mean? (HTTP 400)**
+You tried to create or rename a chain without a name (or with only spaces). Type a name.
+
+**What does «El nombre no puede pasar de 100 caracteres.» mean? (HTTP 400)**
+The chain's name is longer than 100 characters. Shorten it. On screen the same limit warns «The name admits up to 100 characters.» before saving.
+
+**What does «Las notas no pueden pasar de 500 caracteres.» mean? (HTTP 400)**
+The chain's notes exceed 500 characters. Shorten them. On screen: «The notes admit up to 500 characters.».
+
+**What does «Ya hay una cadena activa con ese nombre.» mean? (HTTP 409)**
+Another **active** chain of your company already has that name. The comparison ignores case, accents, periods and commas: «Walgreens.» and «WALGREENS» are the same name. Use another name, or look for the chain that already exists (it may be among the active ones spelled differently). It also shows when **reactivating** an inactive chain whose name another active one has taken: rename one of the two.
+
+**What does «El cuerpo de la solicitud es obligatorio.» mean? (HTTP 400)**
+The API received the call without a body. It only shows when calling the API by hand; it does not happen on screen.
+
+**What does «Cadena no encontrada.» mean? (HTTP 404)**
+The chain does not exist or belongs to another company (it does not say which of the two). Reload the list; if the address had an `?id=` from another session or company, choose the chain from the list.
+
+**What does «El registro fue modificado por otro usuario; recargue e intente de nuevo.» mean? (HTTP 409)**
+Someone else changed the chain (or assigned clients to it) while you were editing, deactivating or filling it. Nothing of yours was saved. Reload and repeat. It happens mostly when deactivating a chain while someone adds a client to it.
+
+### Deactivating and reactivating
+
+**What does «La cadena tiene 1 cliente activo: quítelo de la cadena antes de desactivarla.» mean? (HTTP 409)**
+A chain with **active** clients cannot be deactivated. Go into the chain's record, remove the client (or move it to another chain from its record) and deactivate again.
+
+**What does «La cadena tiene N clientes activos: quítelos de la cadena antes de desactivarla.» mean? (HTTP 409)**
+It is the same case with several clients (N is the number). Tick the clients in «Chain clients» and press «Remove», or use «Remove» from the API. **Inactive** clients do not count and keep their chain.
+
+**What does «La cadena está desactivada: actívela o escoja otra.» mean? (HTTP 400)**
+You tried to add clients, change a client's chain or do a bulk add into an **inactive** chain. Reactivate it (the chain's record → «Reactivate») or choose another.
+
+### Assigning and removing clients
+
+**What does «Indique los clientes (clientPublicIds).» mean? (HTTP 400)**
+The client list was sent empty or missing. On screen, choose at least one client. When calling the API, send `clientPublicIds`.
+
+**What does «No se pueden mandar más de 2000 clientes en una sola llamada.» mean? (HTTP 400)**
+A call to add or remove clients carries more than 2000. Split it into several, or use «Add by name».
+
+**What does «Cliente no encontrado.» mean? (HTTP 404)**
+One of the clients does not exist or belongs to another company. None was changed: the whole call is rejected. Remove the extra client and repeat.
+
+**Why did a client not get into the chain and there was no error?**
+It was already in **another** chain: it is skipped and reported (on screen, «N clients are already in another chain: move them to this one?»). Press «Move them» if you want to change them. A client that was already in this chain counts under «already in» and nothing happens.
+
+### Bulk add by name
+
+**What does «Escriba al menos 3 letras del inicio del nombre.» mean? (HTTP 400)**
+The «Name starts with» text has fewer than 3 letters or digits (periods, commas and spaces do not count). Type more of the start of the name.
+
+**What does «El prefijo no puede pasar de 100 caracteres.» mean? (HTTP 400)**
+The bulk-add text exceeds 100 characters. Shorten it.
+
+**What does «Un cliente excluido no está entre los que encontró la simulación.» mean? (HTTP 400)**
+A client that the simulation did not find was excluded (for example, because the text or a switch changed after simulating, or it belongs to another company). Simulate again and exclude from the new table.
+
+**What does «Falta la huella de la simulación (fingerprint): simule antes de aplicar.» mean? (HTTP 400)**
+You tried to apply without having simulated. On screen press «Simulate» first (the «Apply» button is off without a current simulation). When calling the API, send the `fingerprint` the simulation returned.
+
+**What does «Los clientes que coinciden cambiaron desde la simulación: vuelva a simular antes de aplicar.» mean? (HTTP 409)**
+Between «Simulate» and «Apply» something that affects the result changed: someone renamed, deactivated or created a matching client, or moved it to another chain. An old simulation is not valid either if you already applied (the second time gives 0 assigned). **Nothing was written.** Press «Simulate», review and apply again; the screen already simulates again by itself and keeps the exclusions.
+
+**What does «La simulación encontró N clientes y el máximo por aplicación es 2000: use un prefijo más largo.» mean? (HTTP 400)**
+The text matches more than 2000 clients (N is the number) and is not applied in one go. Type more of the name to narrow it down. On screen the simulation says «There are N matches and the maximum is 2000: use a more specific text.».
+
+**Why did «Walgreensboro» not get in with «Walgreens»?**
+Because «Whole word» is on: what follows the text cannot be a letter or a digit. If you did want it, turn off «Whole word» and simulate again.
+
+**Why does «No client starts with that text.» show?**
+It is a screen warning, not an error: the simulation found no **active** clients whose name starts like that (ignoring case, accents, periods and commas). Check the text; inactive clients do not enter.
+
+**How do I exclude a client from the simulation?**
+Untick its box in the table: the row becomes «Excluded» and is not touched when applying. There is no need to simulate again.
+
+### Filters and analysis by chain
+
+**What does «Escoja una cadena o «Sin cadena», no las dos.» mean? (HTTP 400)**
+The client list received `chainPublicId` and `noChain=true` at once. On screen the «Chain» select only allows one option; it only shows when calling the API by hand.
+
+**Why is the Clients chain filter empty?**
+The chain does not exist or belongs to another company (there is no 404 and it does not say which), or it has no **active** clients (by default the list does not show inactive ones: turn on «Show inactive»).
+
+**What does «El mes debe tener la forma AAAA-MM (por ejemplo 2026-10).» mean? (HTTP 400)**
+The month of «By chain» (or its comparison) is not in YYYY-MM format. On screen it is chosen from a list; it only shows when calling the API with a value like `2026-13`.
+
+**What does «Indique la cadena (chainPublicId).» mean? (HTTP 400)**
+A chain's sales series (`/sales-analysis/by-chain/series`) was requested without `chainPublicId`. Choose the chain.
+
+**What does «El mes final no puede ser anterior al inicial.» mean? (HTTP 400)**
+In a chain's series, `toMonth` is before `fromMonth`. Swap the months.
+
+**What does «El rango no puede pasar de 36 meses.» mean? (HTTP 400)**
+The chain's series asks for more than 36 months. Shorten the range (the default is 12).
+
+**Why does «By chain» not add up, or say «No chain» with a lot of sales?**
+Look at the reconciliation's **Difference**: it must be $0.00. The «No chain» row gathers the clients without a chain and the history sales that were not matched to any client. Assign chains to those clients or match the names in Sales analysis → Settings.
+
+**I moved a client to another chain and its earlier sales changed too. Is it an error?**
+No. The sale (the one imported from QuickBooks too) is counted in the client's **current** chain, and the «Chain» column of the sales orders also shows the current one: old orders keep no copy.
+
+**Is Solutions' «Cadenas» route a chain?**
+No. It is a sales route (chapter 52) and this batch does not touch it. Chains are created in Lists → Chains.
+
+### Shared with other batches that can also show here
+
+«El módulo 'SALES_ORDERS' no está habilitado para esta compañía.» (403): chains and «By chain» belong to the Sales orders module; ask for it to be turned on. Without permission (`sales.chain` to administer; `sales.chain`, `clients.read` or `sales.view` to view; `sales.analysis.view` for «By chain») the API answers 403 with no message of its own and a `PERMISSION_DENIED` event is left.
+
+## Batch 246 — Purchasing: import template and IIF to QuickBooks
+<!-- kemi:staff -->
+
+Chapter: [54 — Purchasing: importing with the user's template and passing purchase orders to QuickBooks](54-compras-plantilla-quickbooks.md). Screens: [L246](../frontend/l246-compras.md) (Spanish edition). **The API returns its messages in Spanish only**, so each question quotes the exact Spanish message. **Warning:** the purchase orders IIF file has not yet been tested against a real QuickBooks Desktop.
+
+### Purchase orders import template
+
+**What does «La plantilla debe incluir la columna documentNumber.» mean? (HTTP 400)**
+The template has no column assigned to the **Document number**. It is required and must go in a column (it does not accept a fixed value): it is how the system knows which rows form one order. Assign the column and save.
+
+**What does «La plantilla debe incluir la columna sku.» mean? (HTTP 400)**
+The **SKU** column is missing. Assign it; it does not accept a fixed value.
+
+**What does «La plantilla debe incluir la columna quantity.» mean? (HTTP 400)**
+The **Quantity** column is missing. Assign it; it does not accept a fixed value.
+
+**What does «La plantilla debe indicar el proveedor: en la columna supplier o como valor fijo.» mean? (HTTP 400)**
+The template does not say who the supplier is. Assign the **Supplier** column or, if the whole file is from a single supplier, add the default value «supplier» with its name as it is in Teikem. If several things are missing, the message shows one at a time (first document number, then SKU, quantity and supplier): fix and save again.
+
+**What does «Este tipo de plantilla no lleva cliente.» mean? (HTTP 400)**
+A `clientPublicId` or `defaultClientPublicId` was sent when creating or editing a purchase orders template. Purchases belong to the company and carry no client. Remove the client. The field does not show on screen; it only happens when calling the API by hand.
+
+**What does «Plantilla de importación no encontrado.» mean? (HTTP 404)**
+The template does not exist, belongs to another company or is of another type (for example a shipments or products one). It does not say which of the three it is. Reload the list and choose a **Purchase orders** template.
+
+**What does «Tipo de plantilla desconocido: PURCHASE_ORDER.» mean? (HTTP 400)**
+A purchasing template was requested through the shipments templates route (`/api/v1/import-templates`). Purchasing ones are administered at `/api/v1/purchase-orders/import-templates` (or in Purchasing → Import and System → Templates).
+
+**What does «Ya existe una plantilla de importación con ese nombre.» mean? (HTTP 409)**
+Another template **of the same type** already has that name. Rename it. A shipments template with the same name does not get in the way.
+
+**What does «La plantilla ya está inactiva.» or «La plantilla ya está activa.» mean? (HTTP 409)**
+You asked to deactivate a template that was already inactive, or to reactivate one that was already active. Reload the list: someone already did it.
+
+**What do «Campo desconocido: X.», «El campo X está repetido.», «La posición N está repetida.» or «El campo X no admite valor por defecto.» mean? (HTTP 400)**
+They are errors in the column definition. The valid fields are supplier, document number, order date, expected date, SKU, description, quantity and unit cost; each field and each position goes only once, and **only the supplier** accepts a fixed value.
+
+**The «New template» window of Purchasing said «of shipments» and talked about consignee and package.**
+It was a text defect, already fixed: the editor's title and help texts are specific to each type. Purchasing says «New purchase orders import template» (and talks about the order number, the SKU, the quantity and the supplier); products, suppliers, warehouses and bins have their own; shipments and consignees did not change. The field names did not change.
+
+### Importing with a template
+
+**What does «Elija la plantilla de importación.» mean? (HTTP 400)**
+You chose the source «Template (the user's)» without choosing a template (or the API received `source=TEMPLATE` without `templatePublicId`). Choose one or create one with «New template».
+
+**What does «La plantilla solo se usa con el origen TEMPLATE.» mean? (HTTP 400)**
+A `templatePublicId` was sent with the `GENERIC` or `QUICKBOOKS` source. Use the «Template» source or remove the template.
+
+**What does «El origen de la importación no es válido: use GENERIC, QUICKBOOKS o TEMPLATE.» mean? (HTTP 400)**
+The API's `source` is none of the three. On screen the source is chosen from a list.
+
+**What does «La plantilla está inactiva; reactívela o elija otra.» mean? (HTTP 400)**
+The chosen template is deactivated. Reactivate it in System → Templates or choose another.
+
+**An order came out «Blocked» with «La fecha «…» (orderDate) no es válida: use AAAA-MM-DD o MM/DD/AAAA.» (BAD_VALUE)**
+That order's date cell could not be read. Write it as `2026-11-25` or `11/25/2026` and import the same file again. (With the template source an unreadable date blocks; with QuickBooks and the generic format today is still taken.)
+
+**An order came out «Blocked» with ««…» (quantity) no es un número: use punto decimal, sin letras.» (BAD_VALUE)**
+The quantity or the cost carries letters or other text. Use a decimal point («12.50»); the comma is taken as a thousands separator («1,250.50»). The message says in parentheses which field it is (`quantity` or `unitCost`).
+
+**An order came out «Blocked» with «La fila N no trae número de documento (documentNumber); sin él no se sabe a qué orden va.» (BAD_VALUE)**
+Row N of the file has the document number cell empty. Fill it in (rows with the same number form one order) and import again. A row without a number is not joined with the others.
+
+**An order came out «Blocked» with «El producto X viene en varias líneas de la orden con costos distintos (…); corrija el archivo para que todas lleven el mismo costo.» (COST_CONFLICT)**
+The same SKU appears in several lines of **one order** with different costs. Before, they were added up and the first cost was taken without warning; now it is blocked (with any source) because that cost travels to QuickBooks. Leave the same cost on all that product's lines, or join the lines, and import again. If the same SKU repeats with the **same** cost, they are just added up and a warning is shown.
+
+**An order came out «Already imported» with «Ya se importó antes (orden de compra PO-…); no se vuelve a crear.»**
+That supplier and document number combination already exists among the active orders, even if it came in earlier through another format (generic or template) and even if someone deleted the mark from its notes. It is not repeated. If the order was deactivated, the same file creates it again.
+
+**What does «Esa orden ya se importó (otra importación la creó al mismo tiempo).» mean? (it shows as «Already imported»)**
+Two people imported the same new file at once. One created the order and the other is told it already exists. Nothing needs to be done: the order was created only once.
+
+**What does «La orden X nació en Teikem y ya se pasó a QuickBooks; no se vuelve a importar.» mean? (it shows as «Already imported»)**
+The QuickBooks file carries an order that you had sent from Teikem (its `Num` or «P. O. #» is that order's number, of the same supplier, already exported or marked). Another one is not created. It is as expected.
+
+**What do «El archivo no trae órdenes de compra.», «Elija el archivo a importar.» or «El archivo supera el límite de 5.000 filas o 2 MB.» mean? (HTTP 400)**
+The file is empty or has no data rows; no file was chosen; or it is too large. Split the file into parts. With «El archivo trae más de 2000 órdenes; divídalo e impórtelo por partes.» the same happens: too many orders in one file.
+
+**«Falta el producto X…» or «Falta el proveedor «X»…» on a blocked order.**
+It is from Batch 239: the file's SKU or supplier does not exist in Teikem. Create the product or the supplier (the list comes out with «Download what is missing») and import the same file again.
+
+### Origin and QuickBooks status (Purchasing list)
+
+**What does «El origen «X» no es válido: use TEIKEM, EXCEL o QUICKBOOKS.» mean? (HTTP 400)**
+The Purchasing list's `origin` filter carries another value. On screen the «Origin» filter is a list. Use `TEIKEM`, `EXCEL` or `QUICKBOOKS`.
+
+**What does «El estado de QuickBooks «X» no es válido: use PENDING, EXPORTED, IN_QUICKBOOKS, FROM_QUICKBOOKS o NOT_EXPORTABLE.» mean? (HTTP 400)**
+The Purchasing list's `quickBooks` filter carries another value. On screen the «QuickBooks» filter is a list.
+
+**Why does an old order say «To pass» if it is already in QuickBooks?**
+Orders that already existed when the batch was installed were classified by origin, but not marked. Mark them with «Mark all» (or choosing them and «Mark N as in QuickBooks»); it does not produce a file.
+
+**Why does a cancelled order stay «Exported, to confirm»?**
+Because it went out in a file and nobody has said whether QuickBooks received it. Confirm it («Yes, they are in») or send it to «It did not go through»; it cannot be exported again.
+
+### Passing to QuickBooks
+
+**What does «No hay órdenes de compra por pasar a QuickBooks.» mean? (HTTP 422)**
+You asked to export «all» (or mark «all») and there is none to pass: the sent, partially received and received ones are already marked or came from QuickBooks. There is nothing to do.
+
+**What does «Indique las órdenes de compra (purchaseOrderIds) o pida todas (all = true).» mean? (HTTP 400)**
+The call carries no order. On screen choose at least one; in the API send `purchaseOrderIds` or `all: true` (the latter only to export and mark).
+
+**What does «No se pueden marcar más de 1000 órdenes de compra en una sola llamada; use «todas».» mean? (HTTP 400)**
+You sent more than 1000 orders in `purchaseOrderIds`. Use «all» (`all: true`) or split the call.
+
+**What does «Alguna de las órdenes de compra indicadas no existe.» mean? (HTTP 400)**
+Some order in the list does not exist, was deactivated or belongs to another company (it does not say which). Reload the list and choose again.
+
+**What does «La orden de compra X vino de QuickBooks: no se exporta ni se marca.» mean? (HTTP 422)**
+That order was imported from QuickBooks, so it is already there. Remove it from the selection. It applies to exporting, confirming, «It did not go through», marking and removing the mark.
+
+**What does «La orden de compra X está en {estatus}: solo se pasan a QuickBooks las enviadas, recibidas en parte o recibidas.» mean? (HTTP 422)**
+The order is Draft or Cancelled. Send it first (Draft) or, if it was cancelled, it is not passed. A cancelled order that had already gone out in a file is not exported again: confirm it or send it to «It did not go through».
+
+**What does «La orden de compra X ya está en QuickBooks; para volver a exportarla, quítele la marca.» mean? (HTTP 409)**
+The order is already marked as in QuickBooks. If it really has to be sent again, open its record, «Remove the mark» and export; keep in mind that QuickBooks would end up with one more order.
+
+**What does «La orden de compra X no ha salido en ningún archivo de QuickBooks; para marcarla a mano use «Marcar como en QuickBooks».» mean? (HTTP 422)**
+You pressed «Yes, they are in» for an order that was never exported (for example, someone else already answered «It did not go through»). If the order is already in QuickBooks because it was entered by hand, use «Mark as in QuickBooks».
+
+**What does «La orden de compra X ya está marcada como en QuickBooks: quítele la marca en vez de usar «No pasó».» mean? (HTTP 409)**
+«It did not go through» is for what was exported and QuickBooks did not receive. An already marked order is fixed with «Remove the mark».
+
+**What does «Falta el permiso 'purchasing.quickbooks'.» mean? (HTTP 403)**
+Your role cannot pass purchase orders to QuickBooks. Ask the administrator for the `purchasing.quickbooks` permission in Roles (the company administrator and Billing have it). Seeing the status in the list only requires `purchasing.view`.
+
+**«El módulo 'PURCHASING' no está habilitado para esta compañía.» (HTTP 403)**
+Purchasing is off for the company. Ask for the module to be turned on.
+
+**What does «El nombre de una cuenta de QuickBooks no puede pasar de 159 caracteres.» mean? (HTTP 400)**
+The «Purchase orders account» (Settings → Operations → QuickBooks) is too long. Leave it at 159 characters or fewer, or empty to go back to «Purchase Orders». It requires `admin.tenant` and the Sales orders module.
+
+**Export warnings (they do not prevent exporting).**
+- **«El nombre del proveedor «X» pasa de 41 caracteres: QuickBooks no lo acepta como nombre de proveedor.»** Shorten the supplier's name in Teikem or create the supplier by hand in QuickBooks with a short name.
+- **«El SKU «X» pasa de 31 caracteres: QuickBooks no lo acepta como nombre de ítem.»** Shorten the SKU or create the item by hand in QuickBooks.
+- **«El término «X» no tiene nombre en QuickBooks (Ajustes → Operación → QuickBooks): el proveedor nuevo sale sin término.»** Give that payment term a name in QuickBooks (Settings → Operations → QuickBooks); otherwise the new supplier comes in without a term.
+- **«La orden de compra X suma … en Teikem y … en el archivo: QuickBooks redondea cada línea a centavos.»** A difference of cents because of rounding; QuickBooks ends up with the file's total. Check whether it is acceptable.
+- **«La orden de compra X está en {moneda} y la compañía en {moneda}: el archivo no lleva moneda y QuickBooks la toma en la de la compañía.»** The amount is imported as it is, with no conversion. Fix the amount there if needed.
+- **«{Dónde} tiene caracteres que QuickBooks no admite (…); en el archivo salen como «?».»** The text (memo, supplier, SKU or description) carries symbols that Windows-1252 does not have (for example an emoji or «€»). Replace them in Teikem before exporting.
+
+**«I exported and got «N de estas ya salieron en un archivo (la última vez el …)».»**
+Some of the orders had already been exported and were neither confirmed nor sent to «It did not go through». If you already imported them, confirm or mark them; if not, exporting them again repeats them in QuickBooks. Import only one of the files.
+
+**Why do the «QuickBooks» button or System → Templates not show?**
+The permission is missing (`purchasing.quickbooks` for the button; `integrations.view` for Templates) or the module (Purchasing for the button; Integrations for Templates, which in a new database only the platform administrator turns on). For the template, use Purchasing → Import → «New template».
+
 ## Batch 247 — Special prices and offers by client and by chain
 <!-- kemi:staff -->
 
-> The Batch 242–246 sections of this FAQ are not translated yet; this one is. **The API returns its messages in Spanish only**, so each question quotes the exact Spanish message. Chapter: [55 — Special prices and offers by client and by chain](55-precios-especiales-y-ofertas.md). Screens: [L247](../frontend/l247-precios-especiales.md) (Spanish edition). Rule behind it all: **the lowest price always wins** among the client's price, its chain's, the offer and the general list. A special price is **before IVU**.
+> **The API returns its messages in Spanish only**, so each question quotes the exact Spanish message. Chapter: [55 — Special prices and offers by client and by chain](55-precios-especiales-y-ofertas.md). Screens: [L247](../frontend/l247-precios-especiales.md) (Spanish edition). Rule behind it all: **the lowest price always wins** among the client's price, its chain's, the offer and the general list. A special price is **before IVU**.
 
 ### Adding and changing a special price
 
@@ -12579,8 +13101,11 @@ You tried to add a special price without a product. Choose it in «Product or ki
 **What does «Indique el precio de cada renglón.» mean? (HTTP 400)**
 The price is missing. Type it (on screen: «Enter a price greater than zero (up to 4 decimals).»).
 
+**What does «El precio especial debe ser mayor que cero (hasta 4 decimales).» mean? (HTTP 400)**
+The special price is 0 or negative. Enter a price greater than zero, with up to 4 decimals. It applies when adding and when changing the price, on the screen (which warns «Enter a price greater than zero (up to 4 decimals).») and through the API. It is a rule for special prices only: a normal list or an offer does accept 0.
+
 **What does «El precio no es válido.» mean? (HTTP 400)**
-The price is negative or above 9,999,999,999. Fix it. The screen also asks for a price greater than zero; the API accepts 0.
+The price is above 9,999,999,999 (on a special price, a price of 0 or negative gives the message above). Fix it.
 
 **What does «El precio admite como máximo 4 decimales.» mean? (HTTP 400)**
 You typed more than 4 decimals. Round to 4 or fewer.
@@ -12622,7 +13147,7 @@ The product is inactive. Reactivate it in Products or choose another.
 An offer kit has no special price: its price is set inside an offer (Prices and offers → the offer → lines). A normal kit is fine.
 
 **What does «La lista se cruza con «…» en las mismas fechas y para los mismos clientes o cadenas en: …. Cambie las fechas o quite esos productos de una de las dos.» mean? (HTTP 409)**
-The same product already has a price, for the **same client** or the **same chain**, on dates that overlap the ones you typed; the message names the list and up to 5 SKUs («y N más» = «and N more»). Change the dates so they do not overlap, or remove the other price. A chain price and a client price do **not** clash, and neither does a special price with a normal list: they coexist and the lowest is charged. With the **same** dates it is not an error either: the line's price is changed.
+The same product already has a price, for the **same client** or the **same chain**, on dates that overlap the ones you typed; the message names the list and up to 5 SKUs («y N más» = «and N more»). Change the dates so they do not overlap, or remove the other price. A chain price and a client price do **not** clash, and neither does a special price with a normal list: they coexist and the lowest is charged. With the **same** dates it is not an error either: the line's price is changed. It can also appear when adding a price with the dates of a dedicated list that was **in draft**: adding it publishes the list again and the overlap of **all** its lines is checked; if any clashes, nothing is saved and the list stays in draft.
 
 **What does «La lista cambió al mismo tiempo. Recárguela e intente de nuevo.» mean? (HTTP 409)**
 Two people added the same special price (same owner and dates) at the same time. One saved it and the other gets this message. Reload the page: the price is already there; if you needed another value, change it.
@@ -12677,7 +13202,7 @@ The call carries contradictory `appliesToAll` and `audienceMode` (for example `a
 The offer has chosen clients or chains and you tried to switch it from «Include» to «Exclude» (or back). Remove what is chosen and switch. On screen, filling one box disables the other.
 
 **What does «La oferta tiene clientes o cadenas escogidos: quítelos antes de hacerla para todos.» mean? (HTTP 422)**
-You tried to make an offer with chosen ones «for all», through the API. On screen, **removing the last one** asks for confirmation and leaves the offer for all.
+You tried to make an offer with chosen ones «for all», through the API. On screen, removing the last one of «Exclude» asks for confirmation and leaves the offer for all; the last one of «Include» cannot be removed (see below).
 
 **What does «Escoja al menos un cliente o una cadena, o marque que la oferta aplica a todos los clientes.» mean? (HTTP 422)**
 You tried to publish an «only for the chosen» (`INCLUDE`) offer with nobody chosen. Choose clients or chains, or make it «for all». An `EXCLUDE` offer with nobody excluded does publish: it applies to everybody.
@@ -12694,6 +13219,9 @@ You tried to remove from the offer a chain that is not in it. Reload the offer.
 **What does «La oferta aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.» mean? (HTTP 422)**
 The offer is for all (`ALL`). First choose «Include» or «Exclude» (through the API, `PATCH` with `audienceMode`) and then add the chains. The screen does it by itself when adding to an empty box. (The same case with clients says «…no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.».)
 
+**What does «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.» mean? (HTTP 409)**
+You tried to remove the **last** client or chain of an «Include» («only for» the chosen ones) offer; the offer would be left with no audience. Nothing was changed. On screen the last one has no ×: first add the next one and then remove the previous one, or deactivate the offer. For «everyone except some», deactivate it and create another with «Exclude». In an «Exclude» offer the last one can be removed (it applies to everybody, with confirmation). **This changed an earlier decision** (Batch 234: «removing the last client is no longer rejected»).
+
 ### Deactivating a chain
 
 **What does «La cadena tiene precios especiales u ofertas publicados y vigentes (N listas de precios y M ofertas): quítela de ellos antes de desactivarla.» mean? (HTTP 409)**
@@ -12709,18 +13237,21 @@ A chain cannot be deactivated while it still has published, not-expired **price 
 It is a notice, not an error (HTTP 200): that product's special price is higher than the general list's. The general list price is charged. Lower the special price or remove it. It shows in the list's and the «Special prices» panel's notice box.
 
 **What does «El precio especial «…» pone {SKU} a {precio}, más caro que la lista general ({precio}): se aplica el de la lista general. Corrija el precio especial.» mean?**
-The same notice seen from the order: the client's (or its chain's) special price for the product is higher than the general list and the general list price is charged. It does not prevent saving or requesting the order. The quoted name is the dedicated list's («Precio especial — {owner} (desde el …)»), which the server always writes in Spanish.
+The same notice seen from the order: the client's (or its chain's) special price for the product is higher than the general list and the general list price is charged. It does not prevent saving or requesting the order. The quoted name is the dedicated list's. On the staff web the notice comes out in the interface language and with the company's dates; the server's Spanish text is only the fallback. It also shows next to each line in the desktop order window.
 
 ### Frequent cases
 
 **Why is the general list charged to a client that has a special price?**
-Because the general list is **cheaper or equal**. The lowest always wins. The panel row marks it («Higher than the general list»). Also check the **Status**: only an **In effect** price is charged. «Scheduled» has not started, «Expired» has passed and **«Draft»** means someone put the dedicated list back to draft (Prices and offers → «Also show special prices» → open → «Publish»).
+Because the general list is **cheaper or equal**. The lowest always wins. The panel row marks it («Higher than the general list»). Also check the **Status**: only an **In effect** price is charged. «Scheduled» has not started, «Expired» has passed and **«Draft»** means someone put the dedicated list back to draft (Prices and offers → «Also show special prices» → open → «Publish»; adding another special price with the same dates also publishes it again).
 
 **Why doesn't the offer show if the client is excluded?**
 An «Exclude» offer applies to everybody **except** the chosen clients and chains. If the client, or its chain, is in that box, it does not get it. An «Include» offer applies only to the chosen ones and to the clients of the chosen chains. And if the client's chain is **deactivated**, it counts as no chain.
 
 **How do I change only a special price's date?**
 In the panel, **Change price** (pencil) and change «From» or «To». The line moves to the list of those dates by itself. If it overlaps another validity of the same product for the same owner, it gives 409.
+
+**I added a special price and others that were in «Draft» started being charged. Why?**
+Adding a special price (or moving one) with the dates of a dedicated list that was in draft **publishes it again**, and all its lines start being charged. Before, the new price stayed in the draft and was not charged. If you did not want one of them charged, remove it from the «Special prices» panel or change its dates.
 
 **Why don't I see the «Special price of …» lists in Prices and offers?**
 They are hidden by default (there can be hundreds). Turn on **«Also show special prices»**.
@@ -12731,8 +13262,8 @@ See «La cadena tiene precios especiales u ofertas publicados y vigentes …» a
 **Does the special price carry IVU?**
 It is a price **before IVU**: tax is calculated afterwards on the price charged, and the client's exemptions (state, municipal, both or full) apply on that tax. To be confirmed with the accountant; the calculation was not changed.
 
-**I removed the last chain of an offer and now it applies to everybody.**
-That is what the confirmation «The offer will be for all clients.» says: an offer with nobody chosen does not stay «only for the chosen». If you do not want it for everybody, deactivate it before removing the last one.
+**It will not let me remove the last chain (or the last client) of an offer.**
+It is by design: an «Include» offer is not left with nobody (409, message above) and the editor does not show the × of the last one. First add the next one and then remove the previous one, or deactivate the offer. In «Exclude» it can be done, with the confirmation «The offer will be for all clients.».
 
-**Why do the notice and the dedicated list's name show in Spanish with the screen in English?**
-The server builds them and they have no English version yet (neither has an offer's validity: «desde el …, sin fecha de fin»). They use day/month/year dates. The data is the same.
+**Why do the notice or the dedicated list's name show in Spanish, or with a date different from the screen's?**
+On the staff web they now come out in the interface language and with the company's dates (the price notice, the dedicated list's name and an offer's validity). If you see them in Spanish and as day/month/year, a piece of data is missing in the response (the web then shows the server's text) or they are somewhere else: the notices in the offer window, the error messages, the `SPECIAL_PRICE` source or a screen that is not the staff web. The data is the same.

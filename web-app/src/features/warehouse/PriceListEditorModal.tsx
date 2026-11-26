@@ -9,6 +9,7 @@ import { useT } from '../../kernel/i18n'
 import { Link } from 'react-router-dom'
 import { Chip, ClientPicker, ConfirmDialog, DataTable, DateField, EmptyState, Modal, Spinner, toast, type DataColumn } from '../../kernel/ui'
 import { ChainPicker } from '../chains/ChainPicker'
+import { dedicatedListName, priceListWarningText } from '../sales/priceText'
 import { usePriceList, usePriceListActions, type PriceListDto, type PriceListItemDto, type PriceListWarningDto } from './priceListApi'
 import {
   EMPTY_LIST_DRAFT,
@@ -70,7 +71,8 @@ export function PriceListEditorModal({ publicId: initialId, onClose }: { publicI
     }, 'warehouse.products.prices.saved')
   }
 
-  const title = list?.name || t('warehouse.products.prices.newTitle')
+  const listName = list ? dedicatedListName(t, f, list) : ''
+  const title = listName || t('warehouse.products.prices.newTitle')
   return (
     <Modal open size="xl" title={title} onClose={onClose} dismissible={!busy} footer={<button type="button" className="btn" onClick={onClose}>{t('common.close')}</button>}>
       <div className="pb">
@@ -94,7 +96,7 @@ export function PriceListEditorModal({ publicId: initialId, onClose }: { publicI
             <div className="r2">
               <div className="f">
                 <label htmlFor="pl-name">{t('warehouse.products.prices.name')}</label>
-                <input id="pl-name" value={draft.name} maxLength={120} disabled={dataLocked} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                <input id="pl-name" value={dedicated ? listName : draft.name} maxLength={120} disabled={dataLocked} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
               </div>
               <div className="f">
                 <label htmlFor="pl-notes">{t('warehouse.products.prices.notes')}</label>
@@ -166,7 +168,7 @@ export function PriceListEditorModal({ publicId: initialId, onClose }: { publicI
                 )}
                 <ConfirmDialog
                   open={deactivating}
-                  title={t('warehouse.products.prices.deactivateTitle', { name: list.name ?? '' })}
+                  title={t('warehouse.products.prices.deactivateTitle', { name: listName })}
                   message={t('warehouse.products.prices.deactivateBody')}
                   confirmLabel={t('warehouse.products.prices.deactivate')}
                   tone="danger"
@@ -189,13 +191,14 @@ export function PriceListEditorModal({ publicId: initialId, onClose }: { publicI
 /** Avisos del servidor sobre la lista (SPECIAL_ABOVE_GENERAL): informan, no bloquean. */
 function PriceListWarnings({ warnings }: { warnings: PriceListWarningDto[] | null | undefined }) {
   const t = useT()
+  const f = useFormat()
   if (!warnings?.length) return null
   return (
     <section className="of-warns" role="status" aria-label={t('warehouse.products.prices.special.warningsTitle')}>
       <b>{t('warehouse.products.prices.special.warningsTitle')}</b>
       <ul>
         {warnings.map((w, i) => (
-          <li key={`${w.code}-${w.productPublicId}-${i}`}>{w.message}</li>
+          <li key={`${w.code}-${w.productPublicId}-${i}`}>{priceListWarningText(t, f, w)}</li>
         ))}
       </ul>
     </section>

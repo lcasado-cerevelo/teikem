@@ -211,7 +211,7 @@ for (const look of LOOKS) {
     const include = offerDialog.getByRole('region', { name: L ? 'Incluir' : 'Include' })
     await expect(include).toBeVisible({ timeout: 30_000 })
     await expect(include.getByText(L ? `Cadena ${CHAIN}` : `Chain ${CHAIN}`)).toBeVisible()
-    await expect(offerDialog.getByRole('region', { name: L ? 'Excluir' : 'Exclude' }).getByText(L ? 'Quite lo escogido en la otra caja para usar esta.' : 'Remove what is chosen in the other box to use this one.')).toBeVisible()
+    await expect(offerDialog.getByRole('region', { name: L ? 'Excluir' : 'Exclude' }).getByText(L ? 'Esta oferta es solo para los escogidos y no se queda sin ellos: para que sea para todos menos algunos, desactívela y cree otra.' : 'This offer is only for the chosen ones and cannot be left without them: to make it for everyone except some, deactivate it and create another one.')).toBeVisible()
     await noOverflow(page, '.pal', 'el editor de la oferta')
     await noHScroll(page, `oferta ${tag} ${lang} ${theme}`)
     await page.screenshot({ path: join(SHOTS, `l247-oferta-${tag}-${lang}-${theme}.png`) })

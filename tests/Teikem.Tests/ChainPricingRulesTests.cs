@@ -42,6 +42,15 @@ public sealed class ChainPricingRulesTests
     }
 
     [Fact]
+    public void The_special_notice_carries_owner_and_dates_so_the_web_can_write_it_in_its_language()
+    {
+        var list = L(1, new[] { (10, 10m) }, clients: new[] { Client }, special: true, name: "Precio especial — Farmacia Uno") with { OwnerName = "Farmacia Uno", ValidTo = new DateOnly(2026, 12, 31) };
+        var r = OfferRules.Resolve(10, Client, D1, new[] { list, General(4, 9m) }, Array.Empty<OfferView>(), 12m, Chain);
+        var n = Assert.Single(r.Notices!);
+        Assert.Equal(("Farmacia Uno", D1, (DateOnly?)new DateOnly(2026, 12, 31), true), (n.PriceListOwnerName, n.PriceListValidFrom, n.PriceListValidTo, n.PriceListIsSpecial));
+    }
+
+    [Fact]
     public void A_special_price_above_the_general_list_loses_and_warns()
     {
         var clientList = L(1, new[] { (10, 10m) }, clients: new[] { Client }, special: true, name: "Precio especial — Farmacia Uno");

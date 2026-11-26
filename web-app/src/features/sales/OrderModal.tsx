@@ -17,8 +17,9 @@ import { PackModal } from '../warehouse/PackModal'
 import { ProductPicker, WarehousePicker } from '../warehouse/pickers'
 import { OrderBadges } from './OrderBadges'
 import { offerKitOptions } from './offerKitOptions'
-import { LinePriceOrigin } from './wizard/PriceNotices'
-import { savedLineOrigin } from './wizard/priceSource'
+import { usePriceNoticeText } from './priceText'
+import { LinePriceOrigin, PriceNoticeList } from './wizard/PriceNotices'
+import { priceSourceOf, savedLineOrigin } from './wizard/priceSource'
 import { useSalesCatalog } from './wizard/wizardApi'
 import { AUTHORIZED_BY_MAX, authorizerMissing, DELIVERY_MODES, draftError, draftSubtotal, effectivePrice, EXTRA_DEFAULTS, isCreditTerm, lineAmount, parseNumber, paymentChanged, prefillPayment, toRequest, withMethod, type DeliveryMode, type LineDraft, type OrderDraft } from './salesRules'
 import { KitLineBlock, KitComponentsSection } from './KitLineBlock'
@@ -220,7 +221,12 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
   // Lote 234: los kits de oferta que se ofrecen son los MISMOS del pedido guiado: los del catálogo del cliente escogido (ofertas vigentes que le aplican hoy), al
   // precio de la oferta. El buscador de productos ya no trae «cualquier» kit de oferta.
   const catalog = useSalesCatalog(draft.clientPublicId)
-  const offerKits = useMemo(() => offerKitOptions(draft.clientPublicId && !catalog.isPlaceholderData ? catalog.data : undefined), [catalog.data, catalog.isPlaceholderData, draft.clientPublicId])
+  const clientCatalog = draft.clientPublicId && !catalog.isPlaceholderData ? catalog.data : undefined
+  const offerKits = useMemo(() => offerKitOptions(clientCatalog), [clientCatalog])
+  // Lote 247: los avisos de precio de la línea (p. ej. SPECIAL_ABOVE_GENERAL, «precio especial más caro que la lista general»), los mismos del pedido guiado:
+  // lo que devolvió el servidor al guardar (linePrices) y lo que dice el catálogo del cliente. Solo informan: se cobra el más bajo.
+  const noticeText = usePriceNoticeText()
+  const lineNotices = (productPublicId: string | null) => (productPublicId ? priceSourceOf(productPublicId, clientCatalog, current, noticeText).notices : [])
   // Lote 222: la forma de pago se prellena con la del cliente (una vez por cliente escogido; una orden ya guardada conserva la suya)
   const client = useClient(draft.clientPublicId, true)
   const { data: methodOptions = [] } = useLookups('SalesPaymentMethod')
@@ -462,6 +468,11 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
               </div>
               <button type="button" className="btn ghost" aria-label={t('sales.line.remove', { n: i + 1 })} onClick={() => set({ lines: draft.lines.filter((x) => x.key !== l.key) })}>✕</button>
               {savedLineOrigin(current, l.productPublicId) && <LinePriceOrigin line={savedLineOrigin(current, l.productPublicId) ?? {}} money={f.money} />}
+              {lineNotices(l.productPublicId).length > 0 && (
+                <div className="so-line-notices">
+                  <PriceNoticeList notices={lineNotices(l.productPublicId)} label={t('salesWizard.products.notices', { sku: l.sku })} />
+                </div>
+              )}
               <StockInfo stock={stock.data} warehousePublicId={warehouseId} productPublicId={l.productPublicId} quantity={l.quantity} pieces={orderKitPieces(l.components, current?.lines?.find((x) => x.productPublicId === l.productPublicId))} />
               {l.isKit && <KitLineBlock line={l} saved={current?.lines?.find((x) => x.productPublicId === l.productPublicId)} onPieces={(components) => setLine(l.key, { components })} />}
             </div>

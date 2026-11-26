@@ -13,6 +13,7 @@ import { useT } from '../../kernel/i18n'
 import { Chip, ConfirmDialog, DataTable, DateField, EmptyState, Modal, Panel, Spinner, toast, useElementWidth, type DataColumn, type RowAction } from '../../kernel/ui'
 import { IconEdit, IconTrash } from '../../kernel/ui/actionIcons'
 import { IconTag } from '../../kernel/ui/screenIcons'
+import { priceListWarningText } from '../sales/priceText'
 import { ProductPicker } from '../warehouse/pickers'
 import { stateKey, stateTone } from '../warehouse/priceListRules'
 import {
@@ -249,6 +250,7 @@ function SpecialPricesBody({ ownerKind, ownerPublicId, ownerActive }: SpecialPri
 /** Avisos del servidor (precio especial más caro que la lista general): informan, no bloquean. */
 function Warnings({ dto }: { dto: SpecialPricesDto }) {
   const t = useT()
+  const f = useFormat()
   const warns = dto.warnings ?? []
   if (warns.length === 0) return null
   return (
@@ -256,7 +258,7 @@ function Warnings({ dto }: { dto: SpecialPricesDto }) {
       <b>{t(`${K}.warningsTitle`)}</b>
       <ul>
         {warns.map((w, i) => (
-          <li key={`${w.productPublicId}-${i}`}>{w.message}</li>
+          <li key={`${w.productPublicId}-${i}`}>{priceListWarningText(t, f, w)}</li>
         ))}
       </ul>
     </section>

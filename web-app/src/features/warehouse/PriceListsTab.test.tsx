@@ -132,12 +132,28 @@ describe('Precios y ofertas', () => {
     wrap(['sales.view', 'sales.pricelist'])
     const table = await screen.findByRole('table', { name: 'Listas de precios' })
     await user.click(await within(table).findByText('Precio especial de Walgreens'))
-    const dialog = await screen.findByRole('dialog', { name: 'Precio especial Walgreens' })
+    const dialog = await screen.findByRole('dialog', { name: 'Precio especial — Walgreens (desde el 11/01/2026, sin fecha de fin)' })
     expect(await within(dialog).findByLabelText('Nombre')).toBeDisabled()
     expect(within(dialog).queryByRole('button', { name: 'Guardar datos' })).toBeNull()
     expect(within(dialog).getByRole('link', { name: 'Abrir la ficha' })).toHaveAttribute('href', '/catalog/chains?id=h1')
     expect(within(dialog).getByText('El precio especial pone KIT-1 más caro que la lista general.')).toBeInTheDocument()
     // precios y renglones siguen editables
     expect(within(dialog).getByRole('button', { name: 'Desactivar' })).toBeInTheDocument()
+  })
+
+  it('con la interfaz en inglés, el nombre de la lista dedicada y el aviso salen en inglés y con el formato de fecha de la compañía', async () => {
+    setLang('en')
+    try {
+      window.localStorage.setItem('teikem.priceLists.includeSpecial', '1')
+      const user = userEvent.setup()
+      wrap(['sales.view', 'sales.pricelist'])
+      const table = await screen.findByRole('table', { name: 'Price lists' })
+      await user.click(await within(table).findByText(/Special price/))
+      const dialog = await screen.findByRole('dialog', { name: 'Special price — Walgreens (from 11/01/2026, no end date)' })
+      expect(await within(dialog).findByLabelText('Name')).toHaveValue('Special price — Walgreens (from 11/01/2026, no end date)')
+      expect(dialog.textContent).not.toMatch(/Precio especial —|sin fecha de fin/)
+    } finally {
+      setLang('es')
+    }
   })
 })

@@ -52,8 +52,14 @@ export function modeBeforeAdd(box: 'INCLUDE' | 'EXCLUDE', mode: OfferAudience): 
   return mode === box ? null : box
 }
 
-/** Quitar el último escogido deja la oferta «para todos»: se confirma y se pasa a ALL. */
+/** Quitar el último escogido de una EXCLUDE deja la oferta «para todos»: se confirma y se pasa a ALL. */
 export const isLastMember = (members: number): boolean => members === 1
+
+/**
+ * ¿Se ofrece quitar un escogido? El último cliente o cadena de una oferta «solo para» los escogidos (INCLUDE) no se quita: el servidor da 409 (antes la oferta
+ * se quedaba sin público y el editor la pasaba a «para todos»). En EXCLUDE siempre se puede.
+ */
+export const canRemoveMember = (mode: OfferAudience, members: number): boolean => !(mode === 'INCLUDE' && members <= 1)
 
 /** Cuerpo de crear/editar: sin «hasta» se manda `clearValidTo` (sin fecha de fin). Solo viaja `audienceMode` (con `appliesToAll` a la vez, el servidor cruza los dos). */
 export function toOfferRequest(d: OfferDraft): OfferRequest {

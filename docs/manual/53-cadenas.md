@@ -2,7 +2,7 @@
 
 <!-- kemi:staff -->
 
-Lote 245 (2026-11-25). Una **cadena** agrupa a los clientes que son del mismo grupo comercial (Walgreens, CVS…). Sirve para filtrar clientes y órdenes por cadena, para medir la venta de cada cadena y, a partir del siguiente lote, para darle precios y ofertas propios.
+Lote 245 (2026-11-25). Una **cadena** agrupa a los clientes que son del mismo grupo comercial (Walgreens, CVS…). Sirve para filtrar clientes y órdenes por cadena, para medir la venta de cada cadena y para darle precios y ofertas propios (Lote 247: ver el [capítulo 55](55-precios-especiales-y-ofertas.md); gana siempre el precio más bajo entre el del cliente, el de su cadena, la oferta y la lista general, y todos los precios son antes del IVU).
 
 > **Una cadena no es una ruta de venta.** No cambia la ruta del cliente ni a quién se le cuenta su venta. Cambiar la cadena de un cliente no toca su ruta, su representante ni su vendedor.
 
@@ -186,8 +186,8 @@ La cadena no tiene estatus: solo está **activa** o **inactiva**. Nunca se borra
 
 - Pedir el estado que la cadena ya tiene no cambia nada y no da error.
 - Una cadena **inactiva con venta** en el mes sigue saliendo en «Por cadena».
-- A partir del Lote C, una cadena inactiva cuenta como «sin cadena» para los precios.
-- **Lote 247 (el Lote C):** desactivar una cadena también da 409 si tiene **listas de precios** (incluidos sus precios especiales) publicadas y no vencidas u **ofertas «Incluir»** publicadas y no vencidas con ella: «La cadena tiene precios especiales u ofertas publicados y vigentes ({N} listas de precios y {M} ofertas): quítela de ellos antes de desactivarla.». Primero se revisan los clientes activos. Las ofertas «Excluir» no bloquean. La ficha de la cadena trae ahora los paneles «Precios especiales» y «Ofertas»: ver el [capítulo 55](55-precios-especiales-y-ofertas.md).
+- Una cadena inactiva cuenta como «sin cadena» para los precios: sus clientes dejan de recibir los precios y las ofertas de la cadena (capítulo 55).
+- Desactivar una cadena también da 409 si tiene **listas de precios** (incluidos sus precios especiales) publicadas y no vencidas u **ofertas «Incluir»** publicadas y no vencidas con ella: «La cadena tiene precios especiales u ofertas publicados y vigentes ({N} listas de precios y {M} ofertas): quítela de ellos antes de desactivarla.». Primero se revisan los clientes activos. Las ofertas «Excluir» no bloquean. La ficha de la cadena trae ahora los paneles «Precios especiales» y «Ofertas»: ver el [capítulo 55](55-precios-especiales-y-ofertas.md).
 
 ## 9. Análisis de ventas → «Por cadena»
 
@@ -235,7 +235,9 @@ Los mensajes salen del servidor tal cual. En las respuestas de error 400 el mens
 | Editar / desactivar / reactivar / asignar / quitar / alta masiva | — | Otra persona cambió la cadena o sus clientes a la vez | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
 | Desactivar | — | Con 1 cliente activo | `La cadena tiene 1 cliente activo: quítelo de la cadena antes de desactivarla.` | 409 |
 | Desactivar | — | Con N clientes activos | `La cadena tiene N clientes activos: quítelos de la cadena antes de desactivarla.` (N es el número) | 409 |
+| Desactivar | — | Sin clientes activos, pero con listas de precios (incluidos sus precios especiales) publicadas y vigentes u ofertas «Incluir» publicadas y vigentes (se revisa **después** de los clientes) | `La cadena tiene precios especiales u ofertas publicados y vigentes ({N} listas de precios y {M} ofertas): quítela de ellos antes de desactivarla.` (N y M son los números) | 409 |
 | Agregar clientes / cambiar la cadena de un cliente / alta masiva | cadena destino | Debe estar activa | `La cadena está desactivada: actívela o escoja otra.` | 400 |
+| Precios especiales, listas de precios y ofertas de la cadena | cadena | Debe estar activa para escribir | `La cadena está desactivada: actívela o escoja otra.` | 422 (los mensajes del capítulo 55) |
 | Agregar / quitar | `clientPublicIds` | Al menos uno | `Indique los clientes (clientPublicIds).` | 400 |
 | Agregar / quitar | `clientPublicIds` | Hasta 2000 por llamada | `No se pueden mandar más de 2000 clientes en una sola llamada.` | 400 |
 | Alta masiva | `prefix` | Al menos 3 letras o dígitos | `Escriba al menos 3 letras del inicio del nombre.` | 400 |
@@ -264,7 +266,9 @@ Los mensajes salen del servidor tal cual. En las respuestas de error 400 el mens
 
 **Excluir antes de aplicar.** Desmarque la casilla del cliente: pasa a «Excluido» y no se toca. No hace falta simular de nuevo.
 
-**No deja desactivar.** La cadena todavía tiene clientes **activos**. Quítelos (o muévalos a otra cadena) y desactive. Los inactivos no estorban.
+**No deja desactivar.** La cadena todavía tiene clientes **activos** (quítelos o muévalos a otra cadena; los inactivos no estorban) o tiene **precios especiales, listas de precios u ofertas «Incluir» publicados y vigentes** (el mensaje dice cuántos: quítelos en la ficha de la cadena o en Contabilidad → Precios y ofertas). Se revisan primero los clientes.
+
+**¿Qué precio recibe un cliente de la cadena?** El más bajo entre el suyo propio, el de su cadena, la oferta que le aplica y la lista general, siempre **antes del IVU** (capítulo 55 §2). Si lo cambia de cadena, recibe los precios de la cadena nueva desde ese momento; si la cadena se desactiva, cuenta como «sin cadena».
 
 **Moví un cliente y su historial cambió de cadena.** Es lo esperado: la venta, también la importada de QuickBooks, se cuenta en la cadena **actual** del cliente. Las órdenes viejas también se ven con la cadena nueva.
 

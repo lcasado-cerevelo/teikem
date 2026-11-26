@@ -2,6 +2,7 @@
 // oferta de donde sale el precio (`CartLinePriceInfo`) y en el resumen del paso de entrega (`DeliveryPriceNotices`). Solo informan: se cobra el precio más bajo.
 import { useT } from '../../../kernel/i18n'
 import { Chip } from '../../../kernel/ui'
+import { usePriceNoticeText } from '../priceText'
 import type { SalesOrderDto } from '../salesApi'
 import { cartPriceNotices, priceSourceOf } from './priceSource'
 import { useSalesCatalog } from './wizardApi'
@@ -23,7 +24,8 @@ export function PriceNoticeList({ notices, label }: { notices: string[]; label: 
 export function CartLinePriceInfo({ productPublicId, sku, clientPublicId, saved }: { productPublicId: string; sku: string; clientPublicId: string | null; saved: SalesOrderDto | null }) {
   const t = useT()
   const catalog = useSalesCatalog(clientPublicId).data
-  const info = priceSourceOf(productPublicId, catalog, saved)
+  const text = usePriceNoticeText()
+  const info = priceSourceOf(productPublicId, catalog, saved, text)
   if (!info.fromOffer && !info.special && info.notices.length === 0) return null
   return (
     <div className="wz-line-price">
@@ -39,7 +41,8 @@ export function CartLinePriceInfo({ productPublicId, sku, clientPublicId, saved 
 export function DeliveryPriceNotices({ cart, clientPublicId, saved }: { cart: readonly { productPublicId: string; sku: string }[]; clientPublicId: string | null; saved: SalesOrderDto | null }) {
   const t = useT()
   const catalog = useSalesCatalog(clientPublicId).data
-  const rows = cartPriceNotices(cart, catalog, saved)
+  const text = usePriceNoticeText()
+  const rows = cartPriceNotices(cart, catalog, saved, text)
   if (rows.length === 0) return null
   return (
     <section className="wz-price-notices" aria-labelledby="wz-price-notices-title">

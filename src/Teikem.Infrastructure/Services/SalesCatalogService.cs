@@ -192,7 +192,8 @@ public sealed class SalesCatalogService(TeikemDbContext db, ITenantClock clock, 
         var isList = n.PriceListId is not null;
         return new(n.Code, OfferRules.NoticeMessage(p.Sku, n), p.PublicId, p.Sku, !isList && offerPublic.TryGetValue(n.OfferId, out var a) ? a : null,
             isList ? null : n.OfferName, n.OtherOfferId is int o && offerPublic.TryGetValue(o, out var b) ? b : null, n.OtherOfferName,
-            n.PriceListId is int lid && listPublic is not null && listPublic.TryGetValue(lid, out var l) ? l : null, n.PriceListName);
+            n.PriceListId is int lid && listPublic is not null && listPublic.TryGetValue(lid, out var l) ? l : null, n.PriceListName,
+            n.OfferPrice, n.OtherPrice, n.PriceListIsSpecial, n.PriceListOwnerName, n.PriceListValidFrom, n.PriceListValidTo);
     }
 
     // ---------------------------------------------------------------- piezas

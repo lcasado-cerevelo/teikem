@@ -22,6 +22,7 @@ import { StockInfo } from '../StockInfo'
 import { orderKitPieces, type KitPieceInput, type StockInput } from '../stockRules'
 import { CartLinePriceInfo, PriceNoticeList } from './PriceNotices'
 import { itemNotices } from './priceSource'
+import { usePriceNoticeText } from '../priceText'
 import { useSalesCatalog, type SalesCatalogBrandDto, type SalesCatalogItemDto } from './wizardApi'
 import {
   cartLineAmount,
@@ -79,6 +80,7 @@ function decimalText(text: string): string {
 
 function OfferCard({ item, quantity, onStep, onSet, stock, warehouseId, pieces }: { item: SalesCatalogItemDto; quantity: string; onStep: (delta: number) => void; onSet: (text: string) => void; stock?: StockInput | null; warehouseId?: string | null; pieces?: readonly KitPieceInput[] | null }) {
   const t = useT()
+  const noticeText = usePriceNoticeText()
   const f = useFormat()
   const name = item.name ?? item.sku ?? ''
   const canSell = item.price != null
@@ -101,7 +103,7 @@ function OfferCard({ item, quantity, onStep, onSet, stock, warehouseId, pieces }
           {item.offerPrice != null && item.price != null && item.priceSource !== 'OFFER' && item.offerPrice !== item.price && (
             <span className="help">{t('salesWizard.products.negotiatedWins', { offer: f.money(item.offerPrice) })}</span>
           )}
-          <PriceNoticeList notices={itemNotices(item)} label={t('salesWizard.products.notices', { sku: item.sku ?? '' })} />
+          <PriceNoticeList notices={itemNotices(item, noticeText)} label={t('salesWizard.products.notices', { sku: item.sku ?? '' })} />
         </span>
         <StockInfo stock={stock} warehousePublicId={warehouseId} productPublicId={item.productPublicId} quantity={quantity} pieces={pieces} />
       </div>
@@ -116,6 +118,7 @@ function OfferCard({ item, quantity, onStep, onSet, stock, warehouseId, pieces }
 
 export function ProductsStep({ state, onChange, stock, warehouseId }: ProductsStepProps) {
   const t = useT()
+  const noticeText = usePriceNoticeText()
   const catalog = useSalesCatalog(state.clientPublicId)
   const canPrice = useCan('sales.price')
   const brands = useMemo(() => (catalog.data?.brands ?? []).filter((b) => (b.offers ?? []).length + (b.products ?? []).length > 0), [catalog.data])
@@ -188,7 +191,7 @@ export function ProductsStep({ state, onChange, stock, warehouseId }: ProductsSt
                       <b className="mono">{p.sku}</b>
                       <span>{p.name}</span>
                       {p.isKit && <Chip tone="neutral">{t('sales.kit.badge')}</Chip>}
-                      <PriceNoticeList notices={itemNotices(p)} label={t('salesWizard.products.notices', { sku: p.sku ?? '' })} />
+                      <PriceNoticeList notices={itemNotices(p, noticeText)} label={t('salesWizard.products.notices', { sku: p.sku ?? '' })} />
                       <StockInfo stock={stock} warehousePublicId={warehouseId} productPublicId={p.productPublicId} quantity={qty} />
                     </div>
                     <input

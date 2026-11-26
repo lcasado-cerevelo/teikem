@@ -5340,7 +5340,9 @@
             "lastTitle": "Remove the last one?",
             "lastMessage": "The offer will be for all clients.",
             "lastConfirm": "Make it for everyone",
-            "lastFailed": "The offer could not be made for everyone."
+            "lastFailed": "The offer could not be made for everyone.",
+            "includeNeedsMember": "An offer «only for» the chosen ones needs at least one client or chain: add another one before removing the last, or deactivate the offer.",
+            "lockedByInclude": "This offer is only for the chosen ones and cannot be left without them: to make it for everyone except some, deactivate it and create another one."
           }
         },
         "title": "Prices and offers",
@@ -10933,6 +10935,21 @@
       "help": "First come, first served. “Can be filled” is what is available today for that line; fill all goes from the oldest to the newest."
     }
   },
+  "pricing": {
+    "range": {
+      "between": "from {from} to {to}",
+      "open": "from {from}, no end date"
+    },
+    "dedicatedName": "Special price — {owner} ({range})",
+    "notice": {
+      "TWO_OFFERS": "Product {sku} is in two offers at once: “{offer}” at {price} and “{other}” at {otherPrice}. The cheaper one (“{offer}”) applies.",
+      "OFFER_ABOVE_GENERAL": "Offer “{offer}” puts {sku} at {price}, higher than the general list ({otherPrice}): the lower price applies.",
+      "SPECIAL_ABOVE_GENERAL": "Special price “{list}” puts {sku} at {price}, higher than the general list ({otherPrice}): the general list price applies. Please fix the special price."
+    },
+    "warning": {
+      "SPECIAL_ABOVE_GENERAL": "Special price higher than the general list: {sku} at {price} and in the general list at {general}. The lower price is charged; please fix the special price."
+    }
+  },
   "salesWizard": {
     "title": "Guided order",
     "subtitle": "Guided order in four steps: it is saved as a draft at every step.",
@@ -12828,6 +12845,43 @@
     "usedTemplate": "Template: {name}"
   },
   "entityImport": {
+    "tpl": {
+      "PRODUCT": {
+        "newTitle": "New products import template",
+        "editTitle": "Edit products import template",
+        "editorHint": "Define which field each column is, in the same order as your file — for example, the first is the SKU, the second the name…",
+        "requiredHelp": "The template must include the SKU (in a column) and the name (in a column or as a default value).",
+        "defaultsHelp": "They are used when the file cell is empty or the field has no column (for example, the unit for all products). The SKU does not accept a default value."
+      },
+      "SUPPLIER": {
+        "newTitle": "New suppliers import template",
+        "editTitle": "Edit suppliers import template",
+        "editorHint": "Define which field each column is, in the same order as your file — for example, the first is the supplier name, the second its email…",
+        "requiredHelp": "The template must include the supplier name in a column.",
+        "defaultsHelp": "They are used when the file cell is empty or the field has no column (for example, the country for all suppliers). The name does not accept a default value."
+      },
+      "WAREHOUSE": {
+        "newTitle": "New warehouses import template",
+        "editTitle": "Edit warehouses import template",
+        "editorHint": "Define which field each column is, in the same order as your file — for example, the first is the warehouse code, the second its name…",
+        "requiredHelp": "The template must include the warehouse code and name, each in a column.",
+        "defaultsHelp": "They are used when the file cell is empty or the field has no column. The warehouse code and name do not accept a default value."
+      },
+      "BIN": {
+        "newTitle": "New bins import template",
+        "editTitle": "Edit bins import template",
+        "editorHint": "Define which field each column is, in the same order as your file — for example, the first is the warehouse code, the second the zone…",
+        "requiredHelp": "The template must include the warehouse and the zone (in a column or as a default value) and the bin code, or its parts (aisle, rack, level, position), in columns.",
+        "defaultsHelp": "They are used when the file cell is empty or the field has no column (for example, the warehouse for all bins). The bin code and its parts do not accept a default value."
+      },
+      "PURCHASE_ORDER": {
+        "newTitle": "New purchase orders import template",
+        "editTitle": "Edit purchase orders import template",
+        "editorHint": "Define which field each column is, in the same order as your file — for example, the first is the order number, the second the SKU…",
+        "requiredHelp": "The template must include the order number, the SKU and the quantity, each in a column, and the supplier (in a column or as a default value).",
+        "defaultsHelp": "They are used when the file cell is empty or the field has no column (for example, the supplier for all lines). The order number, SKU and quantity do not accept a default value."
+      }
+    },
     "open": "Import",
     "title": "Import {entity}",
     "help": "Upload a file (CSV or Excel) and pick the template that says which column is each field. “Review” saves nothing; “Import” saves the valid records. Products that already exist (same SKU and owner) are updated: an empty cell leaves the data as it is. Other lists only create, and anything that already exists is rejected.",

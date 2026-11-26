@@ -4,7 +4,7 @@ Lote 247 (2026-11-26). Seis pantallas cambian: la **ficha de la cadena** (Listas
 
 Capturas del recorrido de `web-app/e2e/lote247-precios-especiales.spec.ts` con el API de pruebas **sin correo**; están en `img/l247-*.png` (24 imágenes: 6 pantallas × 4 aspectos). Los datos son los que crea el propio recorrido: la cadena «Walgreens SPX» con dos clientes («FARMACIA SPX UNO» y «FARMACIA SPX DOS»), tres productos (SPX-A, SPX-B, SPX-C), la «Lista general SPX» (A = 10, B = 14, C = 18), precios especiales de la cadena (A = 8, B = 15, C = 17 hasta el 30/11/2026), uno del cliente DOS (A = 7.50), la oferta «Verano SPX» (C = 16, solo para la cadena) y una orden en borrador del cliente UNO. Cuatro corridas: **1440 px en español con tema claro** (`escritorio-es-light`), **1440 px en inglés con tema oscuro** (`escritorio-en-dark`), **390 px en español con tema oscuro** (`movil-es-dark`) y **390 px en inglés con tema claro** (`movil-en-light`). Cada corrida comprueba que no haya scroll horizontal de la página, que las filas de las tablas midan 56 px o menos (donde la tabla es tabla) y que los paneles no se desborden. **Las capturas de este documento son las de escritorio en español con tema claro; las otras tres variantes de cada pantalla tienen el mismo nombre con su sufijo** (por ejemplo `l247-cadena-movil-es-dark.png`).
 
-> **Textos del servidor en español dentro de la interfaz en inglés.** En las capturas en inglés se ven, en español: el aviso «Precio especial más caro que la lista general: …» (recuadro «Special price warnings» y avisos del pedido), el nombre de la lista dedicada («Precio especial — Walgreens SPX (del 26/10/2026 al 30/11/2026)») y la frase «desde el 26/10/2026, sin fecha de fin» debajo de «Hasta» en la oferta. Los arma el servidor. Pendiente conocido (decisión 32 de [`lote247-decisiones.md`](../../lote247-decisiones.md)).
+> **Textos en el idioma de la interfaz.** En las capturas en inglés el aviso de precio, el nombre de la lista dedicada («Special price — Walgreens SPX (from 10/26/2026 to 11/30/2026)») y la vigencia de la oferta («from 10/26/2026, no end date») salen en inglés y con las fechas de la compañía (MM/DD/AAAA). El servidor conserva el español solo como respaldo.
 
 ## 1. Ficha de la cadena: «Precios especiales» y «Ofertas»
 
@@ -81,7 +81,7 @@ Qué se ve:
   - **«Incluir»** («Solo estos clientes y cadenas reciben la oferta.»): el chip **«Cadena Walgreens SPX»** con su ×, el buscador **«Agregar cliente»** y el desplegable **«Agregar una cadena»** («Escoger una cadena…»).
   - **«Excluir»** («Todos reciben la oferta menos estos clientes y cadenas.»): en gris, con «Nadie escogido todavía.» y **«Quite lo escogido en la otra caja para usar esta.»** Está deshabilitada mientras «Incluir» tenga a alguien.
 - **Renglones:** el producto SPX-C con precio de venta $20.00, **lista general $18.00** y precio de oferta 16, «Usar un kit anterior» y «Crear un kit nuevo». Abajo «Desactivar».
-- Quitar el último cliente o cadena abre la confirmación **«¿Quitar el último?» / «La oferta quedará para todos los clientes.»** con el botón «Dejarla para todos» (no sale en la captura).
+- La caja **«Incluir»** muestra el chip «Cadena Walgreens SPX» **sin ×** (es el último: no se puede quitar) y debajo el mensaje «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.» (por API da 409). La caja **«Excluir»** queda deshabilitada con «Esta oferta es solo para los escogidos y no se queda sin ellos: para que sea para todos menos algunos, desactívela y cree otra.»
 
 En celular (`l247-oferta-movil-en-light.png`) las dos cajas pasan una debajo de la otra y la ventana usa todo el alto, con la misma sección «Who it applies to» («Include» y «Exclude») en inglés.
 
@@ -97,13 +97,13 @@ Qué se ve:
 - El cliente «FARMACIA-S · FARMACIA SPX UNO», la fecha, el pedido (urgente, entrega, pago, autorización) y la lista de **Productos**.
 - Línea 1: SPX-A, cantidad 2, precio 8 (importe $16.00), chip verde **«Cadena Walgreens SPX»**. Línea 2: SPX-B, cantidad 1, precio 14 ($14.00), **sin chip** (sale de la lista general). Línea 3: SPX-C, cantidad 1, precio 16 ($16.00), chip gris **«Oferta «Verano SPX»»**.
 - Cada línea además dice «Disponible: 0» y el aviso rojo de backorder del almacén de la prueba; no tiene que ver con el lote.
-- En esta captura **no sale el aviso** «Precio especial más caro que la lista general» de la línea 2; ese aviso sí se ve en el pedido guiado (abajo).
+- La línea 2 (SPX-B, $14.00, sin chip) muestra el aviso ámbar «El precio especial «Precio especial — Walgreens SPX (desde el 10/26/2026, sin fecha de fin)» pone SPX-B a $15.00, más caro que la lista general ($14.00): se aplica el de la lista general. Corrija el precio especial.» junto a la línea (lista «Avisos de precio de {SKU}»), igual que en el pedido guiado.
 
 ![Pedido guiado en celular, 390 px, interfaz en inglés, tema claro: paso «Products», la oferta de SPX-C, y en «All products of the brand» SPX-A con $8.00, SPX-B con el aviso ámbar y SPX-C con el chip «Offer»](img/l247-orden-movil-en-light.png)
 
 En el celular, el borrador abre el **pedido guiado** (paso 2 de 4, «Products»). Se ve:
 - La tarjeta de la oferta «Monitor SPX» a $16.00, «Verano SPX», «No end date».
-- En «All products of the brand»: SPX-A a $8.00, SPX-B a $14.00 con el **aviso ámbar** «El precio especial «Precio especial — Walgreens SPX (desde el 26/10/2026, sin fecha de fin)» pone SPX-B a $15.00, más caro que la lista general ($14.00): se aplica el de la lista general. Corrija el precio especial.» (**en español, aunque la interfaz esté en inglés**), y SPX-C a $16.00 con el chip «Offer».
+- En «All products of the brand»: SPX-A a $8.00 con el chip «Chain Walgreens SPX» completo bajo la cantidad, SPX-B a $14.00 con el **aviso ámbar** en inglés («Special price “Special price — Walgreens SPX (from 10/26/2026, no end date)” puts SPX-B at $15.00, higher than the general list ($14.00)…»; la prueba `ProductsStep.offers.test.tsx` lo fija), y SPX-C a $16.00 con el chip «Offer».
 - El carrito: «Cart: 3 product(s), 4 unit(s)», $46.00.
 
 > **Corregido en este lote.** El chip de origen de SPX-A («Chain Walgreens SPX») y el precio quedan completos bajo la cantidad; antes el chip se cortaba por la izquierda en celular (la regla móvil de `wizard.css` no mandaba el precio a la columna ancha).

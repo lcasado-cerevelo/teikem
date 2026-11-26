@@ -32,6 +32,8 @@ internal static class PriceListQueries
             {
                 l.PriceListId, l.Name, l.AppliesToAll, l.ValidFrom, l.ValidTo,
                 IsSpecial = l.SpecialClientId != null || l.SpecialChainId != null,
+                OwnerName = l.SpecialClientId != null ? db.Clients.Where(c => c.ClientId == l.SpecialClientId).Select(c => c.Name).FirstOrDefault()
+                    : l.SpecialChainId != null ? db.Set<Teikem.Domain.Clients.ClientChain>().Where(c => c.ClientChainId == l.SpecialChainId).Select(c => c.Name).FirstOrDefault() : null,
                 ByClient = hasClient && db.Set<PriceListClient>().Any(pc => pc.PriceListId == l.PriceListId && pc.IsActive && pc.ClientId == cid),
                 ByChain = hasChain && db.Set<PriceListChain>().Any(pc => pc.PriceListId == l.PriceListId && pc.IsActive && pc.ChainId == chid),
             })
@@ -53,7 +55,7 @@ internal static class PriceListQueries
         return lists.Select(l => new PriceListView(l.PriceListId, l.Name, true, l.AppliesToAll, l.ValidFrom, l.ValidTo,
             !l.AppliesToAll && l.ByClient ? mine : Array.Empty<int>(),
             items.GetValueOrDefault(l.PriceListId) ?? Array.Empty<PriceListItemView>(),
-            !l.AppliesToAll && l.ByChain ? myChain : null, l.IsSpecial)).ToList();
+            !l.AppliesToAll && l.ByChain ? myChain : null, l.IsSpecial, l.OwnerName)).ToList();
     }
 
     /// <summary>

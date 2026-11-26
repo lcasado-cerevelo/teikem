@@ -179,10 +179,11 @@ public sealed class OfferKitTests
         await x.Offers.UpsertItemsAsync(old.PublicId, new OfferItemsRequest(new[] { new OfferItemRequest(strips.PublicId, 9m) }), default);
         Assert.Equal(OfferRules.PublishNeedsClients, (await Assert.ThrowsAsync<StatusRuleException>(() => x.Offers.PublishAsync(old.PublicId, default))).Message);
         await x.Offers.DeactivateAsync(old.PublicId, default);
-        // sin borrador, quitar el último cliente no se rechaza: la oferta deja de aplicar hasta que se escoja otro
-        var none = await x.Offers.RemoveClientAsync(offer.PublicId, x.C1.PublicId, default);
-        Assert.Empty(none.Clients);
-        Assert.Equal(6.99m, (await x.DraftAsync(x.C1, new SalesOrderLineRequest(strips.PublicId, 1m))).Lines[0].UnitPrice);
+        // Lote 247: el último cliente de una oferta «solo para» los escogidos no se quita (409); la oferta sigue igual
+        var last = await Assert.ThrowsAsync<ConflictException>(() => x.Offers.RemoveClientAsync(offer.PublicId, x.C1.PublicId, default));
+        Assert.Equal(OfferRules.IncludeNeedsMember, last.Message);
+        Assert.Single((await x.Offers.GetAsync(offer.PublicId, default)).Clients);
+        Assert.Equal(3m, (await x.DraftAsync(x.C1, new SalesOrderLineRequest(strips.PublicId, 1m))).Lines[0].UnitPrice);
         Assert.Equal(OfferRules.ClientsOnGeneral, (await Assert.ThrowsAsync<StatusRuleException>(async () =>
         {
             var general = await x.Offers.CreateAsync(new OfferRequest("Todos", x.Today), default);

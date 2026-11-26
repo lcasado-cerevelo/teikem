@@ -5340,7 +5340,9 @@
             "lastTitle": "¿Quitar el último?",
             "lastMessage": "La oferta quedará para todos los clientes.",
             "lastConfirm": "Dejarla para todos",
-            "lastFailed": "No se pudo dejar la oferta para todos."
+            "lastFailed": "No se pudo dejar la oferta para todos.",
+            "includeNeedsMember": "Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.",
+            "lockedByInclude": "Esta oferta es solo para los escogidos y no se queda sin ellos: para que sea para todos menos algunos, desactívela y cree otra."
           }
         },
         "title": "Precios y ofertas",
@@ -10936,6 +10938,21 @@
       "help": "El primero que pidió, primero. «Se puede surtir» es lo que hay disponible hoy para esa línea; surtir todo recorre de la más antigua a la más reciente."
     }
   },
+  "pricing": {
+    "range": {
+      "between": "del {from} al {to}",
+      "open": "desde el {from}, sin fecha de fin"
+    },
+    "dedicatedName": "Precio especial — {owner} ({range})",
+    "notice": {
+      "TWO_OFFERS": "El producto {sku} está en dos ofertas a la vez: «{offer}» a {price} y «{other}» a {otherPrice}. Se aplica la más barata («{offer}»).",
+      "OFFER_ABOVE_GENERAL": "La oferta «{offer}» pone {sku} a {price}, más caro que la lista general ({otherPrice}): se aplica el precio más bajo.",
+      "SPECIAL_ABOVE_GENERAL": "El precio especial «{list}» pone {sku} a {price}, más caro que la lista general ({otherPrice}): se aplica el de la lista general. Corrija el precio especial."
+    },
+    "warning": {
+      "SPECIAL_ABOVE_GENERAL": "Precio especial más caro que la lista general: {sku} a {price} y en la lista general a {general}. Se cobra el más bajo; corrija el precio especial."
+    }
+  },
   "salesWizard": {
     "title": "Nuevo pedido",
     "subtitle": "Pedido guiado en cuatro pasos: se guarda como borrador en cada paso.",
@@ -12831,6 +12848,43 @@
     "usedTemplate": "Plantilla: {name}"
   },
   "entityImport": {
+    "tpl": {
+      "PRODUCT": {
+        "newTitle": "Nueva plantilla de importación de productos",
+        "editTitle": "Editar plantilla de importación de productos",
+        "editorHint": "Define qué campo corresponde a cada columna, en el mismo orden de tu archivo — por ejemplo, que la primera sea el SKU, la segunda el nombre…",
+        "requiredHelp": "La plantilla debe traer el SKU (en una columna) y el nombre (en una columna o como valor por defecto).",
+        "defaultsHelp": "Se usan cuando la celda del archivo viene vacía o el campo no tiene columna (por ejemplo, la unidad de todos los productos). El SKU no admite valor por defecto."
+      },
+      "SUPPLIER": {
+        "newTitle": "Nueva plantilla de importación de proveedores",
+        "editTitle": "Editar plantilla de importación de proveedores",
+        "editorHint": "Define qué campo corresponde a cada columna, en el mismo orden de tu archivo — por ejemplo, que la primera sea el nombre del proveedor, la segunda su correo…",
+        "requiredHelp": "La plantilla debe traer el nombre del proveedor en una columna.",
+        "defaultsHelp": "Se usan cuando la celda del archivo viene vacía o el campo no tiene columna (por ejemplo, el país de todos los proveedores). El nombre no admite valor por defecto."
+      },
+      "WAREHOUSE": {
+        "newTitle": "Nueva plantilla de importación de almacenes",
+        "editTitle": "Editar plantilla de importación de almacenes",
+        "editorHint": "Define qué campo corresponde a cada columna, en el mismo orden de tu archivo — por ejemplo, que la primera sea el código del almacén, la segunda su nombre…",
+        "requiredHelp": "La plantilla debe traer el código y el nombre del almacén, cada uno en una columna.",
+        "defaultsHelp": "Se usan cuando la celda del archivo viene vacía o el campo no tiene columna. El código y el nombre del almacén no admiten valor por defecto."
+      },
+      "BIN": {
+        "newTitle": "Nueva plantilla de importación de posiciones",
+        "editTitle": "Editar plantilla de importación de posiciones",
+        "editorHint": "Define qué campo corresponde a cada columna, en el mismo orden de tu archivo — por ejemplo, que la primera sea el código del almacén, la segunda la zona…",
+        "requiredHelp": "La plantilla debe traer el almacén y la zona (en una columna o como valor por defecto) y el código de la posición, o sus partes (pasillo, estante, nivel, posición), en columnas.",
+        "defaultsHelp": "Se usan cuando la celda del archivo viene vacía o el campo no tiene columna (por ejemplo, el almacén de todas las posiciones). El código de la posición y sus partes no admiten valor por defecto."
+      },
+      "PURCHASE_ORDER": {
+        "newTitle": "Nueva plantilla de importación de órdenes de compra",
+        "editTitle": "Editar plantilla de importación de órdenes de compra",
+        "editorHint": "Define qué campo corresponde a cada columna, en el mismo orden de tu archivo — por ejemplo, que la primera sea el número de la orden, la segunda el SKU…",
+        "requiredHelp": "La plantilla debe traer el número de la orden, el SKU y la cantidad, cada uno en una columna, y el proveedor (en una columna o como valor por defecto).",
+        "defaultsHelp": "Se usan cuando la celda del archivo viene vacía o el campo no tiene columna (por ejemplo, el proveedor de todas las líneas). El número de la orden, el SKU y la cantidad no admiten valor por defecto."
+      }
+    },
     "open": "Importar",
     "title": "Importar {entity}",
     "help": "Sube un archivo (CSV o Excel) y elige la plantilla que dice qué columna es cada campo. «Revisar» no guarda nada; «Importar» guarda los registros válidos. Los productos que ya existen (mismo SKU y dueño) se actualizan: una celda vacía deja el dato como está. En las demás listas solo se crea y lo que ya existe se rechaza.",

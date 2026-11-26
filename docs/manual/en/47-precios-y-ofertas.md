@@ -11,8 +11,8 @@ The three concepts, kept apart:
 | Concept | What it is | Carries offers |
 |---|---|---|
 | **Product** | What is sold, with its sale price. A **kit is just another product**, made of other products, with its normal price; it is also sold loose. | No |
-| **Price list** | The usual prices (or prices negotiated per client), with validity dates. One or several can be kept. When adding a line you choose a product or a kit. | **No** |
-| **Offer** | Name, photo, validity and a list of products or kits, each with its offer price. It applies to all clients or to chosen clients. | — |
+| **Price list** | The usual prices (or prices negotiated per client or per chain), with validity dates. One or several can be kept. When adding a line you choose a product or a kit. | **No** |
+| **Offer** | Name, photo, validity and a list of products or kits, each with its offer price. It applies to all clients, only to chosen clients and chains, or to all except the chosen ones. | — |
 
 The screen is in **Accounting → Prices and offers** (`/money/prices`), right before «Sales». The menu item only shows with `sales.pricelist` (Company admin and Sales supervisor; a salesperson with only `sales.view` does not see it). It has **two sections**: **Offers** (on top, with the **New offer** button) and **Price lists** (with the **New price list** button). The old link `/warehouse/products?tab=prices` redirects to this screen.
 
@@ -26,30 +26,40 @@ The screen is in **Accounting → Prices and offers** (`/money/prices`), right b
 - Module **Sales orders (`SALES_ORDERS`)**. With the module off, the whole lists-and-offers API answers 403. The product photo follows the inventory module (`WMS_LOTSERIAL`).
 - Permissions:
   - **`sales.view`** — view offers, lists, the guided-order catalog and **product photos** (even without `inventory.view`). The «Prices and offers» screen itself requires `sales.pricelist`.
-  - **`sales.pricelist`** — create, publish, change and deactivate lists **and offers**; add or remove the photo of the offer and of its lines; choose the clients; create, reuse or change offer kits (the library). Implies `sales.view`. Held by the **Sales supervisor** role (`SalesSupervisor`) and the **Company admin**.
+  - **`sales.pricelist`** — create, publish, change and deactivate lists **and offers**; add or remove the photo of the offer and of its lines; choose the clients and chains; create, reuse or change offer kits (the library). Implies `sales.view`. Held by the **Sales supervisor** role (`SalesSupervisor`) and the **Company admin**.
   - **`inventory.manage`** — upload, change or remove the **product photo** (in the product editor; see [06 §2.5](06-inventario-y-almacen.md#25-product-photo-and-category-with-subcategory-batch-229-2026-11-09)).
   - **`sales.price`** — remains the exception: writing on an order line a price different from the one that came from the list or the offer. Only the Company admin, or whoever they designate.
-- Batches 229 and 231 **added no new permissions**: offers and the offer kit library use `sales.view` and `sales.pricelist`.
+- Batches 229, 231 and 247 **added no new permissions**: offers and the offer kit library use `sales.view` and `sales.pricelist`.
 - Permission `sales.pricelist` in companies that already existed: it was added to the already-cloned Company admin roles; the «Sales supervisor» role is created by the administrator in System → Roles if the company does not have it.
 
 ## 2. Where the price of a line comes from
 
-> **Batch 247 (2026-11-26): this rule changed.** The price now is **always the lowest** among the client's price, its chain's price (if the chain is active), the offer and the general list, with no hierarchy: the client's negotiated price no longer beats the general list when it is higher (a `SPECIAL_ABOVE_GENERAL` notice is shown), and the source can also be `CHAIN_LIST`. Offers have an «Include» / «Exclude» audience with clients and chains, and lists can apply to chains. The current rule, the special prices and the new messages are in [chapter 55](55-precios-especiales-y-ofertas.md); the points below describe the behavior before the batch and are still to be merged.
+> **Rule in force since Batch 247 (2026-11-26): the lowest price always wins.** The details, the special prices by client and by chain, the «Include» / «Exclude» boxes of the offer and the new messages are in [chapter 55](55-precios-especiales-y-ofertas.md). This section summarizes the rule; if something does not match, chapter 55 rules.
 
-When an order line is created or edited (and in the guided order), the server resolves the price like this:
+When an order line is created or edited (and in the guided order, and in the catalog), the server compares up to **four candidates** and keeps the **lowest**:
 
-1. **Between the client's negotiated price and the offer in effect, the lowest wins.** The *negotiated* price is the price in a **published** list, **in effect today**, that applies to that client and carries the product (or kit). The *offer* is an offer that is **published, active and in effect today**, that applies to the client (all clients, or him among the chosen ones) and carries the product. **At equal price the negotiated one wins.**
-2. If the client has **no** negotiated price: between the offer and the **general list** (published, in effect, for all clients) the lowest wins; without an offer, the general list.
-3. If there is no list either: the **product's sale price** (`Product.SalePrice`).
-4. None: the product **has no price** and the line is rejected (see section 7).
+| # | Candidate | Applies if… |
+|---|---|---|
+| 1 | **The client's price**: from a list that is **published and in effect today** and includes the client (a list of chosen clients, or its special price) | the list has the product (or kit) |
+| 2 | **Its chain's price**: from a published, in-effect list that includes the client's chain (a chain list, or the chain's special price) | the client has an **active** chain and the list has the product |
+| 3 | **Offer**: the cheapest in-effect offer that applies to the client or its chain | the offer (published, active and in effect today) has the product or kit |
+| 4 | **General list**: the published, in-effect list for all clients | it has the product |
 
-`priceSource` says where it came from: `OFFER`, `CLIENT_LIST`, `GENERAL_LIST`, `PRODUCT` or `NONE`.
+1. **The lowest price wins**, wherever it comes from. There is no hierarchy: the client's price does **not** win just for being the client's. If a negotiated or special price is **higher** than the general list, the general list price is charged and the system warns.
+2. **On a tie**, the order of preference is: client, chain, offer, general list.
+3. **Inside the same level the lowest also wins.** If a client has two in-effect lists with the same product (say its special price and a group list), the lower is charged; on a tie, the list that started later and, on the same date, the newer one.
+4. **The product's sale price (`Product.SalePrice`) does not compete.** It is used only if none of the four has the product.
+5. If there is no sale price either: the product **has no price** and the line is rejected (see section 7).
+
+**The price is before IVU.** Lists, offers and special prices are written **without tax**; IVU is calculated on the price that is charged and the client's exemptions are applied **afterwards** (see [55 §7](55-precios-especiales-y-ofertas.md)).
+
+`priceSource` says where it came from: `CLIENT_LIST` (the client's price), `CHAIN_LIST` (its chain's), `OFFER`, `GENERAL_LIST`, `PRODUCT` or `NONE`.
 
 Rules worth knowing:
 - The salesperson **does not type prices**. A price different from the resolved one requires `sales.price` (403), unless it is the one the line already had in the draft.
-- The price date is **today**, when the line is created or edited (not the order date). An order already placed **does not change** if the list or the offer changes later: the line keeps its price.
-- If the client of a draft is changed without touching the lines, a line that had the previous client's resolved price takes the new client's; one that had an exceptional price (with `sales.price`) keeps it.
-- If, because of old data, two lists of the same level carry the same product on the same date, the one that started later wins.
+- The price date is **today**, when the line is created or edited (not the delivery date). An order already placed **does not change** if the list or the offer changes later: the line keeps its price and its source.
+- A **deactivated chain** counts as «no chain»: its clients stop getting its prices and offers.
+- If the client of a draft is changed, the lines are **re-priced**: a line that had the previous client's resolved price takes the new client's; one that had a manual price (with `sales.price`) keeps it. If a client changes chain, drafts keep their lines' price until the draft's client is changed.
 - A **regular product** that is in an offer is worth the offer price (if it is the lowest) in the order, even when it is ordered from its brand's list.
 
 ### Price warnings (they are not errors)
@@ -61,24 +71,26 @@ When two prices clash, **the lowest is always charged** and the system warns. Wa
 | Two offers at once (`TWO_OFFERS`) | A product is in two offers in effect for the same client | Guided order and order (next to the product, on the cart line and in the «Price warnings» box of the delivery step) | `El producto GM está en dos ofertas a la vez: «A» a $9.00 y «B» a $11.00. Se aplica la más barata («A»).` (Product GM is in two offers at once: «A» at $9.00 and «B» at $11.00. The cheapest applies («A»).) The cheapest wins; at equal price, the one that started later. |
 | Offer more expensive than the general list (`OFFER_ABOVE_GENERAL`, in the order) | The offer price is higher than the general list in effect | Same as above | `La oferta «A» pone GM a $12.00, más caro que la lista general ($10.00): se aplica el precio más bajo.` (Offer «A» puts GM at $12.00, more than the general list ($10.00): the lowest price applies.) |
 | Offer more expensive than the general list (`OFFER_ABOVE_GENERAL`, when building the offer) | When creating, changing or publishing the offer, a line is more expensive than the general list (in effect when the offer starts, or today if it already started) | In the offer window, box «Warnings (they do not block saving)» | `El producto GM sale en esta oferta a $12.00, más caro que en la lista general ($10.00): se aplicará el precio más bajo.` (Product GM is in this offer at $12.00, more than in the general list ($10.00): the lowest price will apply.) |
-| Clash with a cheaper offer (`CHEAPER_OFFER`, when building the offer) | Another **published**, active offer, with overlapping dates and clients (an «all clients» offer overlaps with any), carries the same product **at the same price or cheaper** | In the offer window, same box | `El producto GM también está en la oferta «B» (del 01/11/2026 al 30/11/2026) a $9.00, igual o más barata que aquí ($10.00): mientras las dos estén vigentes se aplica el precio más bajo.` (Product GM is also in offer «B» (from … to …) at $9.00, equal or cheaper than here ($10.00): while both are in effect the lowest price applies.) |
+| Clash with a cheaper offer (`CHEAPER_OFFER`, when building the offer) | Another **published**, active offer, with overlapping dates and audience (an «all clients» offer overlaps with any; chains and exclusions now count too), carries the same product **at the same price or cheaper** | In the offer window, same box | `El producto GM también está en la oferta «B» (del 01/11/2026 al 30/11/2026) a $9.00, igual o más barata que aquí ($10.00): mientras las dos estén vigentes se aplica el precio más bajo.` (Product GM is also in offer «B» (from … to …) at $9.00, equal or cheaper than here ($10.00): while both are in effect the lowest price applies.) |
+| Special or negotiated price higher than the general list (`SPECIAL_ABOVE_GENERAL`) | A line of a list that is not general, or the client's or its chain's price when pricing, is higher than the general list | The list's page, the «Special prices» panel, catalog, guided order and draft (on the desktop, the order window shows them next to each line) | The texts are in [55 §2](55-precios-especiales-y-ofertas.md) |
 
 Notes on warnings:
-- The offer's own (`CHEAPER_OFFER`, `OFFER_ABOVE_GENERAL`) are calculated **when the offer is read**, in every response (create, change, publish, add a line, open it). A **deactivated** offer generates no warnings in others.
+- The offer's own (`CHEAPER_OFFER`, `OFFER_ABOVE_GENERAL`) are calculated **when the offer is read**, in every response (create, change, publish, add a line, open it). A **deactivated** offer generates no warnings in others. `CHEAPER_OFFER` is a conservative estimate: when in doubt it warns.
+- **Language:** the server sends the text in Spanish (with day/month/year dates) as a fallback; the staff web builds the price notices, the dedicated list's name and an offer's validity **in the interface language and with the company's dates** (details in [chapter 55 §2](55-precios-especiales-y-ofertas.md)). The notices in the offer window still come from the server, in Spanish.
 - The order's show in the catalog (when picking the product) and when the draft is saved. When a draft is reopened only the catalog's remain, because the order's are not stored.
-- If what the order charges is the client's **negotiated** price (lower than the offer), the offer card says so: «Offer: $9.00. The client's negotiated price is charged because it is lower.» (with the offer's price).
+- If what the order charges is a price **of the client** (or of its chain) lower than the offer, the offer card says so: «Offer: $9.00. The client's negotiated price is charged because it is lower.» (with the offer's price).
 
 ## 3. Price lists
 
-**What it does.** A list has a name, validity (**from** required, **until** optional: empty = no end), notes (up to 500 characters), the **lines** (product or kit → price, with an optional photo) and whom it **applies to**: all clients (general list) or only chosen clients (negotiated prices: gloves, boxes, monitor, test strips). **A list carries no offers**: promotions with validity, photo and special price go in an offer (section 4).
+**What it does.** A list has a name, validity (**from** required, **until** optional: empty = no end), notes (up to 500 characters), the **lines** (product or kit → price, with an optional photo) and whom it **applies to**: all clients (general list) or only chosen clients and chains (negotiated prices: gloves, boxes, monitor, test strips). A chain list reaches the chain's clients **while the chain is active**. **A list carries no offers**: promotions with validity, photo and special price go in an offer (section 4).
 
 **Who can.** View: `sales.view`. Everything else: `sales.pricelist`. Module `SALES_ORDERS`.
 
 **How to use it (screen).** **Accounting → Prices and offers** → **Price lists** section.
 1. **New price list**: name, «Valid from», «Until (optional)», notes and the «Applies to all clients» checkbox. **Create list** leaves it as a **draft**.
-2. In the list window: **Save details**; **Lines** (choose a **product or kit**, type the price, **Add**; each line can have its price changed, be removed or get a photo); **Clients of the list** (**Add client**; only if it is not general).
+2. In the list window: **Save details**; **Lines** (choose a **product or kit**, type the price, **Add**; each line can have its price changed, be removed or get a photo); **Clients** and **Chains** of the list (**Add client**, **Add a chain**; only if it is not general).
 3. **Publish**: from then on the list gives prices within its dates. **Back to draft** takes it out of use. **Deactivate** / **Reactivate** withdraw or return it (it is never deleted).
-4. The list of lists shows name, validity, status (Draft / Scheduled / In effect / Expired), «Applies to» and number of lines; filter by status, search by name and **Show deactivated** (the filter applies to offers and lists).
+4. The list of lists shows name, validity, status (Draft / Scheduled / In effect / Expired), «Applies to» and number of lines; filter by status, search by name and **Show deactivated** (the filter applies to offers and lists). The **dedicated lists** («Special price of …», created by the «Special prices» screen of the client's or chain's page) are **hidden by default**: the **«Also show special prices»** switch shows them.
 
 **How to use it (API).** `/api/v1/price-lists`:
 
@@ -93,6 +105,9 @@ Notes on warnings:
 | Change a price / remove a line | `PATCH …/items/{itemId}` `{ "price": 11 }` · `DELETE …/items/{itemId}` | `sales.pricelist` |
 | Line photo (JPG, PNG, WEBP or GIF) | `POST …/items/{itemId}/image` (multipart `file`) · `DELETE …/items/{itemId}/image` | `sales.pricelist` |
 | Add / remove clients | `POST …/clients` `{ "clientPublicIds": ["…"] }` · `DELETE …/clients/{clientPublicId}` | `sales.pricelist` |
+| Add / remove chains | `POST …/chains` `{ "chainPublicIds": ["…"] }` · `DELETE …/chains/{chainPublicId}` | `sales.pricelist` |
+
+To also see the dedicated lists: `GET /price-lists?includeSpecial=true`.
 
 **Fields and rules.**
 
@@ -102,12 +117,15 @@ Notes on warnings:
 | Valid from | Required. |
 | Until | Optional; cannot be earlier than «from». Both ends count as in effect. |
 | Notes | Up to 500 characters. |
-| Applies to all clients | A general list carries no chosen clients; a client list needs at least one to be published. |
+| Applies to all clients | A general list carries no chosen clients or chains; a list that is not general needs at least one client **or** one chain to be published, and a published list is never left with none (move it back to draft first). |
 | Lines | Up to 2000; only the company's **own** active products or kits; no repeats; price from 0 up with up to 4 decimals. **An offer kit cannot go** in a list (its price goes in an offer). |
 | Clients | Up to 2000; must be active clients. |
+| Chains | Up to 500; must be active chains; repeated ones are ignored. |
 | Line photo | JPG, PNG, WEBP or GIF (checked by content), up to the file store limit. By default the line shows the product photo; if another is set, that one wins. Removing it only unlinks it: the file is not deleted. |
 
-**List overlaps.** Two **published** lists of the same audience (two general ones, or two client lists that share a client) cannot give a price to the same product on overlapping dates: the server rejects it with 409 and cites up to 5 SKUs. A general list and a client list **can** carry the same product (the client's wins). Overlaps are checked when publishing and on every change of a published list (dates, lines, clients, reactivate). A seasonal list on top of the base one is allowed if it does not repeat products. (**Offers** do not overlap with lists or with each other as an error: their clashes are warnings, section 2.)
+**List overlaps.** Two **published** lists of the same audience (two general ones, two client lists that share a client, or two chain lists that share a chain) cannot give a price to the same product on overlapping dates: the server rejects it with 409 and cites up to 5 SKUs. Lists of a different audience **can** carry the same product: a general list and a client or chain list, or a client list and a chain list even when the client belongs to that chain. Among them **the lowest price wins** (section 2). A **dedicated list** («Special price of …») does not clash with a normal list that includes the same client either. Overlaps are checked when publishing and on every change of a published list (dates, lines, clients, chains, reactivate). A seasonal list on top of the base one is allowed if it does not repeat products. (**Offers** do not overlap with lists or with each other as an error: their clashes are warnings, section 2.)
+
+**Dedicated lists («Special price of …»).** They are created by the «Special prices» screen of the client's or chain's page (one per owner and validity). From Prices and offers you can change their prices, add or remove lines, set photos, publish, move back to draft and deactivate; you **cannot** change their name, dates, «applies to all», or their clients or chains (422: that is done on the page of the client or chain). Details in [chapter 55](55-precios-especiales-y-ofertas.md).
 
 ![Window of a price list for chosen clients: data, clients of the list and lines](frontend/img/l228-lista-precios.png)
 
@@ -115,13 +133,13 @@ Notes on warnings:
 
 ### 4.1 What an offer is
 
-An **offer** is a separate entity with: **name** (up to 120 characters), **photo**, **validity** («Valid from» required, «Until» optional), **notes** (up to 500), whom it **applies to** (all clients or chosen clients) and its **lines** (up to 500). Each line is an **existing product or kit** with its offer price, a **previous offer kit** from the library («Use a previous kit») or a **new offer kit** («Create a new kit») (4.4). It is **born published** (Lote 234: offers have no draft) and gives prices while it is active and in effect.
+An **offer** is a separate entity with: **name** (up to 120 characters), **photo**, **validity** («Valid from» required, «Until» optional), **notes** (up to 500), whom it **applies to** (all clients; only the chosen clients and chains; or all except the chosen ones: see 4.3 and [chapter 55 §5](55-precios-especiales-y-ofertas.md)) and its **lines** (up to 500). Each line is an **existing product or kit** with its offer price, a **previous offer kit** from the library («Use a previous kit») or a **new offer kit** («Create a new kit») (4.4). It is **born published** (Lote 234: offers have no draft) and gives prices while it is active and in effect.
 
 **No end date.** If «Until» is left blank, **the offer does not expire**: it is valid until someone deactivates it. The screen says so in two places: on the card («No end date: valid until you deactivate it») and in the window, under the field («“Until” is blank: the offer has no end date and is valid until you deactivate it.»). Check this when creating a seasonal offer.
 
 ### 4.2 Who can
 
-View offers: `sales.view`. Create, change, publish, deactivate, add photos, choose clients and create, reuse or change offer kits: `sales.pricelist`. Module `SALES_ORDERS`. Batches 229 and 231 added no permissions.
+View offers: `sales.view`. Create, change, publish, deactivate, add photos, choose clients and chains, and create, reuse or change offer kits: `sales.pricelist`. Module `SALES_ORDERS`. Batches 229 and 231 added no permissions.
 
 ### 4.3 How to use it (screen)
 
@@ -129,7 +147,7 @@ View offers: `sales.view`. Create, change, publish, deactivate, add photos, choo
 
 1. **New offer** → window with **Offer name**, **Notes**, **Valid from**, **Until (blank = no end date)** and the **Applies to all clients** checkbox. **Create offer** leaves it **published from that moment** (Lote 234: **offers have no draft**): it applies according to its dates as soon as it has lines («Offer created: it already applies according to its dates. Add its photo and lines.»). If it should not apply yet, give it a future «Valid from».
 2. **Offer photo**: upload, change or remove (section 5).
-3. **Offer clients**: only if «Applies to all clients» was unchecked (**Add client**). While it has none, the offer **applies to no one** and the window says so: «This offer does not apply to anyone yet: choose at least one client.»
+3. **Whom it applies to** (the offer's audience). There are three modes: **all clients** (`ALL`, both boxes empty); **Include** (`INCLUDE`: «Only these clients and chains get the offer.») and **Exclude** (`EXCLUDE`: «Everyone gets the offer except these clients and chains.»). Each box accepts clients (**Add client**) and chains (**Add a chain**). Filling one box disables the other («Remove what is chosen in the other box to use this one.»). The **last** client or chain of «Include» **cannot be removed**: its × does not show, the window says «An offer «only for» the chosen ones needs at least one client or chain: add another one before removing the last, or deactivate the offer.» and through the API it gives 409. An «Include» offer stays «Include» (to turn it into «everyone except some», deactivate it and create another). The last one of «Exclude» can be removed: it asks for confirmation («The offer will be for all clients.») and the offer becomes `ALL` (this **replaces** what Batch 234 said: «removing the last client is no longer rejected»). An `INCLUDE` offer with no one chosen (just created, or from before this fix) **applies to no one** and the window says so: «This offer does not apply to anyone yet: choose at least one client.» An `EXCLUDE` offer with no one chosen is valid for everyone. Details and API in [chapter 55 §5](55-precios-especiales-y-ofertas.md).
 4. **Lines** (three ways, and the screen explains it: «Add an existing product with its offer price, or an offer kit: use a previous one from the library (at the price you want) or create a new one.»):
    - **Pick a product**: search by SKU or name and type the **offer price**; the line shows the general list price next to it for comparison. The price is changed in its cell (when leaving the field) and the line is removed with its button. This search **no longer offers offer kits**: those are added with the next two buttons.
    - **Use a previous kit**: opens the **offer kit library** (4.4). Search by SKU or name; each kit shows its photo, SKU, name, its pieces and «Last offer: «…» at $…» (or «Not used in any offer yet»). When you pick one, **the pieces appear read-only** («The composition of a previous kit does not change; for a different composition, create a new kit.») and the **offer price comes pre-filled with the last one** («Last price: $41.94 (offer «January»). You can set another.»): **the price can be changed**. **Add to the offer** puts the line. If the kit is already a line of this offer, it shows «Already in this offer» and cannot be picked again.
@@ -150,7 +168,7 @@ An **offer kit** is a kit that is **assembled when ordered**: it has no stock of
 
 - **Use a previous kit.** The **composition does not change** (pieces, quantities, «Not substitutable» and «Adjustable when ordering»): if you want another, **create a new kit** (there is a shortcut that copies the pieces). The **price can** be changed in each offer, and the screen suggests the **last** one: that of the most recent line still placed in an active offer; if none is left, the most recent of all. A kit that was never used has no previous price: it has to be typed.
 - **Create a new kit.** SKU, name, price, pieces and «Adjustable when ordering». The SKU is not repeated for the same owner. The category and tax category come from the first piece (the category only if none is given); the kit's sale price is the one given (otherwise, the offer price it was created with).
-- **It is sold only while it is in some published offer in effect** for the client: an offer that is **published, active and in effect today** (both ends count; without «until» it does not expire) that applies to the client (to all, or to him among the chosen ones) with an active line of that kit. Outside that it does not show in the order catalog and ordering it gives the 422 error of section 7. If the kit is in two offers in effect, the cheapest is charged and the `TWO_OFFERS` warning appears.
+- **It is sold only while it is in some published offer in effect** for the client: an offer that is **published, active and in effect today** (both ends count; without «until» it does not expire) that applies to the client (to all; to him, or to his chain, among the included ones; or to all except him and his chain) with an active line of that kit. Outside that it does not show in the order catalog and ordering it gives the 422 error of section 7. If the kit is in two offers in effect, the cheapest is charged and the `TWO_OFFERS` warning appears.
 - **A kit sold permanently is an offer with no end date**: put the kit in an offer with «Until» blank.
 - **The kit is not deleted or deactivated.** When no offer holds it, it is simply not sold; the orders and invoices that used it still see it (the line keeps its copy). If an offer is **extended** (its end date is changed or removed), reactivated or published again, the kit **becomes available again** by itself. When an offer is deactivated or sent back to draft, its kits leave the sale unless they are in another offer in effect.
 - **The composition is fixed once used.** The kit counts as **used** from the moment it has a line in any offer (even if removed or the offer is deactivated) or a line in any sales order. From the screen, a kit is born with its line: that is why **«Change kit»** (on the line) changes **the name** and leaves the pieces read-only with the note «The composition of a previous kit does not change…». The SKU does not change and the price is changed on the line. Only through the API can a kit be created in the library without putting it in an offer and its pieces corrected while it has never been used. Sending the same composition (even in another order) does not count as a change.
@@ -164,9 +182,9 @@ An **offer kit** is a kit that is **assembled when ordered**: it has no stock of
 
 | Action | Call | Permission |
 |---|---|---|
-| View offers (`q`, `state`, `includeInactive`) / one offer | `GET /offers` · `GET /offers/{publicId}` | `sales.view` |
-| Create (born **published**, Lote 234) | `POST /offers` `{ "name": "November flyer", "validFrom": "2026-11-10", "validTo": null, "appliesToAll": true, "notes": "…" }` | `sales.pricelist` |
-| Edit (what is not sent does not change; `clearValidTo: true` removes the end date) | `PATCH /offers/{publicId}` | `sales.pricelist` |
+| View offers (`q`, `state`, `includeInactive`, `chainPublicId` = only the ones in effect that apply to that chain) / one offer | `GET /offers` · `GET /offers/{publicId}` | `sales.view` |
+| Create (born **published**, Lote 234) | `POST /offers` `{ "name": "November flyer", "validFrom": "2026-11-10", "validTo": null, "appliesToAll": true, "notes": "…" }` (the audience can also be sent as `"audienceMode": "ALL" \| "INCLUDE" \| "EXCLUDE"`) | `sales.pricelist` |
+| Edit (what is not sent does not change; `clearValidTo: true` removes the end date; `audienceMode` changes the audience) | `PATCH /offers/{publicId}` | `sales.pricelist` |
 | Publish an offer left as a draft (from before Lote 234) · back to draft (compatibility only; the screen does not offer it) | `POST …/publish` · `POST …/unpublish` | `sales.pricelist` |
 | Deactivate / reactivate | `POST …/deactivate` · `POST …/reactivate` | `sales.pricelist` |
 | Offer photo (JPG, PNG or WEBP) | `POST …/image` (multipart `file`) · `DELETE …/image` | `sales.pricelist` |
@@ -174,6 +192,7 @@ An **offer kit** is a kit that is **assembled when ordered**: it has no stock of
 | Change a price / remove a line | `PATCH …/items/{itemId}` `{ "price": 9 }` · `DELETE …/items/{itemId}` | `sales.pricelist` |
 | Line photo | `POST …/items/{itemId}/image` (multipart) · `DELETE …/items/{itemId}/image` | `sales.pricelist` |
 | Add / remove clients | `POST …/clients` `{ "clientPublicIds": ["…"] }` · `DELETE …/clients/{clientPublicId}` | `sales.pricelist` |
+| Add / remove chains | `POST …/chains` `{ "chainPublicIds": ["…"] }` · `DELETE …/chains/{chainPublicId}` | `sales.pricelist` |
 | «Create a new kit» and put it in this offer right away (it stays in the library) | `POST …/kits` `{ "sku": "OFERTA1", "name": "Monitor + needles + strips", "price": 41.94, "adjustable": false, "components": [ { "productPublicId": "…", "quantity": 1, "notSubstitutable": false } ] }` → `{ productPublicId, sku, offer }` | `sales.pricelist` |
 | View the offer kit library (`q` = the SKU or name contains; `includeInactive`; up to 500) | `GET /offers/kits?q=` → per kit: pieces, `lastPrice`, `lastOfferName`, `offerCount` (in how many active offers it is today), `compositionLocked`, `effectiveImagePublicId` | `sales.view` |
 | View a library kit | `GET /offers/kits/{productPublicId}` (404 if it is not an offer kit) | `sales.view` |
@@ -181,7 +200,7 @@ An **offer kit** is a kit that is **assembled when ordered**: it has no stock of
 | Change a library kit (the name always; pieces and «adjustable» only if never used) | `PATCH /offers/kits/{productPublicId}` `{ "name": "…" }` | `sales.pricelist` |
 | Change a kit from an offer (compatibility; prefer the library `PATCH`) | `PUT …/kits/{productPublicId}` `{ "name": "…", "components": [ … ] }` (the kit must be in that offer) | `sales.pricelist` |
 
-Keys of an offer's response: `hasEndDate` (false = no end date) and `validityText` («desde el 09/11/2026, sin fecha de fin» or «del … al …»); `state` (`DRAFT`, `SCHEDULED`, `ACTIVE`, `EXPIRED`); `inEffect` (applies today); `warnings[]` (the warnings); and, per line, `isOfferKit` (the line is an offer kit; the same kit can be in several offers), `generalListPrice`, `imagePublicId` (the line's own photo) and `effectiveImagePublicId` (the one shown).
+Keys of an offer's response: `hasEndDate` (false = no end date) and `validityText` («desde el 09/11/2026, sin fecha de fin» or «del … al …»; it is the Spanish fallback: the web builds it from `validFrom` and `validTo` in the interface language and with the company's date format); `state` (`DRAFT`, `SCHEDULED`, `ACTIVE`, `EXPIRED`); `inEffect` (applies today); `warnings[]` (the warnings); and, per line, `isOfferKit` (the line is an offer kit; the same kit can be in several offers), `generalListPrice`, `imagePublicId` (the line's own photo) and `effectiveImagePublicId` (the one shown).
 
 ### 4.6 Offer fields and rules
 
@@ -191,9 +210,10 @@ Keys of an offer's response: `hasEndDate` (false = no end date) and `validityTex
 | Valid from | Required. |
 | Until | Optional; blank = does not expire. Cannot be earlier than «from». Both ends count as in effect. |
 | Notes | Up to 500 characters. |
-| Applies to all clients | An all-clients offer carries no chosen clients; a chosen-clients offer applies to no one while it has none. |
+| Applies to all clients / audience (`audienceMode`: `ALL`, `INCLUDE`, `EXCLUDE`) | An all-clients (`ALL`) offer carries no chosen clients or chains; an `INCLUDE` offer applies to no one while it has no client or chain; an `EXCLUDE` offer with no one chosen is valid for everyone. It cannot be changed to `ALL`, or between `INCLUDE` and `EXCLUDE`, with chosen ones: remove them first. |
 | Lines | Up to 500; the company's **own** active products or kits; no repeats; price from 0 up with up to 4 decimals. If the product is already in the offer, its price is changed. An offer kit from the library can go in any offer (also in several at once); without a price, it takes the last one it was used with. |
 | Clients | Up to 2000; must be active clients. |
+| Chains | Up to 500; must be active chains; repeated ones are ignored. |
 | Photo | JPG, PNG or WEBP (section 5). |
 
 ## 5. Photos: of the product, of the line and of the kit
@@ -220,12 +240,12 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 
 ## 6. The order catalog
 
-`GET /api/v1/sales-orders/catalog?clientPublicId=<client>` (`sales.view`) feeds the guided order: the **brands** (`Product.Brand`) with active products, and per brand its **offers in effect** (cards with photo) and the **full list** of products and kits, each with the price already resolved for the client. Without `clientPublicId`, the prices of the general list and the offers for all clients.
+`GET /api/v1/sales-orders/catalog?clientPublicId=<client>` (`sales.view`) feeds the guided order: the **brands** (`Product.Brand`) with active products, and per brand its **offers in effect** (cards with photo) and the **full list** of products and kits, each with the price already resolved for the client. Without `clientPublicId`, the prices of the general list and the offers that are valid without choosing a client (the all-clients ones and the `EXCLUDE` ones; see [chapter 55 §5](55-precios-especiales-y-ofertas.md)).
 
 - Only own, active products **without a serial number**.
 - Brands are grouped ignoring case; products without a brand go last (`brand = null`).
-- **Offers of a brand** = the lines of published offers in effect that apply to the client, **one per product** (the one from the cheapest offer). An **offer kit only shows as a card**, and only while it is in some published offer in effect for the client. A **regular product in an offer** shows as a card **and also** in its brand's list, with the resolved price.
-- `isPromotion` = the product is in an offer in effect for the client; `price` and `priceSource` = what will be charged (`OFFER`, or `CLIENT_LIST` if the negotiated price is lower); `offerPrice` = the offer's price; `offerName`, `offerValidFrom`, `offerValidTo` = which offer and until when; `imagePublicId` = the photo already resolved (section 5); `notices[]` = the warnings (section 2) with their text ready.
+- **Offers of a brand** = the lines of published offers in effect that apply to the client (or to its chain), **one per product** (the one from the cheapest offer). An **offer kit only shows as a card**, and only while it is in some published offer in effect for the client. A **regular product in an offer** shows as a card **and also** in its brand's list, with the resolved price.
+- `isPromotion` = the product is in an offer in effect for the client; `price` and `priceSource` = what will be charged (the lowest of the four candidates of section 2: `CLIENT_LIST`, `CHAIN_LIST`, `OFFER` or `GENERAL_LIST`; `chainPublicId` / `chainName` give the chain when it comes from `CHAIN_LIST`); `offerPrice` = the offer's price; `offerName`, `offerValidFrom`, `offerValidTo` = which offer and until when; `imagePublicId` = the photo already resolved (section 5); `notices[]` = the warnings (section 2) with their text ready.
 - `priceSource` `NONE` = **no price**: it cannot be ordered without `sales.price`.
 - **«New order» offers the same offer kits as the guided order** (Lote 234): in the classic order window, the product picker of each line brings, besides the products, the offer kits of **this catalog** for the chosen client (those of offers in effect that apply to them today), at the offer price. With no client chosen it offers no offer kit. Before, it listed any offer kit and the server rejected on save those that were not on sale. Since an offer is born published, a kit just put in an offer in effect shows in both places right away.
 - Client does not exist: 404 `Cliente no encontrado.` (Client not found.); inactive client: 422 `El cliente está inactivo; no se le puede vender.` (The client is inactive; nothing can be sold to it.)
@@ -262,9 +282,15 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 | Inactive client | — | `El cliente está inactivo; no se le puede vender.` | The client is inactive; nothing can be sold to it. | 422 |
 | Client not in the list | — | `Cliente de la lista no encontrado.` | List client not found. | 404 |
 | Clients on a general list | — | `La lista aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.` | The list applies to all clients: it carries no chosen clients. Uncheck «applies to all» to choose them. | 422 |
-| Making a list with clients general | — | `La lista tiene clientes escogidos: quítelos antes de hacerla general (aplica a todos).` | The list has chosen clients: remove them before making it general. | 422 |
+| Making a list with clients or chains general | — | `La lista tiene clientes o cadenas escogidos: quítelos antes de hacerla general (aplica a todos).` | The list has chosen clients or chains: remove them before making it general (applies to all). | 422 |
+| Chains on a general list | — | `La lista aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.` | The list applies to all clients: it carries no chosen chains. Uncheck «applies to all» to choose them. | 422 |
+| Chains | At least one when adding | `Escoja las cadenas de la lista.` | Choose the list's chains. | 400 (`chainPublicIds`) |
+| Chains | Up to 500 | `Una lista admite como máximo 500 cadenas.` | A list admits at most 500 chains. | 400 |
+| Chain does not exist / is not in the list | — | `Cadena no encontrada.` / `Cadena de la lista no encontrada.` | Chain not found. / List chain not found. | 404 |
+| Deactivated chain | — | `La cadena está desactivada: actívela o escoja otra.` | The chain is deactivated: activate it or choose another. | 422 |
+| Changing name, dates, «applies to all», clients or chains of a dedicated list | They are changed in «Special prices» on the page of the client or chain | `Esta lista es el precio especial de «{dueño}»: el nombre, las fechas y a quién aplica se cambian en «Precios especiales» de su ficha.` | This list is the special price of «{owner}»: its name, dates and whom it applies to are changed in «Special prices» on its page. | 422 |
 | Publish without lines | — | `Agregue al menos un renglón antes de publicar la lista.` | Add at least one line before publishing the list. | 422 |
-| Publish without clients (not general) / remove the last client of a published list | — | `Escoja al menos un cliente o marque que la lista aplica a todos los clientes.` | Choose at least one client or mark that the list applies to all clients. | 422 |
+| Publish without clients or chains (not general) / remove the last client or chain of a published list | — | `Escoja al menos un cliente o una cadena, o marque que la lista aplica a todos los clientes.` | Choose at least one client or one chain, or mark that the list applies to all clients. | 422 |
 | Publish a published list | — | `La lista ya está publicada.` | The list is already published. | 422 |
 | Back to draft a draft | — | `La lista ya está en borrador.` | The list is already a draft. | 422 |
 | Deactivate / reactivate what is already so | — | `La lista ya está desactivada.` / `La lista ya está activa.` | The list is already deactivated / active. | 422 |
@@ -304,9 +330,18 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 | Client does not exist | — | `Cliente no encontrado.` | Client not found. | 404 |
 | Inactive client | — | `El cliente está inactivo; no se le puede vender.` | The client is inactive; nothing can be sold to it. | 422 |
 | Clients on an all-clients offer | — | `La oferta aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.` | The offer applies to all clients: it carries no chosen clients. Uncheck «applies to all» to choose them. | 422 |
-| Making an offer with clients «for all» | — | `La oferta tiene clientes escogidos: quítelos antes de hacerla general (aplica a todos).` | The offer has chosen clients: remove them before making it general. | 422 |
+| Making an offer with clients or chains «for all» | — | `La oferta tiene clientes o cadenas escogidos: quítelos antes de hacerla para todos.` | The offer has chosen clients or chains: remove them before making it for all. | 422 |
+| Chains on an all-clients offer | — | `La oferta aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.` | The offer applies to all clients: it carries no chosen chains. Uncheck «applies to all» to choose them. | 422 |
+| Chains | At least one when adding | `Escoja las cadenas de la oferta.` | Choose the offer's chains. | 400 (`chainPublicIds`) |
+| Chains | Up to 500 | `Una oferta admite como máximo 500 cadenas.` | An offer admits at most 500 chains. | 400 |
+| Chain does not exist / is not in the offer | — | `Cadena no encontrada.` / `Cadena de la oferta no encontrada.` | Chain not found. / Offer chain not found. | 404 |
+| Deactivated chain | — | `La cadena está desactivada: actívela o escoja otra.` | The chain is deactivated: activate it or choose another. | 422 |
+| Offer audience | `ALL`, `INCLUDE` or `EXCLUDE` | `El público de la oferta debe ser ALL (todos), INCLUDE (solo los escogidos) o EXCLUDE (todos menos los escogidos).` | The offer's audience must be ALL (everyone), INCLUDE (only the chosen ones) or EXCLUDE (everyone except the chosen ones). | 400 |
+| `appliesToAll` and `audienceMode` that do not match | — | `“Aplica a todos” no coincide con el público escogido: indique solo el público (todos, solo los escogidos o todos menos los escogidos).` | «Applies to all» does not match the chosen audience: give only the audience (everyone, only the chosen ones, or everyone except the chosen ones). | 400 |
+| Changing between `INCLUDE` and `EXCLUDE` with chosen ones | — | `Quite los clientes y cadenas de la oferta antes de cambiar entre incluir y excluir.` | Remove the offer's clients and chains before switching between include and exclude. | 422 |
 | Publish without lines (only an offer left as a draft before Lote 234, `POST …/publish`) | — | `Agregue al menos un renglón antes de publicar la oferta.` | Add at least one line before publishing the offer. | 422 |
-| Publish without clients and not for all (only an offer left as a draft before Lote 234). Since Lote 234 removing the last client or unchecking «applies to all» is **no longer** rejected: the offer applies to no one until a client is chosen | — | `Escoja al menos un cliente o marque que la oferta aplica a todos los clientes.` | Choose at least one client or mark that the offer applies to all clients. | 422 |
+| Publish an `INCLUDE` offer without clients or chains (only an offer left as a draft before Lote 234). Since Lote 234 unchecking «applies to all» is **no longer** rejected: the offer applies to no one until a client or chain is chosen (removing the last one of an `INCLUDE` is no longer allowed: next row) | — | `Escoja al menos un cliente o una cadena, o marque que la oferta aplica a todos los clientes.` | Choose at least one client or one chain, or mark that the offer applies to all clients. | 422 |
+| Remove the last client or chain of an `INCLUDE` offer (`DELETE …/clients/{id}` or `…/chains/{id}`) | It would be left with no clients or chains | `Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.` | An «only for» offer needs at least one client or chain: add another before removing the last, or deactivate the offer. | 409 |
 | Publish a published offer | — | Not an error (Lote 234): `POST …/publish` answers the offer as it is | — | 200 |
 | Back to draft a draft (`POST …/unpublish`, kept only for compatibility: the screen does not offer it) | — | `La oferta ya está en borrador.` | The offer is already a draft. | 422 |
 | Deactivate / reactivate what is already so | — | `La oferta ya está desactivada.` / `La oferta ya está activa.` | The offer is already deactivated / active. | 422 |
@@ -322,6 +357,8 @@ The photo content is downloaded with `GET /files/{imagePublicId}`. `GET /api/v1/
 | Photo that is not JPG, PNG or WEBP | — | `La foto debe ser una imagen JPG, PNG o WEBP.` | The photo must be a JPG, PNG or WEBP image. | 400 (`file`) |
 | Photo too large | — | `El archivo no puede pasar de {n} MB.` | The file cannot exceed {n} MB. | 400 |
 | File store not configured | — | `El almacén de archivos no está configurado (Files:MasterKey); avise a soporte.` | The file store is not configured (Files:MasterKey); tell support. | 422 |
+
+The messages of the **special prices** (`/api/v1/special-prices/…`), of the offer's audience and of deactivating a chain are complete in [chapter 55 §9](55-precios-especiales-y-ofertas.md).
 
 **Order and permissions.**
 
@@ -354,22 +391,22 @@ Transitions of the **list** and the **offer** (the same, with the messages of se
 
 | From → to | Who | What it validates | Effect |
 |---|---|---|---|
-| Draft → Published | `sales.pricelist` | At least one line; chosen clients if not for all. On the list, also no overlaps with other published ones | Starts giving prices within its validity. On the offer, its offer kits can be sold (if the client receives it) |
+| Draft → Published | `sales.pricelist` | At least one line; chosen clients or chains if not for all (on an offer, if it is `INCLUDE`). On the list, also no overlaps with other published ones | Starts giving prices within its validity. On the offer, its offer kits can be sold (if the client receives it) |
 | Published → Draft | `sales.pricelist` | That it is published | Stops giving prices to new orders; orders already placed do not change. Its offer kits leave the sale, except those that are in another offer in effect |
 | Any → Deactivated | `sales.pricelist` | That it is active | Same as draft, and it cannot be edited |
 | Deactivated → Active | `sales.pricelist` | That it is deactivated; on the list, if it was published, that it does not overlap with another | Returns to its previous state |
 
-What each state blocks: a **deactivated** list or offer cannot be edited (lines, clients, photos, kits) until reactivated; a **published** one can be edited (on the list, every change re-checks overlaps; on the offer, clashes only warn); draft, scheduled and expired ones do not affect prices. An **offer kit** is only sold if it is in **some** published, active offer in effect that applies to the client.
+What each state blocks: a **deactivated** list or offer cannot be edited (lines, clients and chains, photos, kits) until reactivated; a **published** one can be edited (on the list, every change re-checks overlaps; on the offer, clashes only warn); draft, scheduled and expired ones do not affect prices. An **offer kit** is only sold if it is in **some** published, active offer in effect that applies to the client.
 
 ## 9. Frequently asked questions of the module
 
-- **The salesperson sees the product as «No price» in the order.** There is no in-effect list (the client's or the general one) or offer that carries it, and the product has no sale price. Put it in a published, in-effect list, or give the product a sale price.
+- **The salesperson sees the product as «No price» in the order.** There is no in-effect list (the client's, its chain's or the general one) or offer that carries it, and the product has no sale price. Put it in a published, in-effect list, or give the product a sale price.
 - **I published the list and the order still has the old price.** Check the validity (does it start later?), that it is not draft or deactivated, and that the client is in the list if it is not general. An order already placed does not change.
-- **Two prices for the same product.** Between the client's negotiated price and an offer in effect the lowest wins; without an offer, a client list beats the general one. Two lists of the same audience cannot coexist: the server rejects it with the overlap 409.
-- **The offer does not show in the order.** It must be **published**, **active**, in effect today and apply to the client (all clients, or him among the chosen ones). An offer's kit only shows while the offer is valid.
+- **Two prices for the same product.** The lowest always wins among the client's price, its chain's price, the offer and the general list (section 2); a special price higher than the general list is not charged and the system warns. Two lists of the same audience cannot coexist: the server rejects it with the overlap 409.
+- **The offer does not show in the order.** It must be **published**, **active**, in effect today and apply to the client (all clients; the client or its chain among the included ones; or neither the client nor its chain among the excluded ones). An offer's kit only shows while the offer is valid.
 - **I left «Until» blank.** The offer does not expire. Deactivate it or set a date when the promotion ends.
 - **A yellow warning appeared on the offer.** It is a price warning, not an error: another offer at the same price or cheaper overlaps, or the price is higher than the general list. The lowest is charged; check it is what you wanted.
-- **Removing a client from a published list fails.** It is the last one and the list is not general: add another or move it to draft first. On an **offer** it is allowed (Lote 234): it applies to no one until you choose another.
+- **Removing a client (or a chain) from a published list fails.** It is the last one and the list is not general: add another or move it to draft first. On an **offer** the screen asks for confirmation («The offer will be for all clients.»): if you confirm, the offer becomes «for all»; an «only for» offer whose only chain is removed ends up for **all clients**, not for no one.
 - **I cannot find the offer's kit in the order.** Check that the kit is in a published, active offer in effect that applies to the client (an offer kit is not sold outside the validity, and it does not show in Products & inventory either).
 - **Where do I create a kit?** If it is assembled when ordered, in an offer: **Create a new kit**. If it must have stock in the warehouse, in Products & inventory → **New product** → «Is what you are creating a kit?» → Yes ([06 §8b](06-inventario-y-almacen.md#8b-kits-assembled-and-offer-batches-68-231-and-232-2026-11-10)).
 - **How do I repeat November's offer in January?** Create the January offer and, in **Lines**, use **Use a previous kit**: pick the kit and confirm the price (the last one is suggested). The pieces are not typed again.
@@ -384,6 +421,7 @@ All the messages above are in the [Batch 221 FAQ](faq.md#batch-221--price-lists-
 - Lists: tables `PriceList`, `PriceListItem` and `PriceListClient`; EntityType `PRICE_LIST` and the permission `sales.pricelist` (section «2026-11-07 — Lote 221» of `Diseño/logistica-db-update.sql`; propagation to cloned roles with the mark `L221_SALES_PRICELIST`).
 - Offers (Batch 229): tables `Offer`, `OfferItem` and `OfferClient`; EntityType `OFFER`; columns `Product.ImageFileId` (product photo) and `Product.OfferId` (kit created for an offer, with a filtered index; no longer used since Batch 231); section «2026-11-09 — Lote 229» of the same file (idempotent). No new permissions.
 - Offer kits (Batch 231): column `Product.IsOfferKit` (BIT, 0 by default) and filtered index `IX_Product_OfferKit`; the section «2026-11-10 — Lote 231» of `Diseño/logistica-db-update.sql` (idempotent, no new permissions) marked the kits that had `OfferId`. `Product.OfferId` is **no longer read or written** (the column stays). The kit is still stored as a product of type `KIT`; its validity is **calculated** (see below).
+- Chains and special prices (Batch 247): tables `PriceListChain` and `OfferChain`, columns `PriceList.SpecialClientId` / `SpecialChainId` (dedicated list) and `Offer.AudienceMode`; the source of each line's price is stored in `SalesOrderLine.PriceSource` and related columns. Details in [chapter 55 §12](55-precios-especiales-y-ofertas.md).
 - The columns `Product.IsPromotion`, `PromoFrom`, `PromoTo` and `PromoImageFileId` are **no longer read**: they stay in the database unused (the promotion photo was copied to `ImageFileId` where it was missing). An expired «promotion» no longer blocks sales.
 - Lists and offers are exposed by `PublicId` and are never deleted. Changes go to the audit log (entities `PRICE_LIST` and `OFFER`).
 - Photos are files (class DOCUMENT) encrypted in the file store; they are seen with `GET /files/{publicId}`. The product photo is a file of the product; the offer's and its lines' photos are owned by the offer (`OFFER`).

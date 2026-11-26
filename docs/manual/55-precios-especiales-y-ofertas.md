@@ -12,7 +12,7 @@ Lote 247 (2026-11-26; Lote C del plan de Solutions). Tres cosas nuevas en **Órd
 
 > **Gana siempre el precio más bajo.** Si un precio especial sale **más caro** que la lista general, se cobra el de la lista general y el sistema avisa («Más caro que la lista general»). No bloquea nada: corrija el precio especial.
 
-Capturas: [L247](frontend/l247-precios-especiales.md). Cada mensaje de error está en la [FAQ](faq.md). Este capítulo completa el [47 — Listas de precios y ofertas](47-precios-y-ofertas.md) (que explica listas, ofertas y kits; su sección 2 describe la regla anterior) y el [53 — Cadenas de clientes](53-cadenas.md).
+Capturas: [L247](frontend/l247-precios-especiales.md). Cada mensaje de error está en la [FAQ](faq.md). Este capítulo completa el [47 — Listas de precios y ofertas](47-precios-y-ofertas.md) (que explica listas, ofertas y kits, y ya resume la regla de «gana el más bajo») y el [53 — Cadenas de clientes](53-cadenas.md).
 
 ## 1. Dónde está y quién puede
 
@@ -69,11 +69,11 @@ Llegan con código 200 y no impiden guardar, publicar ni enviar.
 | Aviso (código) | Cuándo | Dónde se ve | Texto (ejemplo) |
 |---|---|---|---|
 | Precio especial más caro que la lista general, en la lista (`SPECIAL_ABOVE_GENERAL`) | Un renglón de una lista que no es general (la dedicada, o una de clientes o cadenas) cuesta más que el de la lista general vigente | Ficha de la lista («Avisos de la lista») y panel «Precios especiales» («Avisos de precios especiales») | `Precio especial más caro que la lista general: SPX-B a $15.00 y en la lista general a $14.00. Se cobra el más bajo; corrija el precio especial.` |
-| Precio especial más caro que la lista general, en el pedido (`SPECIAL_ABOVE_GENERAL`) | Al cotizar un producto cuyo precio del cliente o de su cadena sale más caro que la lista general | Catálogo, pedido guiado y borrador (junto al producto) | `El precio especial «Precio especial — Walgreens SPX (desde el 26/10/2026, sin fecha de fin)» pone SPX-B a $15.00, más caro que la lista general ($14.00): se aplica el de la lista general. Corrija el precio especial.` |
+| Precio especial más caro que la lista general, en el pedido (`SPECIAL_ABOVE_GENERAL`) | Al cotizar un producto cuyo precio del cliente o de su cadena sale más caro que la lista general | Catálogo, pedido guiado y, en el escritorio, la ventana de la orden (junto a cada línea del borrador) | `El precio especial «Precio especial — Walgreens SPX (desde el 26/10/2026, sin fecha de fin)» pone SPX-B a $15.00, más caro que la lista general ($14.00): se aplica el de la lista general. Corrija el precio especial.` (con la interfaz en inglés y las fechas de la compañía en mes/día/año, la web lo arma en inglés y con esas fechas; ver abajo) |
 
 Los avisos de ofertas del capítulo 47 (`TWO_OFFERS`, `OFFER_ABOVE_GENERAL`, `CHEAPER_OFFER`) siguen igual. Los de este lote y esos viven juntos en el catálogo y el borrador.
 
-> **Idioma de los textos del servidor.** El nombre de la lista dedicada («Precio especial — … (del 26/10/2026 al 30/11/2026)»), el aviso de arriba (que cita ese nombre) y la vigencia de una oferta («desde el …, sin fecha de fin») los arma el servidor **en español y con fecha día/mes/año**, aunque la pantalla esté en inglés o muestre las fechas como mes/día/año. Es un pendiente conocido.
+> **Idioma y fechas de los textos de precios (corregido después del cierre del lote).** El servidor sigue mandando estos textos en español y con fecha día/mes/año, pero **como respaldo**: la web del personal los arma **en el idioma de la interfaz y con el formato de fecha de la compañía** a partir de los datos que el servidor manda junto al texto (código, SKU, precios, y para la lista dedicada su dueño y sus fechas). Se arman así: el **aviso de precio** (`TWO_OFFERS`, `OFFER_ABOVE_GENERAL` y `SPECIAL_ABOVE_GENERAL`; en el pedido guiado, en el borrador y en la ventana de la orden), el **aviso de la lista**, el **nombre de la lista dedicada** («Precio especial — {dueño} ({vigencia})», en la tabla de listas, en la ficha de la lista y en el aviso) y la **vigencia de una oferta** («del … al …» / «desde el …, sin fecha de fin»). Si falta algún dato, la web muestra el texto del servidor. **Siguen saliendo tal cual del servidor, en español:** los mensajes de error, los avisos de la ventana de la oferta («otra oferta más barata», «oferta más cara que la lista general» al armarla), el nombre guardado de la lista dedicada (el de la base y el del campo `PriceListName` de la fuente `SPECIAL_PRICE`) y cualquier otra pantalla que no sea la web del personal.
 
 ## 3. Precios especiales (ficha del cliente y de la cadena)
 
@@ -128,7 +128,7 @@ PATCH /api/v1/special-prices/clients/{clientPublicId}/{itemId}
 | Campo | Regla |
 |---|---|
 | `productPublicId` | Obligatorio. Producto propio de la compañía (no de un cliente), activo, y no un kit de oferta (el kit de oferta se cambia en una oferta). Un kit normal sí se puede. |
-| `price` | Obligatorio. Antes del IVU. Hasta 4 decimales, no negativo. **La pantalla pide un precio mayor que cero; el API acepta 0.** |
+| `price` | Obligatorio. Antes del IVU. **Mayor que cero** (0 o negativo da 400 «El precio especial debe ser mayor que cero (hasta 4 decimales).»), hasta 4 decimales y no más de 9 999 999 999. Es regla **solo de los precios especiales**: las listas normales y las ofertas siguen aceptando 0. Vale al agregar y al cambiar el precio. |
 | `validFrom` | Obligatorio. |
 | `validTo` | Opcional (sin «hasta» = no vence). No puede ser anterior a «desde». **Al crear** no puede ser anterior a hoy; al editar sí (así se cierra un precio que ya corre). |
 | Mismo producto, mismo dueño, mismas fechas | No es un error: **cambia el precio** de ese renglón. |
@@ -138,6 +138,7 @@ PATCH /api/v1/special-prices/clients/{clientPublicId}/{itemId}
 Qué pasa por dentro (útil para soporte):
 - Cada **dueño** (cliente o cadena) tiene **una lista dedicada por vigencia** (par «desde / hasta»), publicada. Se llama «Precio especial — {dueño} ({vigencia})» y no pasa de 120 caracteres.
 - Agregar un precio con fechas nuevas **crea** la lista dedicada de esas fechas; con las mismas fechas, **agrega el renglón** a la que ya existe.
+- **Si esa lista estaba en borrador** (alguien la devolvió a borrador en Precios y ofertas), agregar un precio con esas fechas, o mover un renglón a esas fechas, **la vuelve a publicar**. Antes el precio nuevo caía en el borrador y no se cobraba (no se puede crear otra lista con las mismas fechas para el mismo dueño). Al publicarse, **vuelven a cobrar también los demás renglones** que la lista tenía en borrador. El servidor revisa el cruce de **todos** sus renglones con lo publicado: si alguno choca, 409 con el mensaje de cruce de la sección 9, **no se guarda nada** y la lista sigue en borrador. Cambiar solo el precio de un renglón de una lista en borrador no la publica (así está en el código; no hay prueba aparte).
 - **Cambiar solo el precio** lo cambia en su lista. **Cambiar las fechas** pasa el renglón a la lista dedicada de las fechas nuevas (la crea si no existe); la lista que se queda sin renglones activos se **desactiva sola**.
 - **Quitar** desactiva el renglón (queda en el historial); la lista sin renglones activos se desactiva sola.
 - El motor de precios ve la lista dedicada como cualquier lista publicada: por eso gana el más bajo igual que con las demás.
@@ -190,8 +191,11 @@ Antes del lote solo existían «todos» y «solo escogidos». Las ofertas que er
 **Cómo se usa (pantalla).** Contabilidad → Precios y ofertas → abrir la oferta → sección **«A quién aplica»**: dos cajas, **«Incluir»** («Solo estos clientes y cadenas reciben la oferta.») y **«Excluir»** («Todos reciben la oferta menos estos clientes y cadenas.»). Cada una admite clientes (**«Agregar cliente»**) y cadenas (**«Agregar una cadena»**).
 - **Llenar una caja deshabilita la otra** («Quite lo escogido en la otra caja para usar esta.»). Con las dos vacías, la oferta es para todos.
 - Al agregar a una caja vacía, la pantalla cambia el público y agrega.
-- **Quitar el último** cliente o cadena pide confirmar: **«La oferta quedará para todos los clientes.»** Si confirma, la oferta pasa a `ALL`. **Ojo:** una oferta «solo para la cadena X» a la que se le quita la cadena queda **para todos los clientes**, no para nadie.
-- Una oferta `INCLUDE` sin nadie escogido está publicada pero **no aplica a nadie**; la pantalla lo dice.
+- **Quitar al último cliente o cadena de «Incluir» no se puede** (corregido después del cierre del lote). La pantalla no muestra la × del último y explica por qué: «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.» Por API, quitar al último cliente o cadena de una oferta `INCLUDE` da **409** con ese mismo texto y no cambia nada. Para sustituir al único, agregue primero al nuevo y luego quite al anterior.
+- Una oferta «Incluir» **se queda «Incluir»**: ya no pasa sola a «para todos». Para convertirla en «todos menos algunos», desactívela y cree otra; mientras «Incluir» tenga a alguien, la caja «Excluir» está deshabilitada y lo dice: «Esta oferta es solo para los escogidos y no se queda sin ellos: para que sea para todos menos algunos, desactívela y cree otra.»
+- **Quitar al último de «Excluir» sí se puede** y pide confirmar: **«La oferta quedará para todos los clientes.»** (botón «Dejarla para todos»). Si confirma, la oferta pasa a `ALL`.
+- **Cambia una decisión anterior.** En el Lote 234 se había decidido que una oferta de escogidos podía quedarse sin nadie y, en la primera versión de este lote, que al quitar al último la oferta pasaba a «para todos». Las dos cosas se reemplazaron por el 409. Pendiente de que Luis lo revise (decisión 10 de `docs/lote247-decisiones.md`).
+- Una oferta `INCLUDE` sin nadie escogido (recién creada, o anterior a este arreglo, que no trae migración) está publicada pero **no aplica a nadie**; la pantalla lo dice.
 - La cadena en la oferta aparece como «Cadena {nombre}»; si está desactivada, en ámbar.
 
 **Cómo se usa (API).**
@@ -212,6 +216,7 @@ Reglas:
 - **Pasar a `ALL` con clientes o cadenas escogidos** da 422; **pasar entre `INCLUDE` y `EXCLUDE` con escogidos** da 422: quítelos primero.
 - **Publicar:** una `INCLUDE` sin escogidos no se publica (422). Una `EXCLUDE` sin escogidos **sí**: vale para todos.
 - Agregar clientes o cadenas a una oferta `ALL` da 422. Hasta **500 cadenas** y 2000 clientes por oferta. Las repetidas se ignoran.
+- Quitar un cliente (`DELETE /api/v1/offers/{publicId}/clients/{clientPublicId}`) o una cadena (`…/chains/{chainPublicId}`) de una oferta `INCLUDE` a la que **no le quedaría ningún cliente ni cadena** da 409 y no cambia nada. En una `EXCLUDE` se puede vaciar: vale para todos.
 - **Sin cliente** (catálogo genérico, sin escoger cliente): aplican las ofertas `ALL`, las `INCLUDE` que traen la cadena y las `EXCLUDE` que no la excluyen.
 - `GET /offers?chainPublicId=` devuelve solo las ofertas **activas, publicadas y no vencidas** que le aplican a la cadena: para todos, incluyéndola, o excluyendo a otros sin excluirla a ella.
 - Los avisos «choque con otra oferta más barata» (`CHEAPER_OFFER`) ahora consideran cadenas y exclusiones. Es una estimación conservadora: ante la duda avisa. No impide nada.
@@ -260,9 +265,9 @@ Acciones y qué dispara cada una:
 
 | Acción | Quién puede | Qué valida | Efecto |
 |---|---|---|---|
-| Agregar un precio especial | `sales.pricelist` | Dueño activo, producto válido, fechas, que no se cruce con otra vigencia del mismo producto y dueño | Crea la lista dedicada de esas fechas (publicada) o agrega el renglón a la que existe |
-| Cambiar el precio | `sales.pricelist` | Precio válido; que no se cruce | Cambia el renglón |
-| Cambiar las fechas | `sales.pricelist` | «hasta» no anterior a «desde»; que no se cruce | Mueve el renglón a la lista dedicada de las fechas nuevas; la que se queda vacía se desactiva |
+| Agregar un precio especial | `sales.pricelist` | Dueño activo, producto válido, precio mayor que cero, fechas, que no se cruce con otra vigencia del mismo producto y dueño (si la lista de esas fechas estaba en borrador, el cruce de todos sus renglones) | Crea la lista dedicada de esas fechas (publicada) o agrega el renglón a la que existe; si estaba en borrador, la vuelve a publicar |
+| Cambiar el precio | `sales.pricelist` | Precio mayor que cero; que no se cruce | Cambia el renglón |
+| Cambiar las fechas | `sales.pricelist` | «hasta» no anterior a «desde»; que no se cruce | Mueve el renglón a la lista dedicada de las fechas nuevas (si estaba en borrador, la publica); la que se queda vacía se desactiva |
 | Quitar | `sales.pricelist` | El renglón es un precio especial vigente de ese dueño | Desactiva el renglón (queda en el historial); la lista vacía se desactiva |
 | Publicar / Volver a borrador / Desactivar la lista dedicada (en Precios y ofertas) | `sales.pricelist` | Las de siempre de las listas | Cambia si se cobra o no |
 | Desactivar la cadena | `sales.chain` | Cero clientes activos y **ninguna lista u oferta `INCLUDE` publicada y vigente con la cadena** (409 en cualquiera de los dos casos) | La cadena sale de las listas de elegir; sus clientes quedan «sin cadena» para los precios |
@@ -284,7 +289,8 @@ El mensaje sale tal cual en el campo `title` del error (y en rojo en la pantalla
 | (cuerpo) | Debe venir | `El cuerpo de la solicitud es obligatorio.` | 400 |
 | `productPublicId` | Obligatorio | `Escoja el producto o kit de cada renglón.` | 400 |
 | `price` | Obligatorio | `Indique el precio de cada renglón.` | 400 |
-| `price` | No negativo y hasta 9 999 999 999 | `El precio no es válido.` | 400 |
+| `price` | Mayor que cero (alta y cambio de precio) | `El precio especial debe ser mayor que cero (hasta 4 decimales).` | 400 |
+| `price` | Hasta 9 999 999 999 | `El precio no es válido.` | 400 |
 | `price` | Hasta 4 decimales | `El precio admite como máximo 4 decimales.` | 400 |
 | `validFrom` | Obligatorio | `Indique desde qué fecha vale el precio especial.` | 400 |
 | `validTo` | No anterior a «desde» | `La fecha «hasta» no puede ser anterior a la fecha «desde».` | 400 |
@@ -300,6 +306,7 @@ El mensaje sale tal cual en el campo `title` del error (y en rojo en la pantalla
 | Producto | Activo | `El producto {SKU} está inactivo: no se puede poner en la lista.` | 422 |
 | Producto | No es kit de oferta | `El kit {SKU} es un kit de oferta: su precio va en una oferta, no en una lista de precios.` | 422 |
 | Fechas | No se cruzan con otro precio del mismo producto y dueño | `La lista se cruza con «{lista}» en las mismas fechas y para los mismos clientes o cadenas en: {SKU, …}. Cambie las fechas o quite esos productos de una de las dos.` (cita hasta 5 SKU y «y N más») | 409 |
+| Lista en borrador que se vuelve a publicar | Los renglones de la lista no se cruzan con lo publicado del mismo dueño | El mismo mensaje del cruce (arriba); no se guarda nada | 409 |
 | Alta simultánea | Dos altas a la vez de la misma lista | `La lista cambió al mismo tiempo. Recárguela e intente de nuevo.` | 409 |
 | Cambio simultáneo | Alguien cambió la lista a la vez | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
 | Permiso | `sales.pricelist` para escribir; `sales.view` o `sales.pricelist` para ver | `Falta el permiso '…'.` | 403 |
@@ -335,6 +342,7 @@ Avisos de la pantalla antes de enviar (no son del servidor): «Escoja el product
 | `chainPublicIds` | Máximo 500 | `Una oferta admite como máximo 500 cadenas.` | 400 |
 | Cadena | Existe en la compañía (también en `?chainPublicId=`) | `Cadena no encontrada.` | 404 |
 | Cadena de la oferta | Está en la oferta (al quitar) | `Cadena de la oferta no encontrada.` | 404 |
+| Quitar el último cliente o cadena | Una oferta `INCLUDE` conserva al menos uno | `Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.` | 409 |
 | Cadena | Activa | `La cadena está desactivada: actívela o escoja otra.` | 422 |
 | Oferta | No es para todos (cadenas) | `La oferta aplica a todos los clientes: no lleva cadenas escogidas. Desmarque «aplica a todos» para escogerlas.` | 422 |
 | Oferta | No es para todos (clientes) | `La oferta aplica a todos los clientes: no lleva clientes escogidos. Desmarque «aplica a todos» para escogerlos.` | 422 |
@@ -367,8 +375,14 @@ Revise el **Estado**: el precio especial solo se cobra **Vigente** (publicado y 
 **La oferta no le sale a un cliente excluido (o sí le sale a uno que no escogí).**
 Una oferta **`EXCLUDE`** vale para todos **menos** los clientes y cadenas escogidos; si el cliente está excluido, o su **cadena** está excluida, no le sale. Una oferta `INCLUDE` solo vale para los escogidos o para los clientes de las cadenas escogidas. Mire la sección «A quién aplica» de la oferta.
 
-**Quité la última cadena de una oferta y ahora le sale a todos los clientes.**
-Es lo que dice la confirmación («La oferta quedará para todos los clientes.»). Una oferta sin nadie escogido no puede quedar `INCLUDE` en pantalla. Si no la quiere para todos, desactívela o escoja de nuevo a quién aplica antes de quitar al último.
+**No me deja quitar la última cadena (o el último cliente) de una oferta.**
+Una oferta «Incluir» («solo para» los escogidos) no se queda sin nadie: el servidor responde 409 «Una oferta «solo para» los escogidos necesita al menos un cliente o una cadena: agregue otro antes de quitar el último, o desactive la oferta.» y la pantalla ya no muestra la × del último. Agregue primero a quien sigue y luego quite al anterior; o desactive la oferta. En una oferta «Excluir» sí se puede quitar al último: la oferta queda para todos, con confirmación.
+
+**Puse precio 0 a un precio especial y no me deja.**
+El precio especial debe ser mayor que cero (400 «El precio especial debe ser mayor que cero (hasta 4 decimales).»), en la pantalla y por API. Una lista normal o una oferta sí aceptan 0.
+
+**La lista dedicada de un cliente estaba en «Borrador» y al agregar otro precio especial pasó a «Vigente». ¿Por qué?**
+Agregar un precio especial con las mismas fechas de una lista dedicada en borrador la **vuelve a publicar** (y empiezan a cobrar también los renglones que tenía). Si sus renglones se cruzan con otro precio publicado del mismo dueño, no se guarda nada y da 409 (sección 9).
 
 **¿Cómo cambio solo la fecha de un precio especial?**
 En el panel, **Cambiar precio** (lápiz) y cambie «Desde» o «Hasta». El renglón pasa solo a la lista de esas fechas; si se cruza con otra vigencia del mismo producto para el mismo dueño, da 409. Para quitar el «hasta», déjelo vacío.
@@ -388,8 +402,8 @@ Desde ese momento, los de la cadena nueva. Los borradores que ya tenían precio 
 **Una orden vieja no muestra de dónde salió el precio.**
 Las líneas anteriores al Lote 247 no guardaron el origen. Solo las líneas escritas o cambiadas desde el lote lo tienen.
 
-**La fecha de la lista dedicada sale distinta a la de la pantalla (26/10/2026 frente a 10/26/2026).**
-El nombre de la lista dedicada y algunos avisos los arma el servidor con día/mes/año y en español. Es un pendiente conocido; los datos son los mismos.
+**El nombre de la lista dedicada o el aviso salen en español, o con la fecha distinta a la de la pantalla.**
+En la web del personal ya salen en el idioma de la interfaz y con las fechas de la compañía (sección 2). Si todavía los ve en español y con día/mes/año es porque falta algún dato en la respuesta (la web muestra entonces el texto del servidor), o porque los mira en otro sitio: la fuente `SPECIAL_PRICE`, el aviso de la ventana de la oferta o una pantalla que no es la web del personal. Los datos son los mismos.
 
 ## 12. Para soporte
 

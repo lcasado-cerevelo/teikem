@@ -46,7 +46,17 @@ export function ImportTemplateEditorModal({ kind = 'CONSIGNEE', template, fields
   // los textos de las plantillas de órdenes viven en `orders.import.*`; los comunes (cancelar, cargando, tope de nombre) no cambian
   const ns = isOrder || isProduct ? 'orders.import' : 'consignees.import'
   // el editor se escribió con las claves `consignees.import.*`: con órdenes se leen de `orders.import.*` (mismas subclaves, mismos textos comunes)
-  const t = (key: string, params?: Record<string, string | number>) => (key.startsWith('consignees.import.') ? tr(`${ns}.${key.slice('consignees.import.'.length)}`, params) : tr(key, params))
+  // título y ayudas que nombran lo que la plantilla importa: las del motor genérico son propias de cada tipo (`entityImport.tpl.<TIPO>.*`)
+  const OWN_TEXTS = ['tplNewTitle', 'tplEditTitle', 'tplEditorHint', 'requiredHelp', 'defaultsHelp'] as const
+  const ownKey = (sub: string): string | null => {
+    const map: Record<string, string> = { tplNewTitle: 'newTitle', tplEditTitle: 'editTitle', tplEditorHint: 'editorHint', requiredHelp: 'requiredHelp', defaultsHelp: 'defaultsHelp' }
+    return isProduct && (OWN_TEXTS as readonly string[]).includes(sub) ? `entityImport.tpl.${kind}.${map[sub]}` : null
+  }
+  const t = (key: string, params?: Record<string, string | number>) => {
+    if (!key.startsWith('consignees.import.')) return tr(key, params)
+    const sub = key.slice('consignees.import.'.length)
+    return tr(ownKey(sub) ?? `${ns}.${sub}`, params)
+  }
   const saveConsignee = useSaveImportTemplate()
   const saveOrder = useSaveOrderImportTemplate()
   const entity: ImportEntity = kind === 'CONSIGNEE' || kind === 'ORDER' ? 'PRODUCT' : kind

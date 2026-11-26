@@ -29,7 +29,7 @@ Qué se ve:
 
 ![Nueva plantilla de órdenes de compra, tema claro: nombre «Incompleta …», delimitador Coma, encabezado encendido, cinco columnas sin campo y el error «Indique al menos una columna.»](img/l246-plantilla-editor.png)
 
-> **Texto pendiente (no se corrigió en este lote).** El título de esta ventana dice **«Nueva plantilla de importación de envíos»** y el texto de ayuda de las columnas habla de «el consignatario (su nombre o su número del directorio) y el paquete». Son los textos de las plantillas de envíos: el editor no los cambia según el tipo. Para compras lo que vale son los cuatro obligatorios del capítulo 54 (número de documento, SKU, cantidad y proveedor). Ver la decisión 32 de [`lote246-decisiones.md`](../../lote246-decisiones.md).
+> **Corregido después del Lote 247 (sin commitear): la captura de abajo es anterior y todavía muestra el texto viejo.** Ahora el título es «Nueva plantilla de importación de órdenes de compra» y las ayudas hablan de número de orden, SKU, cantidad y proveedor (capítulo 54 §2). Lo que sigue describe lo que mostraba la captura. Antes, el título de esta ventana decía **«Nueva plantilla de importación de envíos»** y el texto de ayuda de las columnas hablaba de «el consignatario (su nombre o su número del directorio) y el paquete». Eran los textos de las plantillas de envíos: el editor no los cambiaba según el tipo. Para compras lo que vale son los cuatro obligatorios del capítulo 54 (número de documento, SKU, cantidad y proveedor). Ver la decisión 32 de [`lote246-decisiones.md`](../../lote246-decisiones.md).
 
 ## 3. Compras → Importar con la plantilla
 

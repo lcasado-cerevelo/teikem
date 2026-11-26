@@ -57831,6 +57831,16 @@ export interface components {
             /** Format: uuid */
             priceListPublicId?: string | null;
             priceListName?: string | null;
+            /** Format: double */
+            price?: number | null;
+            /** Format: double */
+            otherPrice?: number | null;
+            priceListIsSpecial?: boolean;
+            priceListOwnerName?: string | null;
+            /** Format: date */
+            priceListValidFrom?: string | null;
+            /** Format: date */
+            priceListValidTo?: string | null;
         };
         SalesQuotaBulkRequest: {
             items?: components["schemas"]["SalesQuotaItemRequest"][] | null;

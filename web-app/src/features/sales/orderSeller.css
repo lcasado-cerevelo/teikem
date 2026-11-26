@@ -6,3 +6,5 @@
 
 /* Lote 247 — origen del precio de la línea (Cadena X / Precio especial / Oferta X / Precio manual con el de lista). Prefijo propio `so-price-cell`. */
 .so-price-cell{display:inline-flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}
+/* Lote 247 — avisos de precio de la línea en la ventana de la orden (SPECIAL_ABOVE_GENERAL y demás, los del pedido guiado). Prefijo propio `so-line-notices`. */
+.sales-line>.so-line-notices{grid-column:1/-1;min-width:0}

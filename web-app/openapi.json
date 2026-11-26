@@ -97140,6 +97140,33 @@
           "priceListName": {
             "type": "string",
             "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "otherPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "priceListIsSpecial": {
+            "type": "boolean"
+          },
+          "priceListOwnerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceListValidFrom": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "priceListValidTo": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
           }
         },
         "additionalProperties": false

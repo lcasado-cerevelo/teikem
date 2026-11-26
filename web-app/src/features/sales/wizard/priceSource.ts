@@ -1,6 +1,7 @@
 // Lote 229 — de dónde sale el precio de un producto del pedido y sus avisos (`notices`: dos ofertas a la vez, oferta más cara que la lista general), juntando
 // lo que dice el catálogo (`GET /sales-orders/catalog`, al escoger) y lo que devolvió el servidor al guardar el borrador (`linePrices`, solo en la respuesta de
 // crear/editar con líneas). Sin React: la app móvil puede copiarlo. El precio que se cobra siempre lo decide el servidor (gana el más bajo).
+import type { SalesPriceNotice } from '../priceText'
 import type { SalesOrderDto } from '../salesApi'
 import type { SalesCatalogDto, SalesCatalogItemDto } from './wizardApi'
 
@@ -32,13 +33,17 @@ function unique(messages: (string | null | undefined)[]): string[] {
   return out
 }
 
+/** Cómo se escribe un aviso: por omisión el texto del servidor (español); las pantallas pasan `usePriceNoticeText()` para armarlo en el idioma activo. */
+export type NoticeText = (n: SalesPriceNotice) => string
+const serverText: NoticeText = (n) => n.message ?? ''
+
 /** Avisos del renglón del catálogo. */
-export function itemNotices(item: Pick<SalesCatalogItemDto, 'notices'> | null | undefined): string[] {
-  return unique((item?.notices ?? []).map((n) => n.message))
+export function itemNotices(item: Pick<SalesCatalogItemDto, 'notices'> | null | undefined, text: NoticeText = serverText): string[] {
+  return unique((item?.notices ?? []).map(text))
 }
 
 /** Lo guardado (`linePrices`) manda sobre el catálogo para la fuente del precio; los avisos se juntan de los dos. */
-export function priceSourceOf(productPublicId: string, catalog: SalesCatalogDto | null | undefined, saved: SalesOrderDto | null | undefined): PriceSourceInfo {
+export function priceSourceOf(productPublicId: string, catalog: SalesCatalogDto | null | undefined, saved: SalesOrderDto | null | undefined, text: NoticeText = serverText): PriceSourceInfo {
   const line = (saved?.linePrices ?? []).find((l) => l.productPublicId === productPublicId)
   const item = catalogItemOf(catalog, productPublicId)
   const source = line?.priceSource ?? item?.priceSource ?? null
@@ -49,7 +54,7 @@ export function priceSourceOf(productPublicId: string, catalog: SalesCatalogDto 
     offerName: fromOffer ? line?.offerName ?? item?.offerName ?? null : null,
     special,
     chainName: special === 'CHAIN_LIST' ? line?.chainName ?? item?.chainName ?? null : null,
-    notices: unique([...(line?.notices ?? []).map((n) => n.message), ...(item?.notices ?? []).map((n) => n.message)]),
+    notices: unique([...(line?.notices ?? []).map(text), ...(item?.notices ?? []).map(text)]),
   }
 }
 
@@ -58,9 +63,10 @@ export function cartPriceNotices(
   cart: readonly { productPublicId: string; sku: string }[],
   catalog: SalesCatalogDto | null | undefined,
   saved: SalesOrderDto | null | undefined,
+  text: NoticeText = serverText,
 ): { productPublicId: string; sku: string; notices: string[] }[] {
   return cart
-    .map((l) => ({ productPublicId: l.productPublicId, sku: l.sku, notices: priceSourceOf(l.productPublicId, catalog, saved).notices }))
+    .map((l) => ({ productPublicId: l.productPublicId, sku: l.sku, notices: priceSourceOf(l.productPublicId, catalog, saved, text).notices }))
     .filter((x) => x.notices.length > 0)
 }
 
