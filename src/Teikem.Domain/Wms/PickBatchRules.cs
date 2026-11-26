@@ -19,6 +19,25 @@ public sealed record PickAllocationResult(IReadOnlyList<PickAllocation> Allocati
 }
 
 /// <summary>
+/// Lote 249 — lo que decide si el envío de un empaque se puede anular para reabrirlo. Number = la recolección (o la maestra); ShipmentNumber = el número del envío
+/// (null = no tiene); LinkedBatchNumber = la recolección que se mandó a una compañía enlazada (null = ninguna); ProductInvoiceNumbers = las facturas vivas de los
+/// productos de las líneas que atiende.
+/// </summary>
+public sealed record ReopenPackCheck(
+    string Number,
+    string? ShipmentNumber,
+    bool ShipmentActive,
+    bool ShipmentInitial,
+    string? ShipmentStatusLabel,
+    bool FreightInvoiced = false,
+    bool ReturnFeeInvoiced = false,
+    bool HasLiveInvoiceLine = false,
+    bool InvoiceProcessed = false,
+    bool HasInvoicedProduct = false,
+    IReadOnlyList<string>? ProductInvoiceNumbers = null,
+    string? LinkedBatchNumber = null);
+
+/// <summary>
 /// Fila ligera del listado de recolecciones: lo necesario para los filtros de texto y la búsqueda final. 2026-10-11 (al final, con
 /// valor por defecto): motivo y nota del despacho manual, que la búsqueda también encuentra.
 /// </summary>
@@ -260,6 +279,80 @@ public static class PickBatchRules
         if (string.Equals(statusCode, PickBatchStatuses.Packed, StringComparison.OrdinalIgnoreCase)) return orderIsActive && orderIsInitial;
         return false;
     }
+
+    // ---------------------------------------------------------------- Lote 249: reabrir el empaque (PACKED → COLLECTED)
+
+    /// <summary>Máximo del motivo para reabrir un empaque (va al historial del estatus, NVARCHAR(500)).</summary>
+    public const int MaxReopenReasonLength = 500;
+    public const string ReopenReasonRequired = "Indique el motivo para reabrir el empaque.";
+    public const string ReopenReasonTooLong = "El motivo admite como máximo 500 caracteres.";
+    public const string ReopenPermission = "Reabrir el empaque exige el permiso warehouse.reopen-pack.";
+
+    public static string ReopenNotPacked(string number) => $"La recolección {number} no está empacada.";
+    public static string ReopenBlocked(string number, string orderNumber, string orderStatus)
+        => $"El envío {orderNumber} ya está «{orderStatus}»: el empaque {number} no se puede reabrir.";
+    public static string ReopenFreightInvoiced(string number, string orderNumber)
+        => $"El flete del envío {orderNumber} ya está facturado: el empaque {number} no se reabre.";
+    public static string ReopenInvoiceProcessed(string number, string orderNumber)
+        => $"La factura del cliente del envío {orderNumber} ya se procesó: el empaque {number} no se reabre.";
+    public static string ReopenInvoiced(string number, string invoices)
+        => $"El empaque {number} tiene productos ya facturados ({invoices}): no se reabre. Para añadir, use una orden interna de adición.";
+    public static string ReopenUseGroup(string number, string groupNumber)
+        => $"La recolección {number} está en la recolección maestra {groupNumber}: reabra el empaque desde la maestra.";
+    public static string ReopenLinked(string number)
+        => $"La recolección {number} se mandó a la compañía enlazada: el empaque no se reabre.";
+
+    /// <summary>Motivo obligatorio para reabrir (trim, ≤ 500). Devuelve el motivo o el error.</summary>
+    public static (string? Reason, string? Error) NormalizeReopenReason(string? reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason)) return (null, ReopenReasonRequired);
+        var r = reason.Trim();
+        return r.Length > MaxReopenReasonLength ? (null, ReopenReasonTooLong) : (r, null);
+    }
+
+    /// <summary>
+    /// Comentario del historial al reabrir: «Empaque reabierto: {motivo} (envío {ORD} anulado)», recortando el motivo para que el total quepa en 500 caracteres
+    /// (EntityStatusHistory.Comment).
+    /// </summary>
+    public static string ReopenHistoryComment(string reason, string orderNumber)
+    {
+        const string prefix = "Empaque reabierto: ";
+        var suffix = $" (envío {orderNumber} anulado)";
+        var room = Math.Max(0, MaxReopenReasonLength - prefix.Length - suffix.Length);
+        var r = (reason ?? string.Empty).Trim();
+        if (r.Length > room) r = room <= 1 ? r[..room] : r[..(room - 1)] + "…";
+        return prefix + r + suffix;
+    }
+
+    /// <summary>
+    /// Primera guarda de reabrir una recolección suelta: un despacho manual o una recolección que no está PACKED → «no está empacada»; la de una maestra se reabre
+    /// desde la maestra. Null = pasa.
+    /// </summary>
+    public static string? ReopenBatchError(string number, string? statusCode, bool isManual, string? groupNumber)
+    {
+        if (isManual || !string.Equals(statusCode, PickBatchStatuses.Packed, StringComparison.OrdinalIgnoreCase)) return ReopenNotPacked(number);
+        return groupNumber is null ? null : ReopenUseGroup(number, groupNumber);
+    }
+
+    /// <summary>
+    /// Lote 249 — guardas del envío de un empaque por reabrir (recolección suelta o maestra), en este orden: compañía enlazada; envío activo y en la etapa inicial;
+    /// flete, cotejo o devolución facturados (o cualquier línea de factura viva del envío); factura del cliente ya procesada; productos ya facturados. Null = se puede.
+    /// </summary>
+    public static string? ReopenShipmentError(ReopenPackCheck c)
+    {
+        if (c.LinkedBatchNumber is not null) return ReopenLinked(c.LinkedBatchNumber);
+        var order = c.ShipmentNumber ?? "—";
+        if (c.ShipmentNumber is null || !c.ShipmentActive || !c.ShipmentInitial) return ReopenBlocked(c.Number, order, c.ShipmentStatusLabel ?? "—");
+        if (c.FreightInvoiced || c.ReturnFeeInvoiced || c.HasLiveInvoiceLine) return ReopenFreightInvoiced(c.Number, order);
+        if (c.InvoiceProcessed) return ReopenInvoiceProcessed(c.Number, order);
+        if (c.HasInvoicedProduct)
+            return ReopenInvoiced(c.Number, c.ProductInvoiceNumbers is { Count: > 0 } ? string.Join(", ", c.ProductInvoiceNumbers) : "—");
+        return null;
+    }
+
+    /// <summary>¿Se puede reabrir? (las dos guardas: la de la recolección y la del envío).</summary>
+    public static bool CanReopenPack(string number, string? statusCode, bool isManual, string? groupNumber, ReopenPackCheck shipment)
+        => ReopenBatchError(number, statusCode, isManual, groupNumber) is null && ReopenShipmentError(shipment) is null;
 
     // ---------------------------------------------------------------- asignación FEFO (D14)
 

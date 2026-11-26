@@ -293,6 +293,50 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
         return last!;
     }
 
+    /// <summary>
+    /// Lote 249 — un paso ATRÁS en el pipeline: de una etapa PIPELINE habilitada a la PIPELINE habilitada inmediatamente anterior por SortOrder
+    /// (con los reordenamientos de la compañía). Nunca sale de un lateral ni de un terminal y nunca salta etapas. Valida el comentario, escribe
+    /// EntityStatusHistory y corre los efectos del dominio, como <see cref="TransitionAsync(string, string, int, int?, string, string?, CancellationToken)"/>.
+    /// Hoy solo lo usa «Reabrir empaque» (PickBatchStatus PACKED → COLLECTED), después de exigir warehouse.reopen-pack: el permiso lo exige quien llama.
+    /// Devuelve el StatusCode destino; el llamador asigna StatusCodeId en su entidad dentro de la misma unidad de trabajo.
+    /// </summary>
+    public async Task<StatusCode> StepBackAsync(string statusDomain, string entityTypeCode, int entityId, int fromStatusId, string toCode, string? comment, CancellationToken ct)
+    {
+        if (comment is { Length: > CommentMaxLength }) throw new ValidationException("comment", CommentTooLongMessage);
+        var enabled = await LoadEnabledAsync(statusDomain, ct);
+        var to = enabled.FirstOrDefault(s => s.InternalCode.Equals(toCode, StringComparison.OrdinalIgnoreCase))
+                 ?? throw new StatusRuleException($"El estatus '{toCode}' no existe o no está habilitado para esta compañía.");
+        var from = enabled.FirstOrDefault(s => s.StatusCodeId == fromStatusId);
+        if (from is null)
+        {
+            var code = await db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == fromStatusId).Select(s => s.InternalCode).FirstOrDefaultAsync(ct);
+            throw new StatusRuleException($"El estatus actual '{code ?? fromStatusId.ToString()}' no es una etapa habilitada de '{statusDomain}': no se puede regresar.");
+        }
+        if (from.StatusCodeId == to.StatusCodeId) throw new StatusRuleException("El registro ya está en ese estatus.");
+        if (from.StageKind!.InternalCode != StageKinds.Pipeline)
+            throw new StatusRuleException($"'{from.InternalCode}' no es una etapa en curso del pipeline: no se puede regresar.");
+        if (to.StageKind!.InternalCode != StageKinds.Pipeline)
+            throw new StatusRuleException($"Solo se regresa a una etapa en curso del pipeline; '{to.InternalCode}' no lo es.");
+        var previous = enabled.Where(s => s.StageKind!.InternalCode == StageKinds.Pipeline && s.SortOrder < from.SortOrder)
+            .OrderByDescending(s => s.SortOrder).FirstOrDefault();
+        if (previous is null || previous.StatusCodeId != to.StatusCodeId)
+            throw new StatusRuleException(previous is null
+                ? $"'{from.InternalCode}' es la primera etapa del pipeline: no hay a dónde regresar."
+                : $"Solo se puede regresar de '{from.InternalCode}' a la etapa inmediatamente anterior, '{previous.InternalCode}'.");
+
+        var entityTypeId = await lookups.GetIdAsync(LookupDomains.EntityType, entityTypeCode, ct);
+        db.EntityStatusHistories.Add(new EntityStatusHistory
+        {
+            TenantId = ((TenantContext)tenant).RequireTenantId(), EntityTypeLookupId = entityTypeId, EntityId = entityId,
+            FromStatusCodeId = from.StatusCodeId, ToStatusCodeId = to.StatusCodeId, Comment = comment,
+            ChangedAtUtc = DateTime.UtcNow, ChangedBy = tenant.UserId,
+        });
+        var context = new StatusTransitionContext(statusDomain, entityTypeCode, entityId, from, to, comment);
+        foreach (var effect in effects.Where(e => e.StatusDomain.Equals(statusDomain, StringComparison.OrdinalIgnoreCase)))
+            await effect.OnTransitionedAsync(context, ct);
+        return to;
+    }
+
     private async Task EnsureTransitionAllowedAsync(List<StatusCode> enabled, StatusCode? from, StatusCode to, int entityTypeId, int entityId, CancellationToken ct)
     {
         var toKind = to.StageKind!.InternalCode;

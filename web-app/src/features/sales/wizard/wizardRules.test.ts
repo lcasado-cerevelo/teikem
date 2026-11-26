@@ -16,6 +16,7 @@ import {
   removeFromCart,
   resumeStep,
   setCartPieces,
+  isManualPrice,
   setCartPrice,
   setCartQuantity,
   stateFromDraft,
@@ -265,5 +266,23 @@ describe('cliente nuevo (alta mínima)', () => {
   it('dirección en una línea', () => {
     expect(addressLine({ line1: 'Calle 1', line2: '', city: 'Bayamón', postalCode: '00961' })).toBe('Calle 1, Bayamón 00961')
     expect(addressLine(null)).toBe('')
+  })
+})
+
+describe('Lote 249 (E-01): precio escrito en un producto con precio de lista', () => {
+  it('quien escribe un precio lo manda aunque el producto tenga lista; sin escribir, sigue sin viajar', () => {
+    let cart = setCartQuantity([], GLOVES, '2')
+    expect(cartToLines(cart)[0]).not.toHaveProperty('unitPrice')
+    cart = setCartPrice(cart, 'p-1', '4,5')
+    expect(cartToLines(cart)[0]).toMatchObject({ productPublicId: 'p-1', quantity: 2, unitPrice: 4.5 })
+    expect(cartLineAmount(cart[0])).toBe(9)
+    expect(isManualPrice(cart[0], GLOVES.price)).toBe(true)
+    // el mismo precio de lista no es «manual», pero igual viaja (tras guardar la línea ya lo lleva el servidor)
+    cart = setCartPrice(cart, 'p-1', String(GLOVES.price))
+    expect(isManualPrice(cart[0], GLOVES.price)).toBe(false)
+    expect(cartToLines(cart)[0]).toHaveProperty('unitPrice')
+    // borrarlo devuelve el precio de lista
+    cart = setCartPrice(cart, 'p-1', '')
+    expect(cartToLines(cart)[0]).not.toHaveProperty('unitPrice')
   })
 })

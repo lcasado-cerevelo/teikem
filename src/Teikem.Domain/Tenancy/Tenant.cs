@@ -117,6 +117,14 @@ public class Tenant : ISoftDeletable
     public string DocExpiryThresholdDays { get; set; } = Teikem.Domain.Clients.DocumentExpiryCodes.DefaultThresholds;
     public bool DocExpiryDailyAfterExpiry { get; set; }
     public bool DocExpiryNotifyClient { get; set; }
+    /// <summary>
+    /// Lote 249 (Lote E): segunda aprobación de las modificaciones de órdenes de venta. Modo 'NONE' (por omisión: se aplican al registrarlas) | 'ALWAYS' |
+    /// 'ABOVE_AMOUNT' (cuando el cambio del total, en valor absoluto, es ESTRICTAMENTE mayor que SalesChangeApprovalAmount, que entonces es > 0); y si el adjunto
+    /// (la evidencia de la autorización del cliente) es obligatorio. El cliente puede pisarlos (Client.SalesChange*; NULL = hereda de la compañía).
+    /// </summary>
+    public string SalesChangeApprovalMode { get; set; } = "NONE";
+    public decimal? SalesChangeApprovalAmount { get; set; }
+    public bool SalesChangeAttachmentRequired { get; set; }
     /// <summary>Lote 72 (P5): base de facturación del producto vendido: 'ON_DISPATCH' (al despachar) | 'ON_DELIVERY' (al entregar).</summary>
     public string SalesBillingTrigger { get; set; } = "ON_DISPATCH";
     /// <summary>Lote 72 (P5): días entre la emisión de una factura y su vencimiento.</summary>

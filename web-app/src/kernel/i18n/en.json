@@ -1238,6 +1238,14 @@
       "empty": "There are no expiring documents.",
       "client": "Client",
       "exemptionRow": "IVU exemption without document"
+    },
+    "salesChanges": {
+      "title": "Order modifications",
+      "inherit": "Same as the company",
+      "attachmentYes": "Required",
+      "attachmentNo": "Not required",
+      "effective": "In force for this client: second approval “{mode}”{amount}; evidence {attachment}.",
+      "saved": "Client settings saved."
     }
   },
   "consignees": {
@@ -8126,6 +8134,29 @@
       "intro": "One label per product in the filtered list, with its SKU barcode, the SKU in large type and its name. Each label is one PDF page of the exact label size (label only, no sheet). You can reprint them any time: they change nothing in the system.",
       "working": "Reading products and generating the PDF…",
       "nothing": "There are no products to print with the current filters."
+    },
+    "reopenPack": {
+      "button": "Reopen the pack",
+      "title": "Reopen pack {number}",
+      "body": "This pick batch's shipment is cancelled and the pick batch goes back to “Collected”: the sales order can be changed or the batch joined to another shipment. It is not reopened if the freight or the products are already invoiced.",
+      "bodyGroup": "The master batch's shipment is cancelled and all of its pick batches go back to “Collected”. It is not reopened if the freight or the products are already invoiced.",
+      "reason": "Reason",
+      "reasonRequired": "Enter the reason for reopening the pack.",
+      "confirm": "Reopen the pack",
+      "done": "Pack {number} reopened."
+    },
+    "joinShipment": {
+      "button": "Join the shipment of {order}",
+      "title": "Join the shipment of {order}",
+      "body": "Pick batch {number} will leave in the same shipment as another pick batch of this order, of its original order or of its additions.",
+      "target": "Join with",
+      "pick": "Choose which pick batch it leaves with.",
+      "none": "There is no other pick batch of this order, of its original order or of its additions to join with.",
+      "reopen": "Reopen the pack of {number} (warehouse.reopen-pack)",
+      "needsReopen": "{number} is already packed: check “Reopen the pack” to join this pick batch to its shipment.",
+      "noPermission": "{number} is already packed and reopening the pack requires the warehouse.reopen-pack permission.",
+      "confirm": "Join the shipment",
+      "done": "Pick batch {number} joined the shipment."
     }
   },
   "legal": {
@@ -8989,6 +9020,24 @@
           "repeated": "A threshold is repeated.",
           "tooMany": "Up to 10 thresholds can be set."
         }
+      },
+      "salesChanges": {
+        "title": "Order modifications",
+        "subtitle": "Second approval and evidence of the client's authorization when changing an order that was already requested.",
+        "mode": "Second approval",
+        "modes": {
+          "NONE": "Not required",
+          "ALWAYS": "Always",
+          "ABOVE_AMOUNT": "Above an amount"
+        },
+        "modeHelp": "With a second approval the modification stays pending and nothing is applied until another person with the permission approves it.",
+        "amount": "Change in the total",
+        "amountHelp": "Asks for approval if the total changes by more than this amount (up or down).",
+        "amountRequired": "With “Above an amount” enter an amount greater than 0.",
+        "attachment": "The evidence of the authorization is required",
+        "attachmentHelp": "Screenshot of the client's email or message, image or PDF.",
+        "clientHelp": "Each client can have its own on its profile (Profile → Order modifications): the client's setting wins.",
+        "saved": "Modification settings saved."
       }
     },
     "audit": {
@@ -10004,7 +10053,8 @@
       "trigger": "When the sold product is billed",
       "onDispatch": "On dispatch (pickup)",
       "onDelivery": "On delivery",
-      "triggerHelp": "On dispatch: what leaves the warehouse is billed. On delivery: only what is picked up or whose delivery was already delivered.",
+      "onRequest": "When the user decides (approved order)",
+      "triggerHelp": "On dispatch: what leaves the warehouse is billed. On delivery: only what is picked up or whose delivery was already delivered. When the user decides: billed when someone asks for it, once the order is approved.",
       "days": "Days until due",
       "daysHelp": "Days between issuing an invoice and its due date (0 to 365).",
       "daysError": "Enter a whole number from 0 to 365.",
@@ -11143,7 +11193,10 @@
       "priceFromOffer": "Price from the offer «{name}»",
       "negotiatedWins": "Offer: {offer}. The client's negotiated price is charged because it is lower.",
       "notices": "Price warnings for {sku}",
-      "empty": "There are no active products to sell."
+      "empty": "There are no active products to sell.",
+      "priceOverridePlaceholder": "Other price",
+      "manualPrice": "Manual price",
+      "manualPriceHelp": "Price typed by hand; the list price is {price}."
     },
     "cart": {
       "title": "Cart",
@@ -14738,5 +14791,269 @@
       "CHAIN": "by its chain"
     },
     "summary": "{n} special prices"
+  },
+  "salesChanges": {
+    "title": "Modify order {number}",
+    "modify": "Modify order",
+    "rowAction": "Modify",
+    "parent": "Addition to",
+    "next": "Next",
+    "back": "Back",
+    "save": "Save the modification",
+    "saved": "Modification #{n} applied.",
+    "savedPending": "Modification #{n} registered: it is waiting for the second approval and nothing has been applied yet.",
+    "pendingExists": "The order already has modification #{n} pending approval: resolve it (approve, reject or withdraw) before registering another.",
+    "stepsLabel": "Modification steps",
+    "yes": "Yes",
+    "no": "No",
+    "taxManual": "Manual tax",
+    "steps": {
+      "lines": "Lines",
+      "terms": "Terms",
+      "auth": "Authorization",
+      "preview": "Preview"
+    },
+    "tabs": {
+      "approvals": "To approve"
+    },
+    "kinds": {
+      "MODIFY": "Modification",
+      "ADDITION": "Addition"
+    },
+    "channels": {
+      "PHONE": "By phone",
+      "EMAIL": "By email",
+      "IN_PERSON": "In person",
+      "MESSAGE": "By message"
+    },
+    "stage": {
+      "REVERSIBLE": "Collected: can be undone",
+      "REOPENABLE": "Packed: can be reopened",
+      "LEFT": "Already left"
+    },
+    "qb": {
+      "NOT_ISSUED": "Not issued",
+      "PENDING_EXPORT": "Pending export to QuickBooks",
+      "EXPORTED_UNCONFIRMED": "Exported, to be confirmed",
+      "IN_QUICKBOOKS": "In QuickBooks"
+    },
+    "badge": {
+      "addition": "Addition",
+      "additionHelp": "Internal order that complements another order that was already requested.",
+      "pending": "Pending modification",
+      "pendingHelp": "A modification is waiting for the second approval; nothing has been applied."
+    },
+    "batches": {
+      "title": "Order pick batches",
+      "shipment": "Shipment {number}"
+    },
+    "reopen": {
+      "label": "Reopen the pack {packs}",
+      "shipment": "shipment {number}",
+      "noPermission": "{packs} is already packed and reopening a pack requires the warehouse.reopen-pack permission. Whatever you want to add can go in an internal addition order."
+    },
+    "lines": {
+      "title": "Order lines",
+      "added": "Products being added",
+      "addProduct": "Add a product",
+      "addPlaceholder": "Search a product…",
+      "addHelp": "The product comes in at today's price for the client; only someone with sales.price can type another.",
+      "removeAdded": "Remove {sku} from what is being added",
+      "priceToday": "Today's price",
+      "priceTodayHelp": "With no price typed, today's price for the client is used.",
+      "allowBackorder": "If stock is short, leave the missing part on backorder"
+    },
+    "line": {
+      "removed": "Removed",
+      "removedHelp": "The line is removed: to order it again, add it again.",
+      "ordered": "Ordered",
+      "collected": "Collected",
+      "packed": "Packed",
+      "out": "Shipped",
+      "invoiced": "Invoiced",
+      "qty": "Quantity",
+      "min": "Minimum: {min}",
+      "price": "Price",
+      "listPrice": "List price: {price}",
+      "taxManual": "Manual tax {pct} %",
+      "taxPct": "Manual tax (%)",
+      "taxNote": "Reason for the manual tax",
+      "taxSet": "Manual tax",
+      "taxChange": "Change manual tax",
+      "taxClear": "Remove manual tax",
+      "taxClearUndo": "Keep the manual tax",
+      "taxCancel": "Cancel tax",
+      "remove": "Remove line",
+      "undoRemove": "Undo remove",
+      "cannotRemove": "Part already left: it cannot be removed.",
+      "errors": {
+        "quantity": "Type a quantity greater than 0 (or the minimum the line allows).",
+        "price": "Type a valid price.",
+        "taxPct": "The tax must be between 0 and 100 %.",
+        "taxNote": "Enter the reason for the manual tax."
+      }
+    },
+    "terms": {
+      "consignee": "Consignee"
+    },
+    "auth": {
+      "title": "Who authorized the change",
+      "help": "Every change to an order that was already requested is recorded with who authorized it at the client, how and when.",
+      "name": "Name of who authorized",
+      "role": "Job title",
+      "contact": "Client contact (optional)",
+      "contactNone": "Not chosen",
+      "channel": "How they authorized",
+      "channelPick": "Choose…",
+      "when": "Date and time of the authorization",
+      "reason": "Reason for the change",
+      "attachment": "Evidence (optional)",
+      "attachmentRequired": "Evidence (required)",
+      "attachmentHelp": "Screenshot of the client's email or message (image or PDF).",
+      "attachmentRequiredHelp": "This client requires the evidence of the authorization: attach the screenshot of the email or message (image or PDF).",
+      "uploading": "Uploading…",
+      "attached": "Attached: {name}",
+      "removeAttachment": "Remove attachment",
+      "errors": {
+        "name": "Enter who authorized the change at the client.",
+        "channel": "Enter how the client authorized it.",
+        "at": "Enter the date and time of the authorization.",
+        "reason": "Enter the reason for the modification.",
+        "attachment": "Attach the evidence of the authorization: it is required."
+      }
+    },
+    "preview": {
+      "diff": "What changes",
+      "noDiff": "No differences yet.",
+      "totalBefore": "Total before",
+      "totalAfter": "Total after",
+      "blocked": "It cannot be registered like this:",
+      "effects": "What happens in the warehouse",
+      "effectsHelp": "Only what is needed is undone, starting with the most recent pick batch; the stock goes back to its bin and the line stays reserved.",
+      "reopened": "Pack {pack} is reopened: its shipment is cancelled and the pick batch goes back to “Collected”.",
+      "reversed": "Pick batch {batch} is undone.",
+      "credit": "Credit: limit {limit} · in use {exposure} · available {available}.",
+      "creditExceeded": "This change exceeds the client's credit.",
+      "creditOverride": "Authorize the exceeded credit (orders.credit_override)",
+      "creditNoPermission": "You do not have permission to authorize an exceeded credit.",
+      "needsApproval": "Needs a second approval",
+      "ruleAlways": "Every modification for this client needs another person's approval.",
+      "ruleAbove": "The change in the total goes over {amount}: another person must approve it before it is applied."
+    },
+    "diff": {
+      "ADDED": "Added",
+      "REMOVED": "Removed",
+      "CHANGED": "Changes",
+      "TERMS": "Terms"
+    },
+    "fields": {
+      "qtyOrdered": "Quantity",
+      "unitPrice": "Price",
+      "taxRatePct": "Tax (%)",
+      "taxAmount": "Tax",
+      "taxReason": "Tax reason",
+      "paymentMethod": "Payment method",
+      "paymentTerm": "Payment term",
+      "deliveryMode": "Delivery or pickup",
+      "consignee": "Consignee",
+      "isConsignment": "Consignment",
+      "notes": "Notes"
+    },
+    "history": {
+      "title": "Modifications",
+      "no": "No.",
+      "kind": "Type",
+      "when": "Registered",
+      "by": "Registered by",
+      "authorized": "Authorized by (client)",
+      "delta": "Total change",
+      "open": "View details",
+      "empty": "This order has no modifications."
+    },
+    "detail": {
+      "title": "Modification #{n} of {number}",
+      "loading": "Modification",
+      "decision": "Decision",
+      "addition": "Addition {number}"
+    },
+    "decision": {
+      "note": "Note",
+      "noteHelp": "Required to reject.",
+      "noteRequired": "Write a note to reject the modification.",
+      "otherPerson": "The second approval is given by someone other than who registered the modification.",
+      "approve": "Approve and apply",
+      "reject": "Reject",
+      "withdraw": "Withdraw",
+      "approved": "Modification #{n} approved and applied.",
+      "rejected": "Modification #{n} rejected: nothing was applied.",
+      "withdrawn": "Modification #{n} withdrawn: nothing was applied."
+    },
+    "pending": {
+      "title": "Modification pending approval",
+      "heading": "Modification #{n} pending second approval",
+      "by": "Registered by {who} on {when}; authorized at the client by {authorized}. Nothing is applied until it is approved.",
+      "details": "See the before and after"
+    },
+    "pendingTab": {
+      "panel": "Modifications to approve",
+      "search": "Search by order or client",
+      "order": "Order",
+      "review": "Review",
+      "empty": "No modifications are waiting for approval.",
+      "emptyFiltered": "No pending modification matches the search.",
+      "help": "Approved by someone other than who registered the modification (permission sales.modify.approve)."
+    },
+    "additions": {
+      "title": "Additions to this order"
+    },
+    "addition": {
+      "button": "Internal addition order",
+      "title": "Internal addition order to {number}",
+      "help": "It is a separate order that hangs from this one, without a client signature: what was already collected, packed, shipped or invoiced is not touched. It ships in the same shipment and is invoiced with a complementary invoice.",
+      "noLines": "Add at least one product.",
+      "create": "Create the addition",
+      "saved": "Addition {number} created and requested.",
+      "savedPending": "Addition registered (modification #{n}): it is waiting for the second approval and the order has not been created yet.",
+      "mayNeedApproval": "May need a second approval"
+    },
+    "invoices": {
+      "title": "Invoices and QuickBooks",
+      "ofAddition": "of addition {number}"
+    },
+    "blockers": {
+      "billed": "The order is already invoiced: it can only be added to. Removing or lowering is done with a credit note.",
+      "draft": "The order is a draft: it is changed from its edit screen, not with a modification.",
+      "cancelled": "The order is cancelled: it cannot be modified.",
+      "leftComplete": "The order has already shipped in full: it can only be added to with an internal addition order.",
+      "nothing": "Enter at least one change.",
+      "removeAll": "You cannot remove every line: cancel the order instead.",
+      "termsLeft": "Part of the order has already shipped: payment, delivery and consignee can no longer be changed.",
+      "lineRemoved": "Line {n} ({sku}) is removed: to order it again, add it again.",
+      "lineClosed": "Line {n} ({sku}) is closed: its quantity can no longer be changed.",
+      "productRepeated": "Product {sku} is already on the order: change the quantity of its line.",
+      "belowLeft": "{sku} cannot be lowered to {qty}: {left} already shipped.",
+      "removeLeft": "{sku} cannot be removed: {left} already shipped.",
+      "priceLeft": "The price of {sku} can no longer be changed: part of the line already shipped.",
+      "taxLeft": "The tax of {sku} can no longer be changed: part of the line already shipped.",
+      "noTaxOverride": "Line {n} ({sku}) has no manual tax.",
+      "lineNeedsReopen": "{sku} is in pack {pack}: to change it check “Reopen the pack” (permission warehouse.reopen-pack).",
+      "termsNeedReopen": "The order is in pack {pack}: to change payment, delivery or consignee check “Reopen the pack” (permission warehouse.reopen-pack).",
+      "batchInvoiced": "Pick batch {batch} is already invoiced ({invoices}): it cannot be undone.",
+      "attachmentRequired": "Attach the evidence of the client's authorization: it is required for this client.",
+      "changed": "The order changed while it was being modified; try again.",
+      "pendingExists": "This order already has a pending modification."
+    },
+    "reasons": {
+      "pickup": "It is a pickup: what was collected has already been taken by the client.",
+      "linked": "It is dispatched by a linked company.",
+      "manual": "It is a manual dispatch.",
+      "noShipment": "The pack has no shipment.",
+      "invoiced": "It has products that are already invoiced.",
+      "shipmentInactive": "Shipment {shipment} is cancelled.",
+      "shipmentStatus": "Shipment {shipment} is already “{status}”.",
+      "shipmentAdvanced": "Shipment {shipment} is past its initial stage.",
+      "freightInvoiced": "The freight of shipment {shipment} is already invoiced.",
+      "status": "The pick batch is “{status}”."
+    }
   }
 }

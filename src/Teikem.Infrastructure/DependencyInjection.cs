@@ -402,6 +402,8 @@ public static class DependencyInjection
         services.AddScoped<INotificationContentProvider, ClientDocumentNoticeContent>();   // Lote 248: contenido y destinatarios de esos avisos
         services.AddSingleton<INotificationEventProvider, SpecialPriceEventProvider>();   // Lote 248: precio especial por vencer
         services.AddScoped<INotificationContentProvider, SpecialPriceNoticeContent>();   // Lote 248
+        services.AddSingleton<INotificationEventProvider, SalesChangeEventProvider>();   // Lote 249: modificaciones de órdenes de venta (modificada, adición, empaque reabierto, por aprobar)
+        services.AddScoped<INotificationContentProvider, SalesChangeNoticeContent>();   // Lote 249: destinatarios SELLER, REGISTRANT y ASSIGNEE de esos avisos
         services.AddSingleton<NotificationEventCatalog>();
         services.AddScoped<INotificationPublisher, NotificationPublisher>();
         services.AddScoped<INotificationChannelSender, EmailChannelSender>();
@@ -442,6 +444,7 @@ public static class DependencyInjection
         services.AddScoped<SalesTaxNoticeService>();   // Lote 248: aviso de exención vencida / por vencer al vender
         services.AddScoped<SalesOrderService>();   // Lote 57
         services.AddScoped<ISalesDispatchReversal>(sp => sp.GetRequiredService<SalesOrderService>());   // Lote 62: deshacer una recolección de venta
+        services.AddScoped<SalesOrderChangeService>();   // Lote 249: modificaciones de órdenes de venta (registrar, aprobar, adición, ajustes)
         services.AddScoped<SalesDeliveryService>();   // Lote 62: entrega de una orden de venta
         services.AddScoped<LinkedTenantScope>();   // Lote 227: el contexto acotado de la otra compañía (puente entre compañías)
         services.AddScoped<TenantLinkService>();   // Lote 227: enlaces entre compañías (proponer, aceptar, rechazar, terminar)
@@ -620,6 +623,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, SalesOrderDataSource>();        // Lote 67: órdenes de venta
         services.AddScoped<IDataSource, ExitNoticeDataSource>();        // menores 2026-10-21: avisos de salida como fuente de Vistas
         services.AddScoped<IDataSource, SalesOrderLineDataSource>();
+        services.AddScoped<IDataSource, SalesOrderChangeDataSource>();   // Lote 249: modificaciones de órdenes de venta
         services.AddScoped<IDataSource, SalesRevenueDataSource>();   // Lote 224: lo vendido (lo consignado cuenta al pagarse, en la fecha del pago)
         services.AddScoped<IDataSource, RentalProcessDataSource>();
         services.AddScoped<IAttentionItemProvider, RentalDueAttentionProvider>();

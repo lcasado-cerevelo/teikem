@@ -304,6 +304,10 @@ public sealed partial class QuickBooksService(TeikemDbContext db, ITenantContext
         public Dictionary<int, List<(int ProductId, decimal Quantity)>> Parts { get; } = new();
         public Dictionary<int, int> LineOrder { get; } = new();
         public Dictionary<int, string> OrderNumbers { get; } = new();
+        /// <summary>Lote 249: orden de adición → su orden madre.</summary>
+        public Dictionary<int, int> OrderParents { get; } = new();
+        /// <summary>Lote 249: orden madre → su número y sus facturas no anuladas (id y número), para la referencia del MEMO.</summary>
+        public Dictionary<int, (string Number, List<(int InvoiceId, string Number)> Invoices)> ParentRefs { get; } = new();
         public Dictionary<int, string> ChargeCodes { get; } = new();
         public Dictionary<int, string> StatusCodes { get; } = new();
         public Dictionary<int, string> TermCodes { get; } = new();
@@ -333,8 +337,12 @@ public sealed partial class QuickBooksService(TeikemDbContext db, ITenantContext
         foreach (var l in soLines) pkg.LineOrder[l.SalesOrderLineId] = l.SalesOrderId;
         var orderIds = soLines.Select(l => l.SalesOrderId).Concat(lines.Where(l => l.SalesOrderId != null).Select(l => l.SalesOrderId!.Value)).Distinct().ToList();
         if (orderIds.Count > 0)
-            foreach (var o in await db.Set<SalesOrder>().AsNoTracking().Where(o => orderIds.Contains(o.SalesOrderId)).Select(o => new { o.SalesOrderId, o.Number }).ToListAsync(ct))
+            foreach (var o in await db.Set<SalesOrder>().AsNoTracking().Where(o => orderIds.Contains(o.SalesOrderId)).Select(o => new { o.SalesOrderId, o.Number, o.ParentSalesOrderId }).ToListAsync(ct))
+            {
                 pkg.OrderNumbers[o.SalesOrderId] = o.Number;
+                if (o.ParentSalesOrderId is int parent) pkg.OrderParents[o.SalesOrderId] = parent;
+            }
+        await AddParentRefsAsync(pkg, ct);
         var comps = lineIds.Count == 0 ? new List<SalesOrderLineComponent>()
             : await db.Set<SalesOrderLineComponent>().AsNoTracking().Where(c => lineIds.Contains(c.SalesOrderLineId)).OrderBy(c => c.SalesOrderLineComponentId).ToListAsync(ct);
         foreach (var g in comps.GroupBy(c => c.SalesOrderLineId)) pkg.Parts[g.Key] = g.Select(c => (c.ComponentProductId, c.Quantity)).ToList();
@@ -379,6 +387,30 @@ public sealed partial class QuickBooksService(TeikemDbContext db, ITenantContext
         var newIds = pkg.Clients.Values.Where(c => IsNewClient(pkg, c)).Select(c => c.ClientId).ToList();
         if (newIds.Count > 0) await AddClientDataAsync(pkg, newIds, ct);
         return pkg;
+    }
+
+    /// <summary>
+    /// Lote 249: el número de cada orden madre de las órdenes de ADICIÓN del paquete y sus facturas no anuladas (por sus líneas de producto o su cargo de envío). Todas viven en la compañía
+    /// (filtro global de Invoice, SalesOrder y SalesOrderLine).
+    /// </summary>
+    private async Task AddParentRefsAsync(Package pkg, CancellationToken ct)
+    {
+        var parentIds = pkg.OrderParents.Values.Distinct().ToList();
+        if (parentIds.Count == 0) return;
+        var voidIds = pkg.StatusCodes.Where(kv => kv.Value == InvoiceStatuses.Void).Select(kv => kv.Key).ToList();
+        var numbers = await db.Set<SalesOrder>().AsNoTracking().Where(o => parentIds.Contains(o.SalesOrderId)).Select(o => new { o.SalesOrderId, o.Number }).ToListAsync(ct);
+        var byLine = await (from il in db.Set<InvoiceLine>().AsNoTracking()
+                            join i in db.Invoices.AsNoTracking() on il.InvoiceId equals i.InvoiceId
+                            join sl in db.Set<SalesOrderLine>().AsNoTracking() on il.SalesOrderLineId equals (int?)sl.SalesOrderLineId
+                            where parentIds.Contains(sl.SalesOrderId) && !voidIds.Contains(i.StatusCodeId)
+                            select new { OrderId = sl.SalesOrderId, i.InvoiceId, i.InvoiceNumber }).ToListAsync(ct);
+        var byShipping = await (from il in db.Set<InvoiceLine>().AsNoTracking()
+                                join i in db.Invoices.AsNoTracking() on il.InvoiceId equals i.InvoiceId
+                                where il.SalesOrderId != null && parentIds.Contains(il.SalesOrderId.Value) && !voidIds.Contains(i.StatusCodeId)
+                                select new { OrderId = il.SalesOrderId!.Value, i.InvoiceId, i.InvoiceNumber }).ToListAsync(ct);
+        foreach (var n in numbers)
+            pkg.ParentRefs[n.SalesOrderId] = (n.Number, byLine.Concat(byShipping).Where(r => r.OrderId == n.SalesOrderId).GroupBy(r => r.InvoiceId).OrderBy(g => g.Key)
+                .Select(g => (g.Key, g.First().InvoiceNumber)).ToList());
     }
 
     private async Task AddProductsAsync(Package pkg, List<int> ids, CancellationToken ct)
@@ -464,8 +496,25 @@ public sealed partial class QuickBooksService(TeikemDbContext db, ITenantContext
     }).ToList();
 
     private static List<string> OrdersOf(Package pkg, Invoice i)
-        => i.Lines.Select(l => l.SalesOrderId ?? (l.SalesOrderLineId is int sl && pkg.LineOrder.TryGetValue(sl, out var o) ? o : (int?)null))
-            .Where(o => o is not null).Select(o => pkg.OrderNumbers.GetValueOrDefault(o!.Value)).Where(n => n is not null).Select(n => n!).Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList();
+        => OrderIdsOf(pkg, i).Select(o => pkg.OrderNumbers.GetValueOrDefault(o)).Where(n => n is not null).Select(n => n!).Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList();
+
+    private static IEnumerable<int> OrderIdsOf(Package pkg, Invoice i)
+        => i.Lines.Select(l => l.SalesOrderId ?? (l.SalesOrderLineId is int sl && pkg.LineOrder.TryGetValue(sl, out var o) ? o : (int?)null)).Where(o => o is not null).Select(o => o!.Value).Distinct();
+
+    /// <summary>
+    /// MEMO de la factura en el IIF: las órdenes de la factura (por número). Lote 249: la orden de ADICIÓN lleva su referencia, «OV-00045 (adición de OV-00040 · FAC-00012)», con las
+    /// facturas no anuladas de la madre anteriores a esta; recortado al largo que admite el escritor (BillingRules.MaxInvoiceMemoLength).
+    /// </summary>
+    private static string Memo(Package pkg, Invoice i)
+    {
+        var refs = OrderIdsOf(pkg, i).Where(pkg.OrderNumbers.ContainsKey).Select(o =>
+        {
+            var number = pkg.OrderNumbers[o];
+            if (!pkg.OrderParents.TryGetValue(o, out var parent) || !pkg.ParentRefs.TryGetValue(parent, out var pr)) return number;
+            return BillingRules.MemoReference(number, pr.Number, pr.Invoices.Where(x => x.InvoiceId < i.InvoiceId).Select(x => x.Number).ToList());
+        }).Distinct().OrderBy(r => r, StringComparer.Ordinal);
+        return BillingRules.InvoiceMemo(refs);
+    }
 
     private List<QuickBooksNewClientDto> NewClients(Package pkg) => pkg.Clients.Values.Where(c => IsNewClient(pkg, c)).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).Select(c =>
     {
@@ -537,7 +586,7 @@ public sealed partial class QuickBooksService(TeikemDbContext db, ITenantContext
             }
             lines.Add(new QuickBooksInvoiceLine(pkg.ChargeCodes.GetValueOrDefault(l.ChargeTypeLookupId, "OTHER"), l.Description, l.Quantity, l.UnitAmount, taxable));
         }
-        var memo = string.Join(", ", OrdersOf(pkg, i));
+        var memo = Memo(pkg, i);
         return new QuickBooksInvoice(i.InvoiceNumber, i.IssueDate ?? clock.Today, i.DueDate, QbName(pkg, c), TermsOf(pkg, c.ClientId), memo, lines, i.TaxAmount);
     }
 }

@@ -8866,3 +8866,299 @@ BEGIN
     INSERT INTO dbo.AppliedMigration (Code) VALUES ('L248_EXEMPTIONS_WITHOUT_DOCUMENT');
 END
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-27 — Lote 249: Edición de la orden de venta con autorización (Lote E del plan docs/plan-rutas-cadenas-precios-ivu-modificaciones.md §3.5) (docs/lote249-decisiones.md).
+   - dbo.SalesOrder: UQ_SalesOrder_IdTenant (SalesOrderId, TenantId), destino de las FK compuestas; ParentSalesOrderId (la orden de la que esta es la ADICIÓN) con
+     FK_SalesOrder_Parent COMPUESTA, CK_SalesOrder_ParentNotSelf e IX_SalesOrder_Parent (filtrado). Las órdenes que ya existen quedan en NULL.
+   - dbo.SalesOrderLine, IVU manual de la línea: TaxReason (30; compartida con el Lote D: solo si falta), TaxOverrideNote (250), TaxComputedRatePct,
+     TaxComputedAmount, TaxOverrideBy y TaxOverrideAtUtc, con CK_SalesOrderLine_TaxOverride (con MANUAL_OVERRIDE se exigen la nota y lo que daba el cálculo).
+     Las líneas que ya existen quedan sin IVU manual.
+   - CK_SalesOrderLine_Qty se RELAJA para la línea quitada por una modificación: QtyOrdered = 0 solo si la línea está cerrada (IsClosed = 1) y sin reservado,
+     backorder ni despachado. Los datos de hoy cumplen la nueva (es más amplia).
+   - CK_Tenant_SalesBillingTrigger se AMPLÍA con ON_REQUEST (se factura cuando el usuario lo decida, después de solicitada la orden; respuesta de Luis
+     2026-11-26). Las compañías que ya existen siguen con su valor.
+   - dbo.Tenant: SalesChangeApprovalMode ('NONE' por omisión | 'ALWAYS' | 'ABOVE_AMOUNT'), SalesChangeApprovalAmount y SalesChangeAttachmentRequired (0), con
+     CK_Tenant_SalesChangeApproval. dbo.Client: las mismas tres columnas, NULL = hereda de la compañía, con CK_Client_SalesChangeApproval.
+   - Dominio de estatus SalesOrderChangeStatus: PENDING_APPROVAL (inicial) → APPLIED; REJECTED y WITHDRAWN (terminales) solo desde PENDING_APPROVAL
+     (StatusLateralEntry de omisión). Dominio de catálogo SalesChangeChannel (PHONE, EMAIL, IN_PERSON, MESSAGE): cómo autorizó el cliente.
+   - EntityType SALES_ORDER_CHANGE (bitácora y fuente de datos «Modificaciones de órdenes de venta», orden 201).
+   - Tabla nueva dbo.SalesOrderChange (la modificación: quién la registró, quién autorizó del cliente y cómo, la foto antes y después, los efectos, los
+     totales y la segunda aprobación), con FK COMPUESTAS a la orden y a la adición, UX_SalesOrderChange_Pending (UNA sola pendiente por orden, garantizada
+     en la base) y UX_SalesOrderChange_Attachment (un adjunto respalda una sola modificación).
+   - Permisos sales.modify, sales.tax, sales.modify.approve (BILLING) y warehouse.reopen-pack (WAREHOUSE), propagados UNA vez (marca L249_SALES_CHANGE_PERMS)
+     a los roles YA clonados: sales.modify a TenantAdmin, SalesSupervisor y SalesOffice; sales.tax y sales.modify.approve a TenantAdmin y SalesSupervisor;
+     warehouse.reopen-pack a TenantAdmin. Las plantillas las pone el sembrador desde PermissionCatalog.
+   - Sin migración de datos. Unir al envío de la orden y la reversa mínima usan PickGroup, que ya existe.
+   Solo AGREGA (y relaja o amplía dos CHECK). Idempotente.
+   ---------------------------------------------------------------------------- */
+-- la orden de venta como destino de las FK compuestas y la orden madre de una adición
+IF NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_SalesOrder_IdTenant' AND parent_object_id = OBJECT_ID('dbo.SalesOrder'))
+    ALTER TABLE dbo.SalesOrder ADD CONSTRAINT UQ_SalesOrder_IdTenant UNIQUE (SalesOrderId, TenantId);
+GO
+IF COL_LENGTH(N'dbo.SalesOrder', N'ParentSalesOrderId') IS NULL
+    ALTER TABLE dbo.SalesOrder ADD ParentSalesOrderId INT NULL;
+GO
+IF OBJECT_ID(N'dbo.FK_SalesOrder_Parent', N'F') IS NULL
+    EXEC(N'ALTER TABLE dbo.SalesOrder ADD CONSTRAINT FK_SalesOrder_Parent FOREIGN KEY (ParentSalesOrderId, TenantId) REFERENCES dbo.SalesOrder(SalesOrderId, TenantId);');
+GO
+IF OBJECT_ID(N'dbo.CK_SalesOrder_ParentNotSelf', N'C') IS NULL
+    EXEC(N'ALTER TABLE dbo.SalesOrder ADD CONSTRAINT CK_SalesOrder_ParentNotSelf CHECK (ParentSalesOrderId IS NULL OR ParentSalesOrderId <> SalesOrderId);');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrder_Parent' AND object_id = OBJECT_ID('dbo.SalesOrder'))
+    EXEC(N'CREATE INDEX IX_SalesOrder_Parent ON dbo.SalesOrder(TenantId, ParentSalesOrderId) WHERE ParentSalesOrderId IS NOT NULL;');
+GO
+-- IVU manual de la línea (TaxReason la comparte el Lote D: si ya existe, no se toca)
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'TaxReason') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD TaxReason NVARCHAR(30) NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'TaxOverrideNote') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD TaxOverrideNote NVARCHAR(250) NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'TaxComputedRatePct') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD TaxComputedRatePct DECIMAL(9,4) NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'TaxComputedAmount') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD TaxComputedAmount DECIMAL(18,4) NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'TaxOverrideBy') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD TaxOverrideBy INT NULL;
+GO
+IF COL_LENGTH(N'dbo.SalesOrderLine', N'TaxOverrideAtUtc') IS NULL
+    ALTER TABLE dbo.SalesOrderLine ADD TaxOverrideAtUtc DATETIME2 NULL;
+GO
+IF OBJECT_ID(N'dbo.CK_SalesOrderLine_TaxOverride', N'C') IS NULL
+    EXEC(N'ALTER TABLE dbo.SalesOrderLine ADD CONSTRAINT CK_SalesOrderLine_TaxOverride CHECK (TaxReason IS NULL OR TaxReason <> N''MANUAL_OVERRIDE'' OR (TaxOverrideNote IS NOT NULL AND TaxComputedRatePct IS NOT NULL AND TaxComputedAmount IS NOT NULL));');
+GO
+-- la línea quitada por una modificación queda en 0, cerrada y sin reservado, backorder ni despachado (el CHECK de antes exigía QtyOrdered > 0)
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_SalesOrderLine_Qty' AND parent_object_id = OBJECT_ID('dbo.SalesOrderLine')
+           AND definition NOT LIKE '%IsClosed%')
+    ALTER TABLE dbo.SalesOrderLine DROP CONSTRAINT CK_SalesOrderLine_Qty;
+GO
+IF OBJECT_ID(N'dbo.SalesOrderLine', N'U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_SalesOrderLine_Qty' AND parent_object_id = OBJECT_ID('dbo.SalesOrderLine'))
+    ALTER TABLE dbo.SalesOrderLine ADD CONSTRAINT CK_SalesOrderLine_Qty
+        CHECK ((QtyOrdered > 0 OR (QtyOrdered = 0 AND IsClosed = 1 AND QtyReserved = 0 AND QtyBackordered = 0 AND QtyShipped = 0))
+               AND QtyReserved >= 0 AND QtyBackordered >= 0 AND QtyShipped >= 0);
+GO
+-- facturación de las órdenes de venta: ON_REQUEST (cuando el usuario lo decida) además de ON_DISPATCH y ON_DELIVERY
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Tenant_SalesBillingTrigger' AND parent_object_id = OBJECT_ID('dbo.Tenant')
+           AND definition NOT LIKE '%ON_REQUEST%')
+    ALTER TABLE dbo.Tenant DROP CONSTRAINT CK_Tenant_SalesBillingTrigger;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'SalesBillingTrigger') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_Tenant_SalesBillingTrigger' AND parent_object_id = OBJECT_ID('dbo.Tenant'))
+    EXEC(N'ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_SalesBillingTrigger CHECK (SalesBillingTrigger IN (''ON_DISPATCH'',''ON_DELIVERY'',''ON_REQUEST''));');
+GO
+-- segunda aprobación de las modificaciones: ajustes de la compañía y del cliente (NULL en el cliente = hereda)
+IF COL_LENGTH(N'dbo.Tenant', N'SalesChangeApprovalMode') IS NULL
+    ALTER TABLE dbo.Tenant ADD SalesChangeApprovalMode NVARCHAR(12) NOT NULL CONSTRAINT DF_Tenant_SalesChangeApprovalMode DEFAULT N'NONE';
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'SalesChangeApprovalAmount') IS NULL
+    ALTER TABLE dbo.Tenant ADD SalesChangeApprovalAmount DECIMAL(18,2) NULL;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'SalesChangeAttachmentRequired') IS NULL
+    ALTER TABLE dbo.Tenant ADD SalesChangeAttachmentRequired BIT NOT NULL CONSTRAINT DF_Tenant_SalesChangeAttachmentRequired DEFAULT 0;
+GO
+IF OBJECT_ID(N'dbo.CK_Tenant_SalesChangeApproval', N'C') IS NULL
+    EXEC(N'ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_SalesChangeApproval CHECK (SalesChangeApprovalMode IN (N''NONE'',N''ALWAYS'',N''ABOVE_AMOUNT'') AND (SalesChangeApprovalMode <> N''ABOVE_AMOUNT'' OR ISNULL(SalesChangeApprovalAmount, 0) > 0));');
+GO
+IF COL_LENGTH(N'dbo.Client', N'SalesChangeApprovalMode') IS NULL
+    ALTER TABLE dbo.Client ADD SalesChangeApprovalMode NVARCHAR(12) NULL;
+GO
+IF COL_LENGTH(N'dbo.Client', N'SalesChangeApprovalAmount') IS NULL
+    ALTER TABLE dbo.Client ADD SalesChangeApprovalAmount DECIMAL(18,2) NULL;
+GO
+IF COL_LENGTH(N'dbo.Client', N'SalesChangeAttachmentRequired') IS NULL
+    ALTER TABLE dbo.Client ADD SalesChangeAttachmentRequired BIT NULL;
+GO
+IF OBJECT_ID(N'dbo.CK_Client_SalesChangeApproval', N'C') IS NULL
+    EXEC(N'ALTER TABLE dbo.Client ADD CONSTRAINT CK_Client_SalesChangeApproval CHECK (SalesChangeApprovalMode IS NULL OR (SalesChangeApprovalMode IN (N''NONE'',N''ALWAYS'',N''ABOVE_AMOUNT'') AND (SalesChangeApprovalMode <> N''ABOVE_AMOUNT'' OR ISNULL(SalesChangeApprovalAmount, 0) > 0)));');
+GO
+-- dominio de estatus de la modificación y sus estatus
+MERGE dbo.CatalogDomain AS t
+USING (SELECT N'SalesOrderChangeStatus' AS DomainKey) AS s ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (N'SalesOrderChangeStatus', 2, N'{"es":"Estatus de la modificación de orden de venta","en":"Sales order change status"}', 1, 1);
+GO
+MERGE dbo.StatusCode AS t
+USING (
+    SELECT v.Code, v.LabelJson, v.Color, v.Srt, v.Init, k.LookupCodeId AS StageKindLookupId
+    FROM (VALUES
+        (N'PENDING_APPROVAL', N'{"es":"Pendiente de aprobar","en":"Pending approval"}', '#F59E0B', 1, 1, 'PIPELINE'),
+        (N'APPLIED',          N'{"es":"Aplicada","en":"Applied"}',                     '#10B981', 2, 0, 'TERMINAL'),
+        (N'REJECTED',         N'{"es":"Rechazada","en":"Rejected"}',                   '#EF4444', 3, 0, 'TERMINAL'),
+        (N'WITHDRAWN',        N'{"es":"Retirada","en":"Withdrawn"}',                   '#6B7280', 4, 0, 'TERMINAL')
+    ) AS v (Code, LabelJson, Color, Srt, Init, Kind)
+    JOIN dbo.LookupCode k ON k.Entity = N'StageKind' AND k.InternalCode = v.Kind
+) AS s
+ON t.Entity = N'SalesOrderChangeStatus' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
+    VALUES (N'SalesOrderChangeStatus', s.Code, s.LabelJson, s.Color, s.Srt, s.StageKindLookupId, s.Init, 1);
+GO
+-- canal por el que autorizó el cliente
+MERGE dbo.CatalogDomain AS t
+USING (VALUES
+    (N'SalesChangeChannel', N'{"es":"Canal de autorización de la modificación","en":"Sales change authorization channel"}')
+) AS s (DomainKey, LabelJson) ON t.DomainKey = s.DomainKey
+WHEN NOT MATCHED THEN
+    INSERT (DomainKey, Scope, LabelJson, IsSystem, IsActive)
+    VALUES (s.DomainKey, 1, s.LabelJson, 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'PHONE',     N'{"es":"Por teléfono","en":"By phone"}',   10),
+    (N'EMAIL',     N'{"es":"Por correo","en":"By email"}',     20),
+    (N'IN_PERSON', N'{"es":"En persona","en":"In person"}',    30),
+    (N'MESSAGE',   N'{"es":"Por mensaje","en":"By message"}',  40)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'SalesChangeChannel' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'SalesChangeChannel', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'SALES_ORDER_CHANGE', N'{"es":"Modificación de orden de venta","en":"Sales order change"}', 201)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+-- Rechazada y Retirada solo desde Pendiente de aprobar (regla de omisión; la compañía la puede pisar)
+MERGE dbo.StatusLateralEntry AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, lat.StatusCodeId AS LateralStatusCodeId, frm.StatusCodeId AS FromStatusCodeId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode lat
+    CROSS JOIN dbo.StatusCode frm
+    WHERE et.Entity = N'EntityType' AND et.InternalCode = N'SALES_ORDER_CHANGE'
+      AND lat.Entity = N'SalesOrderChangeStatus' AND lat.InternalCode IN (N'REJECTED', N'WITHDRAWN')
+      AND frm.Entity = N'SalesOrderChangeStatus' AND frm.InternalCode = N'PENDING_APPROVAL'
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.LateralStatusCodeId = s.LateralStatusCodeId AND t.FromStatusCodeId = s.FromStatusCodeId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, LateralStatusCodeId, FromStatusCodeId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.LateralStatusCodeId, s.FromStatusCodeId, 1);
+GO
+-- la modificación de la orden de venta
+IF OBJECT_ID(N'dbo.SalesOrderChange', N'U') IS NULL CREATE TABLE dbo.SalesOrderChange (
+    SalesOrderChangeId            INT IDENTITY(1,1) CONSTRAINT PK_SalesOrderChange PRIMARY KEY,
+    PublicId                      UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_SalesOrderChange_PublicId DEFAULT NEWID(),
+    TenantId                      INT NOT NULL CONSTRAINT FK_SalesOrderChange_Tenant REFERENCES dbo.Tenant(TenantId),
+    SalesOrderId                  INT NOT NULL,
+    ChangeNo                      INT NOT NULL,
+    Kind                          NVARCHAR(10) NOT NULL,
+    StatusCodeId                  INT NOT NULL CONSTRAINT FK_SalesOrderChange_Status REFERENCES dbo.StatusCode(StatusCodeId),
+    IsPending                     BIT NOT NULL CONSTRAINT DF_SalesOrderChange_IsPending DEFAULT 0,
+    RegisteredBy                  INT NOT NULL,
+    RegisteredAtUtc               DATETIME2 NOT NULL,
+    AuthorizedByName              NVARCHAR(150) NOT NULL,
+    AuthorizedByTitle             NVARCHAR(100) NULL,
+    AuthorizedByContactId         INT NULL CONSTRAINT FK_SalesOrderChange_Contact REFERENCES dbo.ClientContact(ClientContactId),
+    AuthorizationChannelLookupId  INT NOT NULL CONSTRAINT FK_SalesOrderChange_Channel REFERENCES dbo.LookupCode(LookupCodeId),
+    AuthorizedAtUtc               DATETIME2 NOT NULL,
+    Reason                        NVARCHAR(500) NOT NULL,
+    AttachmentFileId              INT NULL CONSTRAINT FK_SalesOrderChange_Attachment REFERENCES dbo.StoredFile(StoredFileId),
+    RequestJson                   NVARCHAR(MAX) NOT NULL,
+    BeforeJson                    NVARCHAR(MAX) NOT NULL,
+    AfterJson                     NVARCHAR(MAX) NOT NULL,
+    EffectsJson                   NVARCHAR(MAX) NULL,
+    Summary                       NVARCHAR(500) NULL,
+    TotalBefore                   DECIMAL(18,2) NOT NULL,
+    TotalAfter                    DECIMAL(18,2) NOT NULL,
+    TotalDelta                    DECIMAL(18,2) NOT NULL,
+    LinesAdded                    INT NOT NULL CONSTRAINT DF_SalesOrderChange_LinesAdded DEFAULT 0,
+    LinesRemoved                  INT NOT NULL CONSTRAINT DF_SalesOrderChange_LinesRemoved DEFAULT 0,
+    LinesChanged                  INT NOT NULL CONSTRAINT DF_SalesOrderChange_LinesChanged DEFAULT 0,
+    ReversedBatchCount            INT NOT NULL CONSTRAINT DF_SalesOrderChange_ReversedBatchCount DEFAULT 0,
+    HasPriceChange                BIT NOT NULL CONSTRAINT DF_SalesOrderChange_HasPriceChange DEFAULT 0,
+    HasTaxOverride                BIT NOT NULL CONSTRAINT DF_SalesOrderChange_HasTaxOverride DEFAULT 0,
+    HasTermsChange                BIT NOT NULL CONSTRAINT DF_SalesOrderChange_HasTermsChange DEFAULT 0,
+    ReopenedPack                  BIT NOT NULL CONSTRAINT DF_SalesOrderChange_ReopenedPack DEFAULT 0,
+    CreditOverride                BIT NOT NULL CONSTRAINT DF_SalesOrderChange_CreditOverride DEFAULT 0,
+    RequiresApproval              BIT NOT NULL CONSTRAINT DF_SalesOrderChange_RequiresApproval DEFAULT 0,
+    ApprovalRule                  NVARCHAR(12) NULL,
+    BaseFingerprint               CHAR(64) NOT NULL,
+    DecidedBy                     INT NULL,
+    DecidedAtUtc                  DATETIME2 NULL,
+    DecisionNote                  NVARCHAR(500) NULL,
+    AppliedAtUtc                  DATETIME2 NULL,
+    AdditionSalesOrderId          INT NULL,
+    CreatedAtUtc                  DATETIME2 NOT NULL CONSTRAINT DF_SalesOrderChange_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy                     INT NULL,
+    UpdatedAtUtc                  DATETIME2 NULL,
+    UpdatedBy                     INT NULL,
+    RowVersion                    ROWVERSION NOT NULL,
+    CONSTRAINT FK_SalesOrderChange_Order FOREIGN KEY (SalesOrderId, TenantId) REFERENCES dbo.SalesOrder(SalesOrderId, TenantId),
+    CONSTRAINT FK_SalesOrderChange_Addition FOREIGN KEY (AdditionSalesOrderId, TenantId) REFERENCES dbo.SalesOrder(SalesOrderId, TenantId),
+    CONSTRAINT CK_SalesOrderChange_Kind CHECK (Kind IN (N'MODIFY', N'ADDITION')),
+    CONSTRAINT CK_SalesOrderChange_Addition CHECK (Kind = N'ADDITION' OR AdditionSalesOrderId IS NULL),
+    CONSTRAINT CK_SalesOrderChange_Text CHECK (LEN(LTRIM(RTRIM(AuthorizedByName))) > 0 AND LEN(LTRIM(RTRIM(Reason))) > 0),
+    CONSTRAINT UQ_SalesOrderChange_No UNIQUE (SalesOrderId, ChangeNo)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesOrderChange_PublicId' AND object_id = OBJECT_ID('dbo.SalesOrderChange'))
+    CREATE UNIQUE INDEX UX_SalesOrderChange_PublicId ON dbo.SalesOrderChange(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesOrderChange_Pending' AND object_id = OBJECT_ID('dbo.SalesOrderChange'))
+    EXEC(N'CREATE UNIQUE INDEX UX_SalesOrderChange_Pending ON dbo.SalesOrderChange(SalesOrderId) WHERE IsPending = 1;');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrderChange_PendingTenant' AND object_id = OBJECT_ID('dbo.SalesOrderChange'))
+    EXEC(N'CREATE INDEX IX_SalesOrderChange_PendingTenant ON dbo.SalesOrderChange(TenantId, RegisteredAtUtc) WHERE IsPending = 1;');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrderChange_Registered' AND object_id = OBJECT_ID('dbo.SalesOrderChange'))
+    CREATE INDEX IX_SalesOrderChange_Registered ON dbo.SalesOrderChange(TenantId, RegisteredAtUtc);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_SalesOrderChange_Attachment' AND object_id = OBJECT_ID('dbo.SalesOrderChange'))
+    EXEC(N'CREATE UNIQUE INDEX UX_SalesOrderChange_Attachment ON dbo.SalesOrderChange(AttachmentFileId) WHERE AttachmentFileId IS NOT NULL;');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_SalesOrderChange_Addition' AND object_id = OBJECT_ID('dbo.SalesOrderChange'))
+    EXEC(N'CREATE INDEX IX_SalesOrderChange_Addition ON dbo.SalesOrderChange(AdditionSalesOrderId) WHERE AdditionSalesOrderId IS NOT NULL;');
+GO
+-- permisos nuevos
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.modify')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.modify', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Modificar órdenes de venta ya solicitadas (con quién autorizó y cómo)","en":"Modify requested sales orders (with who authorized and how)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.tax')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.tax', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Cambiar el impuesto de una línea de venta (con motivo)","en":"Change the tax of a sales line (with a reason)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'sales.modify.approve')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('sales.modify.approve', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'BILLING'),
+            N'{"es":"Dar la segunda aprobación a modificaciones de órdenes de venta","en":"Give the second approval to sales order changes"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'warehouse.reopen-pack')
+    INSERT INTO dbo.Permission (Code, CategoryLookupId, LabelJson, IsSystem)
+    VALUES ('warehouse.reopen-pack', (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'PermissionCategory' AND InternalCode = 'WAREHOUSE'),
+            N'{"es":"Reabrir un empaque (anula su envío en la etapa inicial)","en":"Reopen a pack (voids its shipment in the initial stage)"}', 1);
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L249_SALES_CHANGE_PERMS')
+BEGIN
+    -- a los roles YA clonados de cada compañía (solo agrega, nunca quita)
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT DISTINCT r.RoleId, pm.PermissionId
+    FROM (VALUES
+        ('sales.modify',          'TenantAdmin'),
+        ('sales.modify',          'SalesSupervisor'),
+        ('sales.modify',          'SalesOffice'),
+        ('sales.tax',             'TenantAdmin'),
+        ('sales.tax',             'SalesSupervisor'),
+        ('sales.modify.approve',  'TenantAdmin'),
+        ('sales.modify.approve',  'SalesSupervisor'),
+        ('warehouse.reopen-pack', 'TenantAdmin')
+    ) AS g (Code, RoleName)
+    JOIN dbo.Permission pm ON pm.Code = g.Code
+    JOIN dbo.Role r ON r.Name = g.RoleName
+    WHERE r.IsActive = 1 AND r.TenantId IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission x WHERE x.RoleId = r.RoleId AND x.PermissionId = pm.PermissionId);
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L249_SALES_CHANGE_PERMS');
+END
+GO

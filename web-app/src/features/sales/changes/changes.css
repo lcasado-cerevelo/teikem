@@ -1,0 +1,78 @@
+/* Lote 249 — Modificar la orden de venta. Clases con prefijo soc-; colores solo de la paleta del tema; sin scroll horizontal desde 360 px. */
+.soc-form { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.soc-steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.soc-step { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.soc-step.on { color: var(--text); border-color: var(--flow); background: var(--flow-bg); font-weight: 600; }
+.soc-step.done { color: var(--text); }
+
+.soc-alert { font-size: 13px; border: 1px solid var(--line); border-radius: 9px; padding: 10px 13px; background: var(--panel-2); color: var(--text); display: flex; flex-direction: column; gap: 8px; }
+.soc-alert.warn { border-color: var(--warn); }
+.soc-alert.bad { border-color: var(--danger, var(--warn)); }
+.soc-alert-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.soc-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.soc-line { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel); display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.soc-line.removed { opacity: .65; }
+.soc-line.locked { background: var(--panel-2); }
+.soc-line-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; min-width: 0; }
+.soc-line-name { min-width: 0; overflow-wrap: anywhere; }
+.soc-line-pos { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); }
+.soc-line-pos b { color: var(--text); font-variant-numeric: tabular-nums; }
+.soc-line-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 10px; align-items: start; }
+.soc-line-grid .f { margin: 0; min-width: 0; }
+.soc-line-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.soc-struck { text-decoration: line-through; }
+.soc-listprice { font-size: 11.5px; color: var(--faint); }
+
+.soc-add { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.soc-add .f { margin: 0; min-width: 0; }
+
+.soc-batches { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.soc-batch { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; min-width: 0; }
+.soc-batch .help { margin: 0; flex-basis: 100%; }
+
+.soc-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 16px; margin: 0; }
+.soc-facts dt { font-size: 12px; color: var(--muted); }
+.soc-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+
+.soc-attach { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.soc-attach input[type='file'] { max-width: 100%; min-width: 0; }
+
+.soc-diff { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.soc-diff-item { border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; background: var(--panel); }
+.soc-diff-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.soc-diff-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 2px 12px; margin: 0; font-size: 13px; }
+.soc-diff-fields > div { display: flex; flex-wrap: wrap; gap: 4px 6px; min-width: 0; }
+.soc-diff-fields dt { color: var(--muted); }
+.soc-diff-fields dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.soc-arrow { color: var(--faint); }
+
+.soc-totals { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-variant-numeric: tabular-nums; }
+.soc-totals b { font-size: 15px; }
+.soc-up { color: var(--text); }
+
+.soc-hist { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.soc-hist-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.soc-pending { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--warn); border-radius: 10px; padding: 10px 12px; background: var(--panel-2); }
+.soc-pending-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.soc-inv { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.soc-inv li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; }
+
+.soc-adds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.soc-adds li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; }
+
+.soc-settings { display: flex; flex-direction: column; gap: 10px; }
+.soc-settings .r2 { align-items: start; }
+
+@media (max-width: 640px) {
+  .soc-add { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .soc-add > :first-child { grid-column: 1 / -1; }
+  .soc-add > .btn { grid-column: 1 / -1; justify-self: start; }
+}
+
+.soc-sub { font-size: 11.5px; color: var(--faint); }
+
+/* los interruptores con texto largo envuelven (a 360 px el texto no empuja la ventana) */
+.soc-form .sw { max-width: 100%; align-items: flex-start; }
+.soc-form .sw > span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; }

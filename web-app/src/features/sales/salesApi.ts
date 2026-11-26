@@ -1,5 +1,4 @@
-// Datos de «Órdenes de venta» (Lote 60; módulo SALES_ORDERS): lista, ficha, borrador, solicitar (con la comprobación de disponibilidad y crédito), modificar una
-// línea, cancelar y los backorders (ver, surtir, cerrar con faltante).
+// Datos de «Órdenes de venta» (Lote 60; módulo SALES_ORDERS): lista, ficha, borrador, solicitar (con la comprobación de disponibilidad y crédito), cancelar y los backorders (ver, surtir, cerrar con faltante).
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import type { components, paths } from '../../kernel/api/schema'
@@ -163,16 +162,6 @@ export function useSalesMutations() {
     // Lote 239: borrar un borrador SIN productos (fue un error; no queda como «cancelada»). 409 si ya tiene productos o fue solicitada.
     remove: useMutation({
       mutationFn: (v: { id: string }) => unwrap(api.DELETE('/api/v1/sales-orders/{publicId}', { params: { path: { publicId: v.id } } })),
-      onSettled: refresh,
-    }),
-    modifyLine: useMutation({
-      mutationFn: (v: { id: string; lineId: number; quantity?: number; unitPrice?: number; allowBackorder?: boolean }) =>
-        unwrap(
-          api.PATCH('/api/v1/sales-orders/{publicId}/lines/{lineId}', {
-            params: { path: { publicId: v.id, lineId: v.lineId } },
-            body: { quantity: v.quantity, unitPrice: v.unitPrice, allowBackorder: v.allowBackorder },
-          }),
-        ),
       onSettled: refresh,
     }),
     fulfillLine: useMutation({

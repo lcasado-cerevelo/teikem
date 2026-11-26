@@ -29,6 +29,9 @@ public sealed class SalesOrderConfiguration : IEntityTypeConfiguration<SalesOrde
         b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(o => o.PaymentTermLookupId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(o => o.ShippingReasonLookupId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Teikem.Domain.Files.StoredFile>().WithMany().HasForeignKey(o => o.SignatureFileId).OnDelete(DeleteBehavior.NoAction);
+        // Lote 249: la orden de la que esta es la adición (en la base la FK es compuesta FK_SalesOrder_Parent (ParentSalesOrderId, TenantId); aquí la simple)
+        b.HasOne<SalesOrder>().WithMany().HasForeignKey(o => o.ParentSalesOrderId).OnDelete(DeleteBehavior.NoAction);
+        b.HasIndex(o => new { o.TenantId, o.ParentSalesOrderId }).HasFilter("[ParentSalesOrderId] IS NOT NULL").HasDatabaseName("IX_SalesOrder_Parent");
         b.Property(o => o.RowVersion).IsRowVersion();
         b.HasMany(o => o.Lines).WithOne().HasForeignKey(l => l.SalesOrderId);
         b.HasIndex(o => o.PublicId).IsUnique().HasDatabaseName("UQ_SalesOrder_PublicId");
@@ -56,6 +59,11 @@ public sealed class SalesOrderLineConfiguration : IEntityTypeConfiguration<Sales
         b.HasOne<PriceList>().WithMany().HasForeignKey(l => l.PriceListId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Offer>().WithMany().HasForeignKey(l => l.OfferId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Teikem.Domain.Clients.ClientChain>().WithMany().HasForeignKey(l => l.PriceChainId).OnDelete(DeleteBehavior.NoAction);
+        // Lote 249: IVU manual de la línea (CK_SalesOrderLine_TaxOverride en la base)
+        b.Property(l => l.TaxReason).HasMaxLength(30);
+        b.Property(l => l.TaxOverrideNote).HasMaxLength(250);
+        b.Property(l => l.TaxComputedRatePct).HasColumnType("decimal(9,4)");
+        b.Property(l => l.TaxComputedAmount).HasColumnType("decimal(18,4)");
         b.HasIndex(l => new { l.SalesOrderId, l.LineNo }).IsUnique().HasDatabaseName("UX_SalesOrderLine_No");
         b.HasIndex(l => new { l.TenantId, l.ProductId }).HasDatabaseName("IX_SalesOrderLine_Product");
         b.HasMany(l => l.Components).WithOne().HasForeignKey(c => c.SalesOrderLineId).OnDelete(DeleteBehavior.Cascade);

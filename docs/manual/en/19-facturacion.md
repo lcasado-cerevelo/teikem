@@ -26,7 +26,7 @@ against SQL Server). The billable part of a line is `dispatched − returned −
 dispatched between the start and end dates. A kit is invoiced **in kits**.
 
 **Billing basis (company setting).** `ON_DISPATCH` (default, Advance Logistics): billed on dispatch. `ON_DELIVERY` (Island Wide): what carries no delivery (pickup) or whose
-transport order is already **Delivered** is billed. It is changed in `PUT /billing/settings` together with the **due days** (30 by default).
+transport order is already **Delivered** is billed. `ON_REQUEST` (Batch 249): billed **when the user decides**, once the order is requested: what is billable is what was ordered, minus what was returned and what was already invoiced, without waiting for the dispatch (details in [chapter 57](57-modificaciones-ordenes-venta.md), section 11). It is changed in `PUT /billing/settings` together with the **due days** (30 by default).
 
 ## 2b. The freight of transport orders (Batch 74)
 
@@ -209,7 +209,7 @@ Batch 224 (2026-11-07), salespeople's order, part P6. A sale **on consignment** 
 | Adjustment to the same amount | `The unit amount is the same; there is nothing to adjust.` | 422 |
 | Voiding an invoice that is neither issued nor overdue | `Only an issued or overdue invoice can be voided.` | 422 |
 | Voiding an invoice with payments | `The invoice has recorded payments: it cannot be voided.` | 422 |
-| Invalid billing basis | `The billing basis must be ON_DISPATCH (on dispatch) or ON_DELIVERY (on delivery).` | 400 |
+| Invalid billing basis | `La base de facturación debe ser ON_DISPATCH (al despachar), ON_DELIVERY (al entregar) u ON_REQUEST (cuando el usuario lo decida, ya solicitada la orden).` (the basis must be ON_DISPATCH, ON_DELIVERY or ON_REQUEST) | 400 |
 | Due days outside 0–365 | `The due days must be between 0 and 365.` | 400 |
 | Payment without amount / invalid amount | `Specify the payment amount.` / `The payment amount must be greater than zero and have up to 2 decimals.` | 400 |
 | Payment without method / nonexistent method | `Specify the payment method.` / `The payment method does not exist.` | 400 |

@@ -33555,6 +33555,65 @@
         }
       }
     },
+    "/api/v1/pick-batches/groups/{publicId}/reopen-pack": {
+      "post": {
+        "tags": [
+          "PickBatches"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchReopenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchReopenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchReopenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/pick-batches/{publicId}": {
       "get": {
         "tags": [
@@ -33735,6 +33794,124 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PickBatchPackResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pick-batches/{publicId}/reopen-pack": {
+      "post": {
+        "tags": [
+          "PickBatches"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchReopenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchReopenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchReopenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickBatchDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickBatchDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickBatchDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pick-batches/{publicId}/join-order-shipment": {
+      "post": {
+        "tags": [
+          "PickBatches"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchJoinOrderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchJoinOrderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickBatchJoinOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickGroupDto"
                 }
               }
             }
@@ -47749,6 +47926,816 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SalesCatalogDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-order-changes/pending": {
+      "get": {
+        "tags": [
+          "SalesChangeSettings"
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesChangePendingPageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesChangePendingPageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesChangePendingPageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-order-changes/settings": {
+      "get": {
+        "tags": [
+          "SalesChangeSettings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesChangeSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesChangeSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesChangeSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "SalesChangeSettings"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesChangeSettingsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesChangeSettingsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesChangeSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesChangeSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesChangeSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesChangeSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-order-changes/settings/clients/{clientPublicId}": {
+      "get": {
+        "tags": [
+          "SalesChangeSettings"
+        ],
+        "parameters": [
+          {
+            "name": "clientPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesClientChangeSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesClientChangeSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesClientChangeSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "SalesChangeSettings"
+        ],
+        "parameters": [
+          {
+            "name": "clientPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesClientChangeSettingsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesClientChangeSettingsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesClientChangeSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesClientChangeSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesClientChangeSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesClientChangeSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/edit-options": {
+      "get": {
+        "tags": [
+          "SalesOrderChanges"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderEditOptionsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderEditOptionsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderEditOptionsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/changes/preview": {
+      "post": {
+        "tags": [
+          "SalesOrderChanges"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangePreviewDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangePreviewDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangePreviewDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/changes": {
+      "post": {
+        "tags": [
+          "SalesOrderChanges"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "SalesOrderChanges"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SalesOrderChangeListItemDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SalesOrderChangeListItemDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SalesOrderChangeListItemDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/changes/{changePublicId}": {
+      "get": {
+        "tags": [
+          "SalesOrderChanges"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "changePublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/changes/{changePublicId}/approve": {
+      "post": {
+        "tags": [
+          "SalesOrderChanges"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "changePublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeDecisionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeDecisionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/changes/{changePublicId}/reject": {
+      "post": {
+        "tags": [
+          "SalesOrderChanges"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "changePublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeDecisionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeDecisionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/changes/{changePublicId}/withdraw": {
+      "post": {
+        "tags": [
+          "SalesOrderChanges"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "changePublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeDecisionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeDecisionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderChangeDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/change-attachments": {
+      "post": {
+        "tags": [
+          "SalesOrderChanges"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredFileDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredFileDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredFileDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales-orders/{publicId}/additions": {
+      "post": {
+        "tags": [
+          "SalesOrderChanges"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderAdditionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderAdditionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesOrderAdditionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderChangeDto"
                 }
               }
             }
@@ -77978,6 +78965,13 @@
           "credited": {
             "type": "number",
             "format": "double"
+          },
+          "complements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -84683,6 +85677,32 @@
           "salesOrderNumber": {
             "type": "string",
             "nullable": true
+          },
+          "canReopenPack": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickBatchJoinOrderRequest": {
+        "type": "object",
+        "properties": {
+          "targetBatchPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reopenPack": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -84826,6 +85846,20 @@
             "items": {
               "$ref": "#/components/schemas/PickBatchDto"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickBatchReopenRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "rowVersion": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -96189,6 +97223,501 @@
         },
         "additionalProperties": false
       },
+      "SalesChangeBatchDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "stage": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "packNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "groupPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "groupNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipmentPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "shipmentNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeDiffDto": {
+        "type": "object",
+        "properties": {
+          "added": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesChangeDiffLineDto"
+            },
+            "nullable": true
+          },
+          "removed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesChangeDiffLineDto"
+            },
+            "nullable": true
+          },
+          "changed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesChangeDiffLineDto"
+            },
+            "nullable": true
+          },
+          "terms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesChangeFieldDiffDto"
+            },
+            "nullable": true
+          },
+          "totalBefore": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAfter": {
+            "type": "number",
+            "format": "double"
+          },
+          "delta": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeDiffLineDto": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lineNo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "change": {
+            "type": "string",
+            "nullable": true
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesChangeFieldDiffDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeEffectiveSettingsDto": {
+        "type": "object",
+        "properties": {
+          "approvalMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "approvalAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "attachmentRequired": {
+            "type": "boolean"
+          },
+          "approvalFromClient": {
+            "type": "boolean"
+          },
+          "attachmentFromClient": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeEffectsDto": {
+        "type": "object",
+        "properties": {
+          "reversedBatches": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "reopenedPacks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "warehouseImpact": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeFieldDiffDto": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "nullable": true
+          },
+          "before": {
+            "type": "string",
+            "nullable": true
+          },
+          "after": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeLinePositionDto": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lineNo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "qtyOrdered": {
+            "type": "number",
+            "format": "double"
+          },
+          "minQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "minQuantityWithReopen": {
+            "type": "number",
+            "format": "double"
+          },
+          "inCollected": {
+            "type": "number",
+            "format": "double"
+          },
+          "inPacked": {
+            "type": "number",
+            "format": "double"
+          },
+          "out": {
+            "type": "number",
+            "format": "double"
+          },
+          "invoiced": {
+            "type": "number",
+            "format": "double"
+          },
+          "isRemoved": {
+            "type": "boolean"
+          },
+          "lockedReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceLockedReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxRatePct": {
+            "type": "number",
+            "format": "double"
+          },
+          "hasTaxOverride": {
+            "type": "boolean"
+          },
+          "isKit": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangePendingPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderChangeListItemDto"
+            },
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skip": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "take": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangePermissionsDto": {
+        "type": "object",
+        "properties": {
+          "modify": {
+            "type": "boolean"
+          },
+          "price": {
+            "type": "boolean"
+          },
+          "tax": {
+            "type": "boolean"
+          },
+          "reopenPack": {
+            "type": "boolean"
+          },
+          "approve": {
+            "type": "boolean"
+          },
+          "creditOverride": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeSettingsDto": {
+        "type": "object",
+        "properties": {
+          "approvalMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "approvalAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "attachmentRequired": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "approvalMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "approvalAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "attachmentRequired": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeSnapshotDto": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesChangeSnapshotLineDto"
+            },
+            "nullable": true
+          },
+          "terms": {
+            "$ref": "#/components/schemas/SalesChangeSnapshotTermsDto"
+          },
+          "subtotal": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "shippingCharge": {
+            "type": "number",
+            "format": "double"
+          },
+          "shippingTaxAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeSnapshotLineDto": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lineNo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "qtyOrdered": {
+            "type": "number",
+            "format": "double"
+          },
+          "qtyShipped": {
+            "type": "number",
+            "format": "double"
+          },
+          "qtyInvoiced": {
+            "type": "number",
+            "format": "double"
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "resolvedUnitPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "priceSource": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxRatePct": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxComputedRatePct": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "taxComputedAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "isRemoved": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesChangeSnapshotTermsDto": {
+        "type": "object",
+        "properties": {
+          "paymentMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentTerm": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliveryMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isConsignment": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SalesChartSeriesDto": {
         "type": "object",
         "properties": {
@@ -96272,6 +97801,51 @@
             "items": {
               "$ref": "#/components/schemas/SalesRouteQuotaPointDto"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesClientChangeSettingsDto": {
+        "type": "object",
+        "properties": {
+          "clientPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "approvalMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "approvalAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "attachmentRequired": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "effective": {
+            "$ref": "#/components/schemas/SalesChangeEffectiveSettingsDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesClientChangeSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "approvalMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "approvalAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "attachmentRequired": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -97153,11 +98727,513 @@
         },
         "additionalProperties": false
       },
+      "SalesOrderAdditionRefDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderAdditionRequest": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderLineRequest"
+            },
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizedByTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizedByContactId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "authorizationChannel": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "attachmentFilePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "allowBackorder": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "overrideCredit": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SalesOrderCancelRequest": {
         "type": "object",
         "properties": {
           "comment": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderChangeDecisionRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "overrideCredit": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderChangeDto": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/SalesOrderChangeListItemDto"
+          },
+          "authorizedByContactId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "authorizedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attachmentFilePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "attachmentFileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "linesAdded": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "linesRemoved": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "linesChanged": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reversedBatchCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPriceChange": {
+            "type": "boolean"
+          },
+          "hasTaxOverride": {
+            "type": "boolean"
+          },
+          "hasTermsChange": {
+            "type": "boolean"
+          },
+          "reopenedPack": {
+            "type": "boolean"
+          },
+          "creditOverride": {
+            "type": "boolean"
+          },
+          "decidedBy": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "decisionNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "appliedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "before": {
+            "$ref": "#/components/schemas/SalesChangeSnapshotDto"
+          },
+          "after": {
+            "$ref": "#/components/schemas/SalesChangeSnapshotDto"
+          },
+          "diff": {
+            "$ref": "#/components/schemas/SalesChangeDiffDto"
+          },
+          "effects": {
+            "$ref": "#/components/schemas/SalesChangeEffectsDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderChangeLineOp": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "lineId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "taxPct": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderChangeListItemDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientName": {
+            "type": "string",
+            "nullable": true
+          },
+          "changeNo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusColor": {
+            "type": "string",
+            "nullable": true
+          },
+          "isPending": {
+            "type": "boolean"
+          },
+          "registeredBy": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "registeredByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "registeredAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "authorizedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizedByTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "channel": {
+            "type": "string",
+            "nullable": true
+          },
+          "channelLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalBefore": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAfter": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalDelta": {
+            "type": "number",
+            "format": "double"
+          },
+          "requiresApproval": {
+            "type": "boolean"
+          },
+          "approvalRule": {
+            "type": "string",
+            "nullable": true
+          },
+          "decidedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "decidedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "additionPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "additionNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderChangePreviewDto": {
+        "type": "object",
+        "properties": {
+          "before": {
+            "$ref": "#/components/schemas/SalesChangeSnapshotDto"
+          },
+          "after": {
+            "$ref": "#/components/schemas/SalesChangeSnapshotDto"
+          },
+          "diff": {
+            "$ref": "#/components/schemas/SalesChangeDiffDto"
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "effects": {
+            "$ref": "#/components/schemas/SalesChangeEffectsDto"
+          },
+          "credit": {
+            "$ref": "#/components/schemas/SalesCreditDto"
+          },
+          "creditChecked": {
+            "type": "boolean"
+          },
+          "creditExceeded": {
+            "type": "boolean"
+          },
+          "requiresApproval": {
+            "type": "boolean"
+          },
+          "approvalRule": {
+            "type": "string",
+            "nullable": true
+          },
+          "attachmentRequired": {
+            "type": "boolean"
+          },
+          "needsReopen": {
+            "type": "boolean"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "totalBefore": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAfter": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalDelta": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderChangeRequest": {
+        "type": "object",
+        "properties": {
+          "ops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderChangeLineOp"
+            },
+            "nullable": true
+          },
+          "authorizedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizedByTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizedByContactId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "authorizationChannel": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "attachmentFilePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "terms": {
+            "$ref": "#/components/schemas/SalesOrderChangeTermsRequest"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "reopenPack": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "reopenReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "allowBackorder": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "overrideCredit": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "rowVersion": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderChangeTermsRequest": {
+        "type": "object",
+        "properties": {
+          "paymentMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentTerm": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliveryMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "consigneePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "clearConsignee": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isConsignment": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -97310,6 +99386,164 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "parentPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "parentNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "additions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderAdditionRefDto"
+            },
+            "nullable": true
+          },
+          "pendingChangePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "pendingChangeNo": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "changeCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rowVersion": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderEditOptionsDto": {
+        "type": "object",
+        "properties": {
+          "orderPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "orderBlocker": {
+            "type": "string",
+            "nullable": true
+          },
+          "mustUseAddition": {
+            "type": "boolean"
+          },
+          "canAddition": {
+            "type": "boolean"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesChangeLinePositionDto"
+            },
+            "nullable": true
+          },
+          "batches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesChangeBatchDto"
+            },
+            "nullable": true
+          },
+          "invoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderInvoiceRefDto"
+            },
+            "nullable": true
+          },
+          "settings": {
+            "$ref": "#/components/schemas/SalesChangeEffectiveSettingsDto"
+          },
+          "pending": {
+            "$ref": "#/components/schemas/SalesOrderChangeListItemDto"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/SalesChangePermissionsDto"
+          },
+          "billingTrigger": {
+            "type": "string",
+            "nullable": true
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          },
+          "rowVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "isAddition": {
+            "type": "boolean"
+          },
+          "rootPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "rootNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesOrderInvoiceRefDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "quickBooksState": {
+            "type": "string",
+            "nullable": true
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          },
+          "orderPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "isAddition": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -97479,6 +99713,27 @@
           },
           "isManualPrice": {
             "type": "boolean"
+          },
+          "isRemoved": {
+            "type": "boolean"
+          },
+          "taxReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxOverrideNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "taxComputedRatePct": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "taxComputedAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -97498,6 +99753,27 @@
           },
           "allowBackorder": {
             "type": "boolean",
+            "nullable": true
+          },
+          "authorizedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizedByTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizationChannel": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -97656,6 +99932,12 @@
             "type": "string",
             "format": "uuid",
             "nullable": true
+          },
+          "isAddition": {
+            "type": "boolean"
+          },
+          "hasPendingChange": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

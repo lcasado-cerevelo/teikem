@@ -482,6 +482,18 @@ public static class PermissionCatalog
     /// <summary>Lote 245 (Lote B del plan): administrar las cadenas de clientes: crear, editar, activar y desactivar, asignar y quitar clientes, cambiar la cadena desde la ficha del cliente y el alta masiva por nombre. Verlas usa sales.chain|clients.read|sales.view.</summary>
     public const string SalesChain = "sales.chain";
 
+    /// <summary>Lote 249 (Lote E del plan): modificar una orden de venta ya solicitada (agregar, quitar, cantidad, precio, términos; o la adición a una orden que ya salió), registrando quién autorizó del cliente y cómo.</summary>
+    public const string SalesModify = "sales.modify";
+
+    /// <summary>Lote 249: poner a mano el IVU de una línea de venta (o devolverla al cálculo), con motivo. Solo afecta esa línea: la exención del cliente sigue intacta.</summary>
+    public const string SalesTax = "sales.tax";
+
+    /// <summary>Lote 249: dar la segunda aprobación (aprobar o rechazar) a las modificaciones de órdenes de venta que la exigen por el ajuste de la compañía o del cliente.</summary>
+    public const string SalesModifyApprove = "sales.modify.approve";
+
+    /// <summary>Lote 249: reabrir un empaque (PickBatch PACKED → COLLECTED): da de baja su envío mientras sigue en la etapa inicial. Lo trae TenantAdmin.</summary>
+    public const string WarehouseReopenPack = "warehouse.reopen-pack";
+
     /// <summary>Lote 143 (2026-10-20): crear, modificar y cancelar avisos de salida y atender su pendiente (ver usa inventory.view y despachar warehouse.pick).</summary>
 
     public const string ExitNoticeCreate = "exitnotice.create";
@@ -786,6 +798,15 @@ public static class PermissionCatalog
         // Lote 245 — cadenas de clientes
         new(SalesChain, "BILLING", "Cadenas de clientes: crear, editar, asignar clientes y alta masiva", "Client chains: create, edit, assign clients and bulk assign"),
 
+        // Lote 249 — modificaciones de órdenes de venta
+        new(SalesModify, "BILLING", "Modificar órdenes de venta ya solicitadas (con quién autorizó y cómo)", "Modify requested sales orders (with who authorized and how)"),
+
+        new(SalesTax, "BILLING", "Cambiar el impuesto de una línea de venta (con motivo)", "Change the tax of a sales line (with a reason)"),
+
+        new(SalesModifyApprove, "BILLING", "Dar la segunda aprobación a modificaciones de órdenes de venta", "Give the second approval to sales order changes"),
+
+        new(WarehouseReopenPack, "WAREHOUSE", "Reabrir un empaque (anula su envío en la etapa inicial)", "Reopen a pack (voids its shipment in the initial stage)"),
+
         new(ExitNoticeCreate, "WAREHOUSE", "Crear, modificar y cancelar avisos de salida y atender su pendiente", "Create, edit and cancel exit notices and handle their backorder"),
 
     };
@@ -1058,6 +1079,9 @@ public static class PermissionCatalog
 
         [Clients.ClientDocumentCodes.EntityType] = ClientsRead,
 
+        // Lote 249: modificaciones de órdenes de venta con sales.view, como las órdenes de venta (= SalesChangeCodes.EntityType)
+        ["SALES_ORDER_CHANGE"] = SalesView,
+
     };
 
 
@@ -1269,12 +1293,14 @@ public static class PermissionCatalog
         // la oficina de ventas captura pedidos (los permisos de QuickBooks y de consignación los suma su propio lote).
         ["SalesSupervisor"] = new[] { SalesPricelist, SalesApproveClient, SalesView, ClientsRead, ClientsUpdate, PulseSales,
             SalesAnalysisView, SalesAnalysisManage,   // Lote 238: ve y administra el análisis de ventas (rutas, representantes, cuotas)
-            SalesChain },   // Lote 245: administra las cadenas de clientes
+            SalesChain,   // Lote 245: administra las cadenas de clientes
+            SalesModify, SalesTax, SalesModifyApprove },   // Lote 249: modifica órdenes ya solicitadas, cambia el IVU de una línea y da la segunda aprobación
 
         ["SalesOffice"] = new[] { SalesView, SalesCreate, PulseSales,
             SalesQuickBooksView, SalesQuickBooksMark, SalesQuickBooksExport,   // Lote 225: la oficina pasa las facturas a QuickBooks
             BillingConsignmentPay,   // Lote 224: y registra los pagos de consignación
-            SalesAnalysisView },   // Lote 238: ve el análisis de ventas
+            SalesAnalysisView,   // Lote 238: ve el análisis de ventas
+            SalesModify },   // Lote 249: modifica órdenes ya solicitadas (con quién autorizó y cómo)
 
         // Lote 104: el rol «Servicio al cliente» atiende los mensajes de los clientes (si un cliente no tiene equipo designado, lo atiende quien tenga ClientMessagesReply)
 

@@ -43,7 +43,10 @@ public class WmsWriteConfinementTests
         foreach (var name in exitNoticeLineFiles)
             Assert.False(Regex.IsMatch(SourceFiles().Single(f => f.Name == name).Text, @"StockBalances?\s*\.\s*(Add|AddRange|Update|Remove)\b|Set<StockBalance>\(\)\s*\.\s*(Add|AddRange|Update|Remove)\b|new\s+StockBalance\b"),
                 "El aviso de salida no escribe saldos: reserva y libera por el ledger.");
-        var offenders = Offenders(new Regex(@"\b(QtyOnHand|QtyReserved)\s*(\+|-)?=(?![=>])"), LedgerFile, SalesLineFile, exitNoticeLineFiles[0], exitNoticeLineFiles[1]);
+        // Lote 249: SalesOrderService.Changes.cs solo crea líneas de la orden (QtyReserved de SalesOrderLine); tampoco escribe saldos.
+        Assert.False(Regex.IsMatch(SourceFiles().Single(f => f.Name == "SalesOrderService.Changes.cs").Text, @"StockBalances?\s*\.\s*(Add|AddRange|Update|Remove)\b|Set<StockBalance>\(\)\s*\.\s*(Add|AddRange|Update|Remove)\b|new\s+StockBalance\b"),
+            "La modificación de la orden no escribe saldos: revierte por el ledger.");
+        var offenders = Offenders(new Regex(@"\b(QtyOnHand|QtyReserved)\s*(\+|-)?=(?![=>])"), LedgerFile, SalesLineFile, "SalesOrderService.Changes.cs", exitNoticeLineFiles[0], exitNoticeLineFiles[1]);
         Assert.True(offenders.Count == 0, "Escritura de saldos fuera del ledger: " + string.Join(", ", offenders));
         Assert.Empty(Offenders(new Regex(@"new\s+StockBalance\b"), LedgerFile));
     }

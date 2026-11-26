@@ -13395,3 +13395,368 @@ Desde este lote, la marca «Recibe avisos por correo» vale para todos los aviso
 
 **Un documento ya no sale en «Documentos por vencer».**
 Está renovado (otro documento activo del mismo cliente y tipo con «Hasta» posterior), se quitó, o el cliente está dado de baja.
+
+## Lote 249 — Modificaciones de órdenes de venta: cambiar una orden ya solicitada con la autorización del cliente
+<!-- kemi:staff -->
+
+Capítulo: [57 — Modificaciones de órdenes de venta](57-modificaciones-ordenes-venta.md). Pantallas: [L249](frontend/l249-modificar-orden.md). Regla de fondo: **todo cambio a una orden ya solicitada queda registrado con quién lo autorizó en el cliente**; lo ya recolectado se deshace solo lo necesario, lo empacado se reabre con permiso especial, y lo ya salido o facturado solo admite una **orden interna de adición**. Los `{…}` y los `…` de los mensajes son partes que cambian.
+
+### Autorización del cliente y evidencia
+
+**¿Qué significa «Indique quién autorizó el cambio en el cliente.»? (HTTP 400)**
+Falta el nombre de quien autorizó. Toda modificación de una orden ya solicitada queda registrada con quién la autorizó en el cliente: escriba su nombre (y, si quiere, su cargo y contacto).
+
+**¿Qué significa «El nombre de quien autorizó no puede pasar de 150 caracteres.»? (HTTP 400)**
+Acorte el nombre.
+
+**¿Qué significa «El cargo de quien autorizó no puede pasar de 100 caracteres.»? (HTTP 400)**
+Acorte el cargo.
+
+**¿Qué significa «Indique cómo autorizó el cliente (por teléfono, por correo, en persona o por mensaje).»? (HTTP 400)**
+Falta el canal. Escoja «Cómo autorizó» (por API, `PHONE`, `EMAIL`, `IN_PERSON` o `MESSAGE`).
+
+**¿Qué significa «El canal de autorización no es válido: use PHONE, EMAIL, IN_PERSON o MESSAGE.»? (HTTP 400)**
+Por API, `authorizationChannel` no es uno de los cuatro valores. En la pantalla no sale: el selector ya manda uno válido.
+
+**¿Qué significa «La fecha de la autorización no puede ser futura.»? (HTTP 400)**
+La fecha y hora de la autorización está después de ahora (se toleran 5 minutos de reloj desfasado). Corríjala o déjela vacía (= ahora).
+
+**¿Qué significa «La fecha de la autorización no puede ser anterior a la orden.»? (HTTP 400)**
+La autorización no puede ser anterior a la creación de la orden. Escriba la fecha y hora reales, o déjela vacía.
+
+**¿Qué significa «Indique el motivo de la modificación.»? (HTTP 400)**
+Escriba por qué se cambia la orden.
+
+**¿Qué significa «El motivo de la modificación no puede pasar de 500 caracteres.»? (HTTP 400)**
+Acorte el motivo.
+
+**¿Qué significa «Adjunte la evidencia de la autorización del cliente (captura del correo o del mensaje): es obligatoria para este cliente.»? (HTTP 400)**
+La compañía o el cliente exigen evidencia (Ajustes → Operación → «Modificaciones de órdenes», o la ficha del cliente → Perfil). Suba la captura del correo o del mensaje (imagen o PDF). Si no debe ser obligatoria, cambie el ajuste del cliente a «No obligatoria» o «Como la compañía» (`clients.update`).
+
+**¿Qué significa «Adjunte el archivo de la evidencia (imagen o PDF).»? (HTTP 400)**
+El archivo llegó vacío o no llegó. Súbalo de nuevo.
+
+**¿Qué significa «Ese archivo ya respalda otra modificación: adjunte otro.»? (HTTP 409)**
+Un archivo respalda una sola modificación. Suba el archivo de esta autorización.
+
+**¿Qué significa «Archivo no encontrado.»? (HTTP 404)**
+El archivo no existe, está dado de baja o no es de esta orden (ni de su orden original, en una adición). Súbalo desde esta orden.
+
+**¿Qué significa «Contacto no encontrado.»? (HTTP 404)**
+El contacto de quien autorizó no es un contacto activo del cliente de la orden. Escójalo de la lista del cliente o déjelo vacío.
+
+**¿Qué significa «El motivo admite como máximo 500 caracteres.»? (HTTP 400)**
+El motivo para reabrir el empaque (`reopenReason` o el cuadro «Motivo») pasa de 500. Acórtelo.
+
+### Operaciones y cantidades
+
+**¿Qué significa «Indique al menos un cambio.»? (HTTP 400)**
+La modificación no trae operaciones, o lo que pide ya es lo que tiene la orden (no hay diferencia). Cambie algo antes de guardar.
+
+**¿Qué significa «Operación no válida: use ADD, QTY, REMOVE, PRICE, TAX, CLEAR_TAX, TERMS o NOTES.»? (HTTP 400)**
+Por API, `ops[].kind` no es una operación conocida.
+
+**¿Qué significa «La cantidad debe ser mayor que cero.»? (HTTP 400)**
+La cantidad nueva es 0 o vacía. Para quitar la línea use «Quitar línea» (`REMOVE`).
+
+**¿Qué significa «La cantidad admite como máximo 3 decimales.»? (HTTP 400)**
+Escriba hasta 3 decimales.
+
+**¿Qué significa «La cantidad excede el máximo permitido.»? (HTTP 400)**
+Escriba una cantidad menor.
+
+**¿Qué significa «El precio no es válido.»? (HTTP 400)**
+El precio es negativo o demasiado grande.
+
+**¿Qué significa «El precio admite como máximo 4 decimales.»? (HTTP 400)**
+Escriba hasta 4 decimales.
+
+**¿Qué significa «Indique el precio nuevo de la línea.»? (HTTP 400)**
+La operación `PRICE` no trae `unitPrice`.
+
+**¿Qué significa «Indique los términos que cambian (forma de pago, entrega o consignatario).»? (HTTP 400)**
+La operación `TERMS` no trae ningún término. Mande al menos uno en `terms`.
+
+**¿Qué significa «Las notas no pueden pasar de 500 caracteres.»? (HTTP 400)**
+Acorte las notas.
+
+**¿Qué significa «rowVersion inválido: se espera el valor base64 devuelto por la ficha.»? (HTTP 400)**
+Por API, `rowVersion` no es el valor que devolvió `edit-options`. Vuelva a leer la orden y mándelo tal cual.
+
+**¿Qué significa «Producto no encontrado.»? (HTTP 404)**
+El producto no existe o es de otra compañía.
+
+**¿Qué significa «Orden de venta no encontrada.»? (HTTP 404)**
+La orden no existe o es de otra compañía.
+
+**¿Qué significa «Modificación no encontrada.»? (HTTP 404)**
+La modificación no existe, o no es de esa orden.
+
+### Lo que no se puede cambiar según la etapa
+
+**¿Qué significa «La orden ya está facturada: solo se le puede añadir. Quitar o bajar se hace con una nota de crédito.»? (HTTP 422)**
+Alguna línea ya tiene cantidad facturada, o el envío ya está facturado (cuenta también el borrador de una corrida abierta y la orden solo recolectada ya facturada con la base «al despachar»). Use **«Orden interna de adición»** para añadir; para quitar o bajar, una nota de crédito o devolución.
+
+**¿Qué significa «La orden ya salió completa: solo se le puede añadir con una orden interna de adición.»? (HTTP 422)**
+Algo ya salió y no queda nada en el almacén (ni reservado, ni en backorder, ni recolectado o empacado sin salir). Use la orden interna de adición.
+
+**¿Qué significa «La orden está en borrador: se cambia desde su edición, no con una modificación.»? (HTTP 422)**
+Un borrador no se modifica con este registro: edítelo desde su pantalla y solicítelo.
+
+**¿Qué significa «La orden está cancelada: no se puede modificar.»? (HTTP 422)**
+Una orden cancelada no se cambia. Cree otra.
+
+**¿Qué significa «No se pueden quitar todas las líneas: para eso cancele la orden.»? (HTTP 422)**
+La modificación dejaría la orden sin líneas. Cancele la orden en lugar de quitarlas todas.
+
+**¿Qué significa «Ya salió parte de la orden: el pago, la entrega y el consignatario ya no se cambian.»? (HTTP 422)**
+Parte de la orden ya salió: la forma de pago, la entrega o recogido y el consignatario ya no se tocan. Las notas sí.
+
+**¿Qué significa «No se puede bajar {sku} a {cantidad}: ya salieron {salido}.»? (HTTP 422)**
+Lo que ya salió no se toca (un recogido cuenta como salido). Baje solo hasta lo salido, o devuelva la mercancía con una devolución.
+
+**¿Qué significa «No se puede quitar {sku}: ya salieron {salido}.»? (HTTP 422)**
+La línea tiene mercancía que ya salió: no se quita. Bájela hasta lo salido, o devuelva.
+
+**¿Qué significa «El precio de {sku} ya no se cambia: parte de la línea ya salió.»? (HTTP 422)**
+Una línea con algo salido no cambia de precio. Lo que quiera cobrar distinto va en una orden interna de adición o una nota de crédito.
+
+**¿Qué significa «El IVU de {sku} ya no se cambia: parte de la línea ya salió.»? (HTTP 422)**
+Igual que el precio: el IVU de una línea con algo salido no se cambia a mano.
+
+**¿Qué significa «{sku} está en el empaque {EMP}: para cambiarla marque «Reabrir el empaque» (permiso warehouse.reopen-pack).»? (HTTP 422)**
+La línea está en un empaque que todavía se puede reabrir. Marque **«Reabrir el empaque»** (necesita `warehouse.reopen-pack`): se da de baja el envío y la recolección vuelve a «Recolectada». Sin el permiso, lo que quiera añadir va en una orden interna de adición.
+
+**¿Qué significa «La orden está en el empaque {EMP}: para cambiar el pago, la entrega o el consignatario marque «Reabrir el empaque» (permiso warehouse.reopen-pack).»? (HTTP 422)**
+Cambiar los términos con un empaque dejaría viejos el envío y el COD. Marque «Reabrir el empaque».
+
+**¿Qué significa «La línea {n} ({sku}) está quitada: para volver a pedirla, agréguela de nuevo.»? (HTTP 422)**
+La línea ya se quitó (pedido 0 y cerrada). Agregue el producto otra vez: se reactiva la misma línea.
+
+**¿Qué significa «La línea {n} ({sku}) está cerrada: su cantidad ya no se cambia.»? (HTTP 422)**
+La línea se cerró con faltante (backorder cerrado). Su cantidad ya no cambia; precio, IVU y quitar siguen las reglas normales.
+
+**¿Qué significa «La línea {n} ({sku}) viene más de una vez en la modificación.»? (HTTP 422)**
+Por API, la misma línea trae la misma operación dos veces, `REMOVE` junto a otra, o `TAX` junto a `CLEAR_TAX`. Mande una sola operación por línea.
+
+**¿Qué significa «La línea {id} no es de esta orden.»? (HTTP 422)**
+Por API, `lineId` no es una línea de esta orden.
+
+**¿Qué significa «Indique la línea que se cambia.»? (HTTP 422)**
+Por API, la operación no trae `lineId`.
+
+**¿Qué significa «El producto {sku} ya está en la orden: cambie la cantidad de su línea.»? (HTTP 422)**
+Ese producto ya tiene una línea activa. Use `QTY` sobre su línea en lugar de agregarlo.
+
+**¿Qué significa «Indique el producto que se agrega.»? (HTTP 422)**
+Por API, la operación `ADD` no trae `productPublicId`.
+
+**¿Qué significa «El kit {sku} se pide en piezas enteras.»? (HTTP 422)**
+Un kit no admite fracciones. Escriba una cantidad entera.
+
+**¿Qué significa «La línea {n} ({sku}) no tiene IVU manual.»? (HTTP 422)**
+`CLEAR_TAX` sobre una línea que no tiene IVU manual. No hay nada que quitar.
+
+**¿Qué significa «Los términos vienen dos veces en la modificación.»? (HTTP 422)**
+Por API, la modificación trae dos operaciones `TERMS`. Mande una.
+
+**¿Qué significa «Las notas vienen dos veces en la modificación.»? (HTTP 422)**
+Por API, la modificación trae dos operaciones `NOTES`. Mande una.
+
+**¿Qué significa «La modificación dejaría la orden incoherente (línea {n}): no se aplicó.»? (HTTP 422)**
+El verificador de la orden detectó que el cambio dejaría la línea con cantidades que no cuadran (por ejemplo, lo reservado más el backorder más lo despachado distinto de lo pedido, o el subtotal distinto de la suma de las líneas). No se aplicó nada. Avise a soporte con la orden y la línea.
+
+**¿Qué significa «La orden cambió mientras se modificaba; vuelva a intentar.»? (HTTP 409)**
+Entre la vista previa y guardar, alguien despachó, empacó o deshizo una recolección de la orden. Abra la orden otra vez y repita la modificación.
+
+**¿Qué significa «La orden cambió al mismo tiempo. Recárguela e intente de nuevo.»? (HTTP 409)**
+Otra persona o proceso guardó la orden en el mismo instante. Recárguela y repita.
+
+**¿Qué significa «El registro fue modificado por otro usuario; recargue e intente de nuevo.»? (HTTP 409)**
+Con `rowVersion`: la orden (o la recolección) cambió desde que la abrió. Recárguela y repita.
+
+### Permisos
+
+**¿Qué significa «Cambiar el precio exige el permiso de precios (sales.price).»? (HTTP 403)**
+El precio que escribió es distinto del de hoy para ese cliente y usted no tiene `sales.price`. Déjelo en el de lista o pida el permiso.
+
+**¿Qué significa «Falta el permiso 'sales.tax'.»? (HTTP 403)**
+El IVU manual exige `sales.tax` (además de `sales.modify`). Pídalo al administrador.
+
+**¿Qué significa «Reabrir el empaque exige el permiso warehouse.reopen-pack.»? (HTTP 403)**
+Solo quien tiene `warehouse.reopen-pack` (por omisión, el administrador) reabre un empaque. Pídalo, o ponga lo que falta en una orden interna de adición.
+
+**¿Qué significa «Falta el permiso 'orders.credit_override'.»? (HTTP 403)**
+Marcó «Autorizar el crédito excedido» sin tener `orders.credit_override`. Pida a quien lo tiene que lo autorice.
+
+**¿Qué significa «Falta el permiso 'sales.modify'.»? (HTTP 403)**
+Modificar una orden ya solicitada, subir la evidencia y crear la adición exigen `sales.modify` (el rol «Ventas» ya no lo trae). Para aprobar o rechazar es `sales.modify.approve`; para unir al envío, `warehouse.pick`.
+
+### Segunda aprobación
+
+**¿Qué significa «La orden ya tiene una modificación por aprobar (n.º {n}): apruébela, recházela o retírela antes de registrar otra.»? (HTTP 409)**
+Hay una sola pendiente por orden (también cuenta una adición). Resuelva la pendiente en «Por aprobar» o desde la orden.
+
+**¿Qué significa «La segunda aprobación la da otra persona: quien registró la modificación no puede aprobarla.»? (HTTP 403)**
+Es a propósito. Pida a otra persona con `sales.modify.approve` que la apruebe; quien la registró puede retirarla.
+
+**¿Qué significa «La orden cambió desde que se registró la modificación (se despachó, se facturó, se empacó o se modificó): recházela y registre otra.»? (HTTP 409)**
+Entre el registro y la aprobación la orden cambió, y lo que se iba a aplicar ya no es válido. Rechácela (con nota) y registre una nueva sobre la orden de hoy.
+
+**¿Qué significa «La modificación ya no está pendiente de aprobar.»? (HTTP 409)**
+Otra persona ya la aprobó, rechazó o retiró (o se canceló la orden). Recargue.
+
+**¿Qué significa «Indique por qué se rechaza la modificación.»? (HTTP 400)**
+Rechazar exige una nota.
+
+**¿Qué significa «La nota de la decisión no puede pasar de 500 caracteres.»? (HTTP 400)**
+Acorte la nota.
+
+**¿Qué significa «Solo quien registró la modificación o quien puede modificar órdenes la retira.»? (HTTP 403)**
+Retirar una pendiente lo hace quien la registró o quien tenga `sales.modify`.
+
+**¿Qué significa «El modo de segunda aprobación debe ser NONE, ALWAYS o ABOVE_AMOUNT.»? (HTTP 400)**
+Por API, `approvalMode` no es uno de los tres valores.
+
+**¿Qué significa «Con «Arriba de un monto» (ABOVE_AMOUNT) indique un monto mayor que 0.»? (HTTP 400)**
+Con «Sobre un monto» hace falta el monto, mayor que 0.
+
+**¿Qué significa «El monto de la segunda aprobación admite hasta 2 decimales.»? (HTTP 400)**
+Escriba el monto con hasta 2 decimales.
+
+### Crédito y recolecciones facturadas
+
+**¿Qué significa «El cliente excede su límite de crédito: límite …, en curso …, esta orden ….»? (HTTP 422)**
+El total nuevo de la orden hace que el cliente pase su límite (solo se revisa si el total **sube**). Quien tiene `orders.credit_override` puede autorizarlo marcando «Autorizar el crédito excedido»; también se avisa a quien autoriza créditos. Quien no tiene `orders.view_price` ve el mensaje sin cifras.
+
+**¿Qué significa «La recolección {PK} ya está facturada ({FAC-…}): no se puede deshacer.»? (HTTP 409)**
+Con la base de facturación «al despachar» o «al entregar», la mercancía de esa recolección ya está en una factura emitida, y la factura no se reabre. Resuélvalo con una **devolución** o una nota de crédito. Con la base «cuando el usuario lo decida» (`ON_REQUEST`) lo facturado no cuenta. Sale al bajar una cantidad en una modificación y también al eliminar la recolección a mano.
+
+**¿Qué significa «El IVU manual exige el módulo de impuestos encendido.»? (HTTP 422)**
+El módulo `TAX` está apagado para la compañía. Pida a la plataforma que lo encienda.
+
+**¿Qué significa «El IVU de la línea debe estar entre 0 y 100 %.»? (HTTP 400)**
+Escriba un porcentaje de 0 a 100. 0 deja la línea exenta.
+
+**¿Qué significa «El IVU de la línea admite hasta 4 decimales.»? (HTTP 400)**
+Escriba el porcentaje con hasta 4 decimales.
+
+**¿Qué significa «Indique el porcentaje de IVU de la línea.»? (HTTP 400)**
+La operación `TAX` no trae `taxPct`.
+
+**¿Qué significa «Indique el motivo del IVU manual.»? (HTTP 400)**
+El IVU manual siempre lleva su motivo (campo `note`).
+
+**¿Qué significa «El motivo del IVU manual no puede pasar de 250 caracteres.»? (HTTP 400)**
+Acorte el motivo.
+
+### Reabrir el empaque y unir al envío
+
+**¿Qué significa «Indique el motivo para reabrir el empaque.»? (HTTP 400)**
+Reabrir un empaque exige el motivo (queda en el historial de la recolección).
+
+**¿Qué significa «La recolección {PK} no está empacada.»? (HTTP 422)**
+Solo se reabre una recolección en estatus «Empacada». Una recolectada ya se puede cambiar o deshacer sin reabrir; un despacho manual no se reabre.
+
+**¿Qué significa «La recolección {PK} está en la recolección maestra {PK-M}: reabra el empaque desde la maestra.»? (HTTP 422)**
+La recolección es de una maestra: use «Reabrir el empaque» en la maestra (todas sus recolecciones vuelven a «Recolectada»).
+
+**¿Qué significa «La recolección {PK} se mandó a la compañía enlazada: el empaque no se reabre.»? (HTTP 422)**
+Lo que cuenta una compañía enlazada ya salió: no se reabre.
+
+**¿Qué significa «El envío {ORD} ya está «{estatus}»: el empaque {PK} no se puede reabrir.»? (HTTP 422)**
+El envío ya pasó de su etapa inicial (o está anulado o no existe). Solo se reabre mientras el envío no ha avanzado. Lo que falte va en una orden interna de adición, en su propio envío.
+
+**¿Qué significa «El flete del envío {ORD} ya está facturado: el empaque {PK} no se reabre.»? (HTTP 422)**
+El flete, el cotejo o la devolución del envío ya están en una factura viva: no se reabre. Use la orden interna de adición.
+
+**¿Qué significa «La factura del cliente del envío {ORD} ya se procesó: el empaque {PK} no se reabre.»? (HTTP 422)**
+La factura del cliente de ese envío ya se procesó. No se reabre.
+
+**¿Qué significa «El empaque {PK} tiene productos ya facturados ({FAC-…}): no se reabre. Para añadir, use una orden interna de adición.»? (HTTP 422)**
+La mercancía de ese empaque ya se facturó (con cualquier base de facturación). No se reabre; lo que quiera añadir sale en su propio envío con una orden interna de adición.
+
+**¿Qué significa «La recolección {PK} no es de la misma orden ni de una adición de ella: no se une a ese envío.»? (HTTP 422)**
+«Unir al envío» solo vale dentro de la familia de la orden (ella misma, su original y las adiciones de la original). Con documentos sin relación sigue valiendo «no se suman documentos después».
+
+**¿Qué significa «La recolección {PK} no está recolectada (está «{estatus}»).»? (HTTP 422)**
+Solo se une una recolección en estatus «Recolectada».
+
+**¿Qué significa «La recolección {PK} ya está en la maestra {PK-M}.»? (HTTP 422)**
+Ya está agrupada con otra. No hace falta unirla.
+
+**¿Qué significa «Escoja con qué recolección de {OV} sale (hay varias).»? (HTTP 400)**
+Hay varios destinos posibles: escoja uno en «Unir con» (`targetBatchPublicId`).
+
+**¿Qué significa «El envío de {PK} ya salió («{estatus}»): la recolección sale en su propio envío.»? (HTTP 422)**
+El destino ya salió; no se le puede sumar nada. Empaque esta recolección por separado.
+
+**¿Qué significa «{PK} ya está empacada: marque «Reabrir el empaque» (permiso warehouse.reopen-pack) para unir esta recolección a su envío.»? (HTTP 422)**
+El destino ya está empacado. Marque «Reabrir el empaque de …» y escriba el motivo (necesita `warehouse.reopen-pack`): la maestra nueva toma el mismo número EMP.
+
+**¿Qué significa «No hay otra recolección de {OV} con la que pueda salir: empaque esta por separado.»? (HTTP 422)**
+No existe otra recolección de la familia con la que unirla. Empáquela sola.
+
+**¿Qué significa «Escoja otra recolección: {PK} no se une consigo misma.»? (HTTP 400)**
+El destino escogido es la misma recolección.
+
+**¿Qué significa «La recolección {PK} se mandó a la compañía enlazada: no se une a otro envío.»? (HTTP 422)**
+Lo que cuenta una compañía enlazada ya salió: no se une.
+
+**¿Qué significa «Los documentos deben ser del mismo cliente: «…» y «…» son de clientes distintos. Haga recolecciones separadas.»? (HTTP 400)**
+Al unir, las dos recolecciones deben ser del mismo cliente. Empáquelas por separado.
+
+**¿Qué significa «Los documentos deben ser del mismo almacén: «…» y «…» son de almacenes distintos.»? (HTTP 400)**
+Al unir, las dos recolecciones deben ser del mismo almacén.
+
+### Adiciones y facturación
+
+**¿Qué significa «Indique los productos de la adición.»? (HTTP 400)**
+La orden interna de adición no trae líneas. Agregue al menos un producto.
+
+**¿Qué significa «Solo se le puede añadir a una orden solicitada, parcial o despachada.»? (HTTP 422)**
+La orden madre es un borrador, está cancelada o ya se completó de otra forma. Solo se añade a una solicitada, parcial o despachada.
+
+**¿Qué significa «La orden tiene adiciones abiertas ({OV-…}): cancélelas o despáchelas antes de cancelar esta.»? (HTTP 422)**
+No se cancela una orden con adiciones que no estén canceladas ni despachadas. Cancele o despache esas adiciones primero. Una modificación pendiente de aprobar se retira sola al cancelar.
+
+**¿Qué significa «La base de facturación debe ser ON_DISPATCH (al despachar), ON_DELIVERY (al entregar) u ON_REQUEST (cuando el usuario lo decida, ya solicitada la orden).»? (HTTP 400)**
+Por API, `salesBillingTrigger` de `PUT /billing/settings` no es una de las tres bases. Ver el capítulo 19 y el capítulo 57 (sección 11).
+
+### Casos frecuentes
+
+**¿Por qué no puedo modificar la orden?**
+Mire el mensaje. «Ya está facturada» o «ya salió completa»: solo se le puede añadir con «Orden interna de adición». Un borrador se edita desde su pantalla. Si no ve el botón «Modificar orden», le falta `sales.modify` (el rol Ventas ya no lo trae).
+
+**Bajé una cantidad y el almacén dice que se deshizo una recolección.**
+Es la reversa mínima: se deshizo solo la recolección necesaria (la más reciente). El inventario volvió a su posición y la línea quedó reservada; el almacén debe volver a despachar. El aviso «Orden de venta modificada» y el panel «Modificaciones» lo dicen.
+
+**La modificación quedó «pendiente de aprobación» y la orden no cambió.**
+La compañía o el cliente piden segunda aprobación. Otra persona con `sales.modify.approve` la aprueba desde la pestaña «Por aprobar». Mientras tanto no se aplicó nada y el almacén puede seguir trabajando.
+
+**Puse un IVU manual y las demás líneas siguen con su exención. ¿Es un error?**
+No. El IVU manual solo afecta esa línea; la exención del cliente sigue valiendo para las demás. Con «Quitar IVU manual» la línea vuelve a su cálculo normal, con la exención si el documento sigue vigente.
+
+**¿Qué diferencia hay entre modificar y la orden interna de adición?**
+Modificar cambia la orden que ya existe. La adición crea una orden nueva, ligada a la original, para lo que ya no se puede cambiar; sale en el mismo envío (con «Unir al envío de OV-…») y se factura aparte con «complementa FAC-…» si la original ya se facturó.
+
+**La adición salió en un envío aparte.**
+Use «Unir al envío de OV-…» en su recolección. Si la original estaba empacada, hay que reabrir su empaque (`warehouse.reopen-pack`). Un empaque con productos ya facturados no se reabre: la adición sale en su propio envío.
+
+**No me deja aprobar mi propia modificación.**
+Es a propósito: la segunda aprobación la da otra persona. Quien la registró puede retirarla.
+
+**No veo la pestaña «Por aprobar».**
+Pide `sales.modify.approve` y el módulo de órdenes de venta encendido.
+
+**El cliente exige evidencia y no la tengo.**
+Si el ajuste está en «Obligatoria» (cliente o compañía), sin archivo la modificación no se registra. Cambie el ajuste del cliente a «No obligatoria» o «Como la compañía» si corresponde (`clients.update`).
+
+**Quiero facturar la orden cuando yo decida y no al despachar.**
+Cambie la base de facturación de la compañía a `ON_REQUEST` (`PUT /api/v1/billing/settings`, campo `salesBillingTrigger`; la pantalla de Facturación ofrece hoy las otras dos). Con ella se factura lo pedido y no facturado sin esperar el despacho.
+
+**No puedo escribir el precio de un producto con precio de lista.**
+Escribir un precio distinto del de hoy exige `sales.price`. Quien lo tiene puede cambiar el precio de cualquier línea, en el pedido guiado y en la modificación.
+
+**¿Dónde veo quién autorizó un cambio?**
+En el panel «Modificaciones» de la orden (o `GET /api/v1/sales-orders/{id}/changes/{changeId}`): quién la registró, quién autorizó en el cliente, cargo, canal, fecha, motivo, evidencia, el antes y el después y lo que pasó en el almacén.

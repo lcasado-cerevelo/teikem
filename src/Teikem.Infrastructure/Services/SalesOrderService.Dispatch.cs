@@ -51,6 +51,7 @@ public sealed partial class SalesOrderService
                 await db.RunInTransactionAsync(async ct2 =>
                 {
                     var tenantId = T.RequireTenantId();
+                    await LockOrderAsync(publicId, ct2);   // Lote 249: cabecera → líneas (la modificación y la facturación siguen el mismo orden)
                     var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
                     var code = (await StatusMapAsync(ct2))[order.StatusCodeId].Code;
                     if (code is not (SalesOrderStatuses.Requested or SalesOrderStatuses.Partial)) throw new StatusRuleException(SalesRules.NotDispatchable);
@@ -242,11 +243,17 @@ public sealed partial class SalesOrderService
     /// <summary>
     /// Se eliminó una recolección que atendía esta orden (la existencia ya volvió a su posición, en esta misma transacción): baja lo despachado de cada línea y, si la
     /// orden no está cancelada, VUELVE A RESERVAR esa cantidad en la misma posición y lote. Una orden despachada o parcial se reabre (parcial / solicitada).
+    /// Lote 249: toma el candado de la cabecera (la recolección ya está bloqueada: recolección → cabecera → líneas) y gana la GUARDA GLOBAL: si lo despachado de
+    /// una línea quedaría por debajo de lo facturado más lo devuelto, 409 «La recolección … ya está facturada (…): no se puede deshacer.» y se revierte todo (con el
+    /// Kárdex). Con la facturación ON_REQUEST (se factura lo pedido sin esperar el despacho) lo facturado no cuenta: solo lo devuelto.
     /// </summary>
     public async Task OnPickBatchReversedAsync(int salesOrderId, string pickBatchNumber, IReadOnlyList<SalesReversedLine> reversed, CancellationToken ct)
     {
+        if (reversed.Count == 0 || !await db.Set<SalesOrder>().AnyAsync(o => o.SalesOrderId == salesOrderId, ct)) return;
+        await db.LockSalesOrderAsync(salesOrderId, ct);
         var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.SalesOrderId == salesOrderId, ct);
-        if (order is null || reversed.Count == 0) return;
+        if (order is null) return;
+        await EnsureReversalNotInvoicedAsync(order, pickBatchNumber, reversed, ct);
         var code = (await StatusMapAsync(ct))[order.StatusCodeId].Code;
         var reserve = code != SalesOrderStatuses.Cancelled;
         var reservations = new List<StockReservation>();
@@ -289,6 +296,45 @@ public sealed partial class SalesOrderService
             }
         }
         await db.SaveGuardedAsync(SalesRules.Concurrency, ct);
+    }
+
+    /// <summary>
+    /// Lote 249 — guarda global de la reversa: lo que se regresa de cada línea (en kits para las líneas de kit) no puede dejar lo despachado por debajo de lo
+    /// facturado (solo con ON_DISPATCH / ON_DELIVERY) más lo devuelto. 409 con las facturas vivas de esas líneas (la factura emitida no se reabre: se resuelve con
+    /// una devolución).
+    /// </summary>
+    private async Task EnsureReversalNotInvoicedAsync(SalesOrder order, string pickBatchNumber, IReadOnlyList<SalesReversedLine> reversed, CancellationToken ct)
+    {
+        var back = reversed.GroupBy(r => r.SalesOrderLineId)
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.KitProductId is null ? r.Quantity : (r.KitQuantity ?? 0m)));
+        var trigger = await db.Tenants.AsNoTracking().Where(t => t.TenantId == order.TenantId).Select(t => t.SalesBillingTrigger).FirstOrDefaultAsync(ct);
+        var countInvoiced = trigger != Teikem.Domain.Billing.SalesBillingTriggers.OnRequest;
+        var offending = order.Lines.Where(l => back.TryGetValue(l.SalesOrderLineId, out var b) && b > 0m
+                && l.QtyShipped - Math.Min(b, l.QtyShipped) < (countInvoiced ? l.QtyInvoiced : 0m) + l.QtyReturned)
+            .Select(l => l.SalesOrderLineId).ToList();
+        if (offending.Count == 0) return;
+        throw new ConflictException(SalesChangeRules.BatchInvoiced(pickBatchNumber, await InvoiceNumbersOfLinesAsync(offending, ct)));
+    }
+
+    /// <summary>Lote 249 — los números de las facturas vivas (no anuladas) que facturan esas líneas de venta, separados por coma («—» si no hay).</summary>
+    private async Task<string> InvoiceNumbersOfLinesAsync(IReadOnlyCollection<int> lineIds, CancellationToken ct)
+    {
+        var voidId = await db.StatusCodes.AsNoTracking()
+            .Where(s => s.Entity == Teikem.Domain.Billing.BillingCodes.InvoiceStatusDomain && s.InternalCode == Teikem.Domain.Billing.InvoiceStatuses.Void)
+            .Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct);
+        var numbers = await (from l in db.Set<Teikem.Domain.Billing.InvoiceLine>().AsNoTracking()
+                             join i in db.Set<Teikem.Domain.Billing.Invoice>().AsNoTracking() on l.InvoiceId equals i.InvoiceId
+                             where l.SalesOrderLineId != null && lineIds.Contains(l.SalesOrderLineId.Value) && i.IsActive && (voidId == null || i.StatusCodeId != voidId)
+                             select i.InvoiceNumber).Distinct().ToListAsync(ct);
+        return numbers.Count == 0 ? "—" : string.Join(", ", numbers.OrderBy(n => n, StringComparer.Ordinal));
+    }
+
+    /// <summary>Lote 249 — candado de la cabecera de la orden (UPDLOCK) dentro de la transacción de quien llama; 404 si no es de la compañía.</summary>
+    private async Task<int> LockOrderAsync(Guid publicId, CancellationToken ct)
+    {
+        var id = await db.Set<SalesOrder>().AsNoTracking().Where(o => o.PublicId == publicId).Select(o => (int?)o.SalesOrderId).FirstOrDefaultAsync(ct) ?? throw NotFound();
+        await db.LockSalesOrderAsync(id, ct);
+        return id;
     }
 
     /// <summary>La posición es del almacén de la orden, está activa y es vendible (sin cuarentena, cross-dock ni renta).</summary>

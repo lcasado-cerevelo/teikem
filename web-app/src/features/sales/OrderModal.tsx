@@ -13,6 +13,11 @@ import { useLookups } from '../../kernel/catalogs'
 import { Chip, ClientPicker, ConfirmDialog, type DataColumn, DataTable, DateField, Modal, Spinner, toast } from '../../kernel/ui'
 import { useClient } from '../clients/api'
 import { useStoredFileUrl } from '../orders/api'
+import { AdditionModal } from './changes/AdditionModal'
+import { ChangeHistoryPanel, OrderInvoices } from './changes/ChangeHistoryPanel'
+import { ModifyOrderModal } from './changes/ModifyOrderModal'
+import { PendingApprovalBanner } from './changes/PendingApprovalBanner'
+import { useEditOptions } from './changes/changesApi'
 import { PackModal } from '../warehouse/PackModal'
 import { ProductPicker, WarehousePicker } from '../warehouse/pickers'
 import { OrderBadges } from './OrderBadges'
@@ -30,6 +35,7 @@ import { StockInfo } from './StockInfo'
 import { orderKitPieces, orderWarehouseId, showWarehouseField, stockWarehouses } from './stockRules'
 
 import './orderSeller.css'
+import './changes/changes.css'
 
 let nextKey = 1
 
@@ -533,55 +539,6 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
 
 // ---------------------------------------------------------------- orden solicitada (y las demás, solo lectura)
 
-function QuantityModal({ order, line, onClose }: { order: SalesOrderDto; line: SalesOrderLineDto; onClose: () => void }) {
-  const t = useT()
-  const { modifyLine } = useSalesMutations()
-  const [qty, setQty] = useState(String(line.qtyOrdered ?? ''))
-  const [allow, setAllow] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const save = async () => {
-    setError(null)
-    const q = parseNumber(qty)
-    if (q === null || q <= 0) return setError(t('sales.errors.quantity'))
-    try {
-      await modifyLine.mutateAsync({ id: order.publicId!, lineId: line.id!, quantity: q, allowBackorder: allow || undefined })
-      toast.success(t('sales.lineChanged', { sku: line.sku ?? '' }))
-      onClose()
-    } catch (e) {
-      setError(applyProblemDetails(e).title)
-    }
-  }
-  return (
-    <Modal
-      open
-      size="sm"
-      title={t('sales.qtyTitle', { sku: line.sku ?? '' })}
-      onClose={onClose}
-      dismissible={!modifyLine.isPending}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={onClose} disabled={modifyLine.isPending}>{t('common.cancel')}</button>
-          <button type="button" className="btn flow" onClick={() => void save()} disabled={modifyLine.isPending}>{t('sales.qtySave')}</button>
-        </>
-      }
-    >
-      <div className="pb sales-form">
-        <p className="help">{t('sales.qtyHelp', { reserved: line.qtyReserved ?? 0, backordered: line.qtyBackordered ?? 0 })}</p>
-        <div className="f">
-          <label htmlFor="so-newqty">{t('sales.qtyNew')}</label>
-          <input id="so-newqty" inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} />
-        </div>
-        <label className="sw">
-          <input type="checkbox" role="switch" checked={allow} onChange={(e) => setAllow(e.target.checked)} />
-          <span className="tk" aria-hidden="true" />
-          <span>{t('sales.qtyAllowBackorder')}</span>
-        </label>
-        {error && <p className="ferr" role="alert">{error}</p>}
-      </div>
-    </Modal>
-  )
-}
-
 // ---------------------------------------------------------------- despachar (Lote 63)
 
 /** Despacha contra la orden: por línea, cuánto sale (por omisión todo lo reservado). El sistema usa las posiciones y lotes que reservó; el aparato permite tomar de otra posición. */
@@ -676,11 +633,19 @@ export function NextDialog({ result, onPickup, onDelivery, onLater }: { result: 
   )
 }
 
-function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose: () => void; onReturn?: (orderPublicId: string) => void }) {
+/** Lote 249: las facturas de la orden y de sus adiciones con su estado frente a QuickBooks (de `edit-options`; una orden sin salidas no tiene facturas). */
+function OrderInvoicesSection({ orderPublicId }: { orderPublicId: string }) {
+  const opts = useEditOptions(orderPublicId)
+  return <OrderInvoices invoices={opts.data?.invoices ?? []} />
+}
+
+function OrderView({ order, onClose, onReturn, onOpenOrder }: { order: SalesOrderDto; onClose: () => void; onReturn?: (orderPublicId: string) => void; onOpenOrder?: (publicId: string) => void }) {
   const t = useT()
   const f = useFormat()
   const { cancel, fulfillLine, closeLine } = useSalesMutations()
-  const [editing, setEditing] = useState<SalesOrderLineDto | null>(null)
+  // Lote 249: modificar la orden (con quién lo autorizó) y la orden interna de adición
+  const [modifying, setModifying] = useState(false)
+  const [adding, setAdding] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [dispatching, setDispatching] = useState(false)
   const [next, setNext] = useState<SalesDispatchResultDto | null>(null)
@@ -689,6 +654,7 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
   const canDispatch = open && (order.lines ?? []).some((l) => (l.qtyReserved ?? 0) > 0)
   const anyShipped = (order.lines ?? []).some((l) => (l.qtyShipped ?? 0) > 0)
   const terms = order.terms
+  const canModify = order.status === 'REQUESTED' || order.status === 'PARTIAL' || order.status === 'SHIPPED'
 
   const run = async (p: Promise<unknown>, ok: string) => {
     try {
@@ -701,7 +667,7 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
 
   const columns = useMemo<DataColumn<SalesOrderLineDto>[]>(
     () => [
-      { id: 'product', header: t('sales.col.product'), cell: (l) => (<><b>{l.sku}</b><div className="help">{l.productName}</div></>), exportValue: (l) => l.sku ?? '', sortValue: (l) => l.sku ?? '', card: 'title' },
+      { id: 'product', header: t('sales.col.product'), cell: (l) => (<><b className={l.isRemoved ? 'soc-struck' : undefined}>{l.sku}</b>{l.isRemoved && <> <Chip tone="neutral">{t('salesChanges.line.removed')}</Chip></>}{l.taxReason === 'MANUAL_OVERRIDE' && <> <Chip tone="cod" title={l.taxOverrideNote ?? undefined}>{t('salesChanges.taxManual')}</Chip></>}<div className="help">{l.productName}</div></>), exportValue: (l) => l.sku ?? '', sortValue: (l) => l.sku ?? '', card: 'title' },
       { id: 'ordered', header: t('sales.col.ordered'), cell: (l) => f.number(l.qtyOrdered ?? 0), sortValue: (l) => l.qtyOrdered ?? 0, align: 'end' },
       { id: 'reserved', header: t('sales.col.reserved'), cell: (l) => f.number(l.qtyReserved ?? 0), sortValue: (l) => l.qtyReserved ?? 0, align: 'end' },
       {
@@ -751,7 +717,7 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
     [t, f],
   )
 
-  const canChangeLine = (l: SalesOrderLineDto) => open && !l.isClosed && (l.qtyShipped ?? 0) === 0
+  const canChangeLine = (l: SalesOrderLineDto) => open && !l.isClosed && !l.isRemoved && (l.qtyShipped ?? 0) === 0
   return (
     <Modal
       open
@@ -763,6 +729,11 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
           {canDispatch && (
             <Can perm="warehouse.pick">
               <button type="button" className="btn flow" onClick={() => setDispatching(true)}>{t('sales.dispatch.button')}</button>
+            </Can>
+          )}
+          {canModify && (
+            <Can perm="sales.modify">
+              <button type="button" className="btn" onClick={() => setModifying(true)}>{t('salesChanges.modify')}</button>
             </Can>
           )}
           {open && !anyShipped && (
@@ -786,14 +757,21 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
           {terms?.clientIsProspect && <> <Chip tone="warn">{t('sales.badge.newClient')}</Chip></>}
           {terms && (
             <OrderBadges
-              info={{ isUrgent: terms.isUrgent, deliveryMode: terms.deliveryModeSet ? terms.deliveryMode : null, paymentChanged: terms.paymentChanged, isConsignment: terms.isConsignment, awaitingClientApproval: terms.awaitingClientApproval }}
+              info={{ isUrgent: terms.isUrgent, deliveryMode: terms.deliveryModeSet ? terms.deliveryMode : null, paymentChanged: terms.paymentChanged, isConsignment: terms.isConsignment, awaitingClientApproval: terms.awaitingClientApproval, isAddition: Boolean(order.parentPublicId), hasPendingChange: Boolean(order.pendingChangePublicId) }}
             />
           )}
         </p>
         {terms?.awaitingClientApproval && <p className="note" role="status">{t('sales.badge.awaitingHelp')}</p>}
+        {order.pendingChangePublicId && <PendingApprovalBanner orderPublicId={order.publicId!} changePublicId={order.pendingChangePublicId} />}
         <dl className="sales-facts">
           <div><dt>{t('sales.client')}</dt><dd>{order.clientName}</dd></div>
           <div><dt>{t('sales.warehouse')}</dt><dd>{order.warehouseName}</dd></div>
+          {order.parentPublicId && (
+            <div>
+              <dt>{t('salesChanges.parent')}</dt>
+              <dd>{onOpenOrder ? <button type="button" className="linklike" onClick={() => onOpenOrder(order.parentPublicId!)}>{order.parentNumber}</button> : order.parentNumber}</dd>
+            </div>
+          )}
           {(order.salesRouteName || order.sellerName) && <div className="so-seller-fact"><dt>{t('sales.seller.route')} · {t('sales.seller.label')}</dt><dd>{[order.salesRouteName, order.sellerName].filter(Boolean).join(' · ')}</dd></div>}
           <div><dt>{t('sales.requestedDate')}</dt><dd>{f.date(order.requestedDate)}{order.requestedByName ? ` · ${order.requestedByName}` : ''}</dd></div>
           <div><dt>{t('sales.requiredDate')}</dt><dd>{order.requiredDate ? f.date(order.requiredDate) : '—'}</dd></div>
@@ -818,7 +796,7 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
           rowKey={(l) => String(l.id)}
           empty={t('sales.noLines')}
           rowActions={[
-            { key: 'qty', label: t('sales.changeQty'), onClick: (l) => setEditing(l), perm: 'sales.create', visible: canChangeLine },
+            { key: 'qty', label: t('salesChanges.rowAction'), onClick: () => setModifying(true), perm: 'sales.modify', visible: canChangeLine },
             {
               key: 'fulfill',
               label: t('sales.fulfill'),
@@ -852,8 +830,35 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
             ]}
           />
         )}
+        {(order.additions ?? []).length > 0 && (
+          <section aria-label={t('salesChanges.additions.title')}>
+            <h4>{t('salesChanges.additions.title')}</h4>
+            <ul className="soc-adds">
+              {(order.additions ?? []).map((a) => (
+                <li key={a.publicId}>
+                  {onOpenOrder ? <button type="button" className="linklike" onClick={() => onOpenOrder(a.publicId!)}>{a.number}</button> : <b>{a.number}</b>}
+                  <Chip>{a.statusLabel}</Chip>
+                  <span className="help">{f.money(a.total ?? 0)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {(order.changeCount ?? 0) > 0 && (
+          <section aria-label={t('salesChanges.history.title')}>
+            <h4>{t('salesChanges.history.title')}</h4>
+            <ChangeHistoryPanel orderPublicId={order.publicId!} />
+          </section>
+        )}
+        {(anyShipped || (order.additions ?? []).length > 0) && <OrderInvoicesSection orderPublicId={order.publicId!} />}
+        {canModify && (
+          <Can perm="sales.modify">
+            <p><button type="button" className="btn sm" onClick={() => setAdding(true)}>{t('salesChanges.addition.button')}</button></p>
+          </Can>
+        )}
       </div>
-      {editing && <QuantityModal order={order} line={editing} onClose={() => setEditing(null)} />}
+      {modifying && <ModifyOrderModal order={order} onClose={() => setModifying(false)} onAddition={() => (setModifying(false), setAdding(true))} />}
+      {adding && <AdditionModal order={order} onClose={() => setAdding(false)} />}
       {dispatching && (
         <DispatchModal
           order={order}
@@ -904,7 +909,7 @@ function OrderView({ order, onClose, onReturn }: { order: SalesOrderDto; onClose
 // ---------------------------------------------------------------- punto de entrada
 
 /** `publicId` null = orden nueva. */
-export function OrderModal({ publicId, onClose, onReturn }: { publicId: string | null; onClose: () => void; onReturn?: (orderPublicId: string) => void }) {
+export function OrderModal({ publicId, onClose, onReturn, onOpenOrder }: { publicId: string | null; onClose: () => void; onReturn?: (orderPublicId: string) => void; onOpenOrder?: (publicId: string) => void }) {
   const t = useT()
   const order = useSalesOrder(publicId)
   const canCreate = useCan('sales.create')
@@ -920,6 +925,6 @@ export function OrderModal({ publicId, onClose, onReturn }: { publicId: string |
   return order.data.status === 'DRAFT' && canCreate ? (
     <DraftEditor key={`${order.data.publicId}-edit`} order={order.data} onClose={onClose} />
   ) : (
-    <OrderView key={`${order.data.publicId}-view`} order={order.data} onClose={onClose} onReturn={onReturn} />
+    <OrderView key={`${order.data.publicId}-view`} order={order.data} onClose={onClose} onReturn={onReturn} onOpenOrder={onOpenOrder} />
   )
 }

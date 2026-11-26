@@ -108,6 +108,15 @@ public class Client : ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped
     /// </summary>
     public int? ChainId { get; set; }
 
+    // --- Lote 249 (Lote E: modificaciones de órdenes de venta) ---
+    /// <summary>
+    /// Segunda aprobación de las modificaciones de las órdenes de este cliente: NULL = hereda de la compañía (Tenant.SalesChange*). Modo 'NONE' | 'ALWAYS' |
+    /// 'ABOVE_AMOUNT' (con monto > 0) y si el adjunto es obligatorio; el cliente manda sobre la compañía (CK_Client_SalesChangeApproval en SQL).
+    /// </summary>
+    public string? SalesChangeApprovalMode { get; set; }
+    public decimal? SalesChangeApprovalAmount { get; set; }
+    public bool? SalesChangeAttachmentRequired { get; set; }
+
     public StatusCode? Status { get; set; }
     public LookupCode? PaymentTerm { get; set; }
     public LookupCode? Currency { get; set; }

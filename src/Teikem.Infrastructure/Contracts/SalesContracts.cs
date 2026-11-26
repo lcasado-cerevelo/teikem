@@ -39,7 +39,10 @@ public sealed record SalesOrderLineDto(int Id, int LineNo, Guid ProductPublicId,
     decimal QtyBackordered, decimal QtyShipped, bool IsClosed, decimal UnitPrice, decimal LineSubtotal, decimal TaxRatePct, decimal TaxAmount, bool IsTaxExempt,
     bool IsKit = false, IReadOnlyList<SalesOrderLineComponentDto>? Components = null,
     string? PriceSource = null, Guid? PriceListPublicId = null, string? PriceListName = null, Guid? OfferPublicId = null, string? OfferName = null,
-    Guid? PriceChainPublicId = null, string? PriceChainName = null, decimal? ResolvedUnitPrice = null, bool IsManualPrice = false);
+    Guid? PriceChainPublicId = null, string? PriceChainName = null, decimal? ResolvedUnitPrice = null, bool IsManualPrice = false,
+    // Lote 249: línea QUITADA por una modificación (pedido 0 y cerrada; nunca se borra) y el IVU: TaxReason (la razón del impuesto; MANUAL_OVERRIDE = IVU manual),
+    // el motivo del IVU manual y lo que daría el cálculo de hoy (TaxComputedRatePct / TaxComputedAmount; solo con IVU manual)
+    bool IsRemoved = false, string? TaxReason = null, string? TaxOverrideNote = null, decimal? TaxComputedRatePct = null, decimal? TaxComputedAmount = null);
 
 /// <summary>Lote 69: un componente de la línea de un kit. Las cantidades son de piezas del componente (cantidad por kit × kits): pedido, reservado, en backorder y despachado.</summary>
 /// <remarks>Lote 230: el producto es la pieza REAL; si sustituye a una pieza del kit, SubstitutesProductPublicId / SubstitutesSku / SubstitutesName dicen cuál (para mostrar «en lugar de»).</remarks>
@@ -54,7 +57,9 @@ public sealed record SalesOrderListItemDto(Guid PublicId, string Number, string 
     // Lote 244: ruta de venta y vendedor guardados en la orden (la copia congelada al solicitar; en borrador, la elección explícita y sin ruta)
     string? SalesRouteName = null, string? SellerName = null,
     // Lote 245: cadena ACTUAL del cliente (en vivo, sin copia en la orden; null = «Sin cadena»)
-    string? ChainName = null, Guid? ChainPublicId = null);
+    string? ChainName = null, Guid? ChainPublicId = null,
+    // Lote 249: la orden es una ADICIÓN (orden interna que complementa otra) y tiene una modificación esperando la segunda aprobación. LineCount no cuenta las quitadas.
+    bool IsAddition = false, bool HasPendingChange = false);
 
 public sealed record SalesOrderDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName,
     Guid? ConsigneePublicId, string? ConsigneeName, Guid WarehousePublicId, string WarehouseName, DateOnly RequestedDate, DateOnly? RequiredDate, string? Notes,
@@ -63,7 +68,14 @@ public sealed record SalesOrderDto(Guid PublicId, string Number, string Status, 
     SalesOrderTermsDto? Terms = null, IReadOnlyList<SalesLinePriceDto>? LinePrices = null,
     // Lote 244: ruta de venta y vendedor. Solicitada: la copia congelada (SalesCopyAtUtc puesto; NULL = «Sin vendedor» / «Sin ruta»). Borrador: la ruta efectiva
     // del cliente hoy y la elección del vendedor o, sin elección válida, el vendedor PROPUESTO (SellerProposed = true). Órdenes anteriores al lote: todo NULL.
-    int? SalesRouteId = null, string? SalesRouteName = null, int? SellerUserId = null, string? SellerName = null, bool SellerProposed = false, DateTime? SalesCopyAtUtc = null);
+    int? SalesRouteId = null, string? SalesRouteName = null, int? SellerUserId = null, string? SellerName = null, bool SellerProposed = false, DateTime? SalesCopyAtUtc = null,
+    // Lote 249: la orden de la que esta es la adición (null = orden normal), sus adiciones, la modificación pendiente de aprobar (si hay), cuántas modificaciones
+    // tiene y el RowVersion (base64) que manda la pantalla al modificar (409 si la orden cambió mientras tanto).
+    Guid? ParentPublicId = null, string? ParentNumber = null, IReadOnlyList<SalesOrderAdditionRefDto>? Additions = null, Guid? PendingChangePublicId = null,
+    int? PendingChangeNo = null, int ChangeCount = 0, string? RowVersion = null);
+
+/// <summary>Lote 249 — una orden interna de adición de la orden: su número, su estatus (con etiqueta) y su total con el envío.</summary>
+public sealed record SalesOrderAdditionRefDto(Guid PublicId, string Number, string Status, string StatusLabel, decimal Total);
 
 /// <summary>
 /// Lote 244 — una opción de vendedor para el borrador: el usuario (con nombre, sin correo), de dónde sale (PRIMARY = titular de la ruta, SUPPORT = apoyo,
@@ -114,7 +126,12 @@ public sealed record SalesCreditDto(decimal? Limit, decimal Exposure, decimal Ne
 public sealed record SalesAvailabilityDto(IReadOnlyList<SalesAvailabilityLineDto> Lines, bool HasShortage, SalesCreditDto Credit);
 
 /// <summary>Modificar una línea de una orden solicitada: cantidad y/o precio (lo que no viene no cambia). AllowBackorder para subir más de lo disponible.</summary>
-public sealed record SalesOrderLineModifyRequest(decimal? Quantity = null, decimal? UnitPrice = null, bool? AllowBackorder = null);
+/// <remarks>
+/// Lote 249: la ruta PATCH lines/{lineId} se volvió un adaptador de la «Modificación de la orden» (exige sales.modify): quién autorizó en el cliente (nombre y cargo),
+/// cómo (PHONE | EMAIL | IN_PERSON | MESSAGE), cuándo (vacío = ahora) y el motivo. Sin ellos, 400 con los mensajes de la modificación.
+/// </remarks>
+public sealed record SalesOrderLineModifyRequest(decimal? Quantity = null, decimal? UnitPrice = null, bool? AllowBackorder = null,
+    string? AuthorizedByName = null, string? AuthorizedByTitle = null, string? AuthorizationChannel = null, DateTime? AuthorizedAtUtc = null, string? Reason = null);
 
 // ---------------------------------------------------------------- Lote 59 — backorders: ver, surtir y cerrar con faltante
 

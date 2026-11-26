@@ -1462,6 +1462,34 @@ export function useDeletePickGroup() {
   })
 }
 
+/**
+ * Lote 249 — `POST /api/v1/pick-batches/{publicId}/reopen-pack` (warehouse.reopen-pack): reabre el empaque de una recolección (el envío se da de baja y la recolección
+ * vuelve a «Recolectada»). Con maestra, `POST /pick-batches/groups/{publicId}/reopen-pack` (`group: true`). Motivo obligatorio.
+ */
+export function useReopenPack() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, group, body }: { publicId: string; group?: boolean; body: Schemas['PickBatchReopenRequest'] }) =>
+      group
+        ? unwrap(api.POST('/api/v1/pick-batches/groups/{publicId}/reopen-pack', { params: { path: { publicId } }, body }))
+        : unwrap(api.POST('/api/v1/pick-batches/{publicId}/reopen-pack', { params: { path: { publicId } }, body })),
+    onSuccess: () => Promise.all([invalidate(qc, 'pickBatches', 'pickBatch', 'orders', 'order', ...STOCK), ...DOCUMENT_KEYS.map((k) => qc.invalidateQueries({ queryKey: k })), qc.invalidateQueries({ queryKey: ['sales'] })]),
+  })
+}
+
+/**
+ * Lote 249 — `POST /api/v1/pick-batches/{publicId}/join-order-shipment` (warehouse.pick; con «Reabrir el empaque» también warehouse.reopen-pack): une una recolección
+ * recolectada de una orden de venta con el envío de su FAMILIA (la orden, su raíz y sus adiciones).
+ */
+export function useJoinOrderShipment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, body }: { publicId: string; body: Schemas['PickBatchJoinOrderRequest'] }) =>
+      unwrap(api.POST('/api/v1/pick-batches/{publicId}/join-order-shipment', { params: { path: { publicId } }, body })),
+    onSuccess: () => Promise.all([invalidate(qc, 'pickBatches', 'pickBatch', 'orders', 'order', ...STOCK), ...DOCUMENT_KEYS.map((k) => qc.invalidateQueries({ queryKey: k })), qc.invalidateQueries({ queryKey: ['sales'] })]),
+  })
+}
+
 /** `GET /api/v1/pick-batches/{publicId}`. */
 export function usePickBatch(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
   return useQuery({

@@ -170,11 +170,25 @@ export function cartLineAmount(l: CartLine): number {
   return q === null || price === null ? 0 : Math.round(q * price * 10_000) / 10_000
 }
 
-/** El precio de la línea: el del servidor o, si el producto no tiene, el que escribió quien tiene `sales.price`. */
+/**
+ * El precio de la línea: el que escribió quien tiene `sales.price` (Lote 249, E-01: también en un producto CON precio de lista; el de lista queda al lado) o, si no
+ * escribió ninguno, el del servidor.
+ */
 export function effectivePrice(l: CartLine): number | null {
-  if (l.price !== null) return l.price
   const typed = parseNumber(l.typedPrice ?? '')
-  return typed !== null && typed >= 0 ? typed : null
+  if (typed !== null && typed >= 0) return typed
+  return l.price
+}
+
+/** Lote 249 (E-01): ¿hay un precio escrito a mano en la línea? */
+export function hasTypedPrice(l: CartLine): boolean {
+  const typed = parseNumber(l.typedPrice ?? '')
+  return typed !== null && typed >= 0
+}
+
+/** Lote 249 (E-01): ¿el precio escrito es distinto del de lista del producto? (marca «precio manual»). */
+export function isManualPrice(l: CartLine, listPrice: number | null | undefined): boolean {
+  return hasTypedPrice(l) && effectivePrice(l) !== (listPrice ?? null)
 }
 
 /** Escribe (o borra) el precio de un producto sin precio en el carrito. */
@@ -189,12 +203,12 @@ export function cartSummary(cart: readonly CartLine[]): { lines: number; units: 
   return { lines: cart.length, units: Math.round(units * 1000) / 1000, subtotal }
 }
 
-/** Las líneas para el servidor: producto, cantidad y (solo kits ajustados) sus piezas. El precio NO viaja: lo resuelve el servidor (el vendedor no teclea precios). */
+/** Las líneas para el servidor: producto, cantidad y (solo kits ajustados) sus piezas. El precio solo viaja si NO sale de una lista o si quien tiene `sales.price` lo escribió (Lote 249, E-01). */
 export function cartToLines(cart: readonly CartLine[]) {
   return cart.map((l) => {
     // unitPrice solo si el precio NO sale de una lista: producto sin precio (escrito por quien tiene sales.price) o línea ya guardada en la orden
     // (tras guardar, el precio queda en la línea y hay que seguir mandándolo, si no el servidor lo vuelve a resolver y no lo encuentra); si no, el servidor lo resuelve
-    const typed = l.priceSource === 'NONE' || l.priceSource === 'ORDER' ? effectivePrice(l) : null
+    const typed = l.priceSource === 'NONE' || l.priceSource === 'ORDER' || hasTypedPrice(l) ? effectivePrice(l) : null
     return {
       productPublicId: l.productPublicId,
       quantity: parseNumber(l.quantity) ?? undefined,

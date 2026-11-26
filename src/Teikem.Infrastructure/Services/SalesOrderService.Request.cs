@@ -69,7 +69,8 @@ public sealed partial class SalesOrderService
         // Lote 222: un cliente suspendido (p. ej. un prospecto rechazado) no compra; un prospecto sí (la orden queda esperando su aprobación); la firma que exige el cliente
         var clientStatus = await db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == client.StatusCodeId).Select(s => s.InternalCode).FirstOrDefaultAsync(ct);
         if (clientStatus == ClientStatuses.Suspended) throw new StatusRuleException(SalesOrderExtraRules.ClientSuspended);
-        if (SalesOrderExtraRules.MissingRequiredSignature(client.RequireOrderSignature, peek.AuthorizedByName, peek.SignatureFileId))
+        // Lote 249: la orden interna de adición no lleva firma del cliente (la autorización queda en la modificación de la orden madre)
+        if (peek.ParentSalesOrderId is null && SalesOrderExtraRules.MissingRequiredSignature(client.RequireOrderSignature, peek.AuthorizedByName, peek.SignatureFileId))
             throw new Exceptions.ValidationException("signature", SalesOrderExtraRules.SignatureRequired);
 
         // crédito: excedido = 409 con el aviso; con OverrideCredit y el permiso se autoriza y queda en el historial y en la bitácora de seguridad
@@ -132,9 +133,10 @@ public sealed partial class SalesOrderService
                 }, ct);
                 break;
             }
-            catch (InsufficientStockException) when (attempt < MaxReserveAttempts)
+            catch (InsufficientStockException) when (attempt < MaxReserveAttempts && db.Database.CurrentTransaction is null)
             {
-                // otro vendedor reservó entre la foto y el candado: se vuelve a calcular con lo que quedó
+                // otro vendedor reservó entre la foto y el candado: se vuelve a calcular con lo que quedó.
+                // Lote 249: dentro de una transacción ajena (la adición) no se reintenta ni se limpia el contexto: se relanza y reintenta el dueño de la transacción.
                 db.ChangeTracker.Clear();
             }
         }
@@ -147,21 +149,32 @@ public sealed partial class SalesOrderService
 
     // ---------------------------------------------------------------- cancelar (borrador o solicitada sin despachar)
 
-    /// <summary>Cancela la orden. Una solicitada libera EXACTAMENTE lo que tenía reservado y borra su backorder; una con algo ya despachado no se cancela.</summary>
+    /// <summary>
+    /// Cancela la orden. Una solicitada libera EXACTAMENTE lo que tenía reservado y borra su backorder; una con algo ya despachado no se cancela.
+    /// Lote 249: toma el candado de la cabecera; una orden con adiciones abiertas (ni canceladas ni despachadas) no se cancela (422) y la modificación pendiente
+    /// de aprobar, si hay, queda RETIRADA.
+    /// </summary>
     public async Task<SalesOrderDto> CancelAsync(Guid publicId, string? comment, CancellationToken ct)
     {
         await db.RunInTransactionAsync(async ct2 =>
         {
+            await LockOrderAsync(publicId, ct2);   // Lote 249: cabecera → líneas, como todo escritor de la orden
             var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
-            var code = (await StatusMapAsync(ct2))[order.StatusCodeId].Code;
+            var map = await StatusMapAsync(ct2);
+            var code = map[order.StatusCodeId].Code;
             if (code == SalesOrderStatuses.Cancelled) throw new ConflictException(SalesRules.AlreadyCancelled);
             var anyShipped = order.Lines.Any(l => l.QtyShipped > 0m);
             if (code is SalesOrderStatuses.Shipped or SalesOrderStatuses.Partial || anyShipped)
                 throw new StatusRuleException(SalesRules.OnlyDraftOrRequestedCancellable);
+            var closedIds = map.Where(kv => kv.Value.Code is SalesOrderStatuses.Cancelled or SalesOrderStatuses.Shipped).Select(kv => kv.Key).ToList();
+            var openAdditions = await db.Set<SalesOrder>().AsNoTracking()
+                .Where(o => o.ParentSalesOrderId == order.SalesOrderId && !closedIds.Contains(o.StatusCodeId)).OrderBy(o => o.Number).Select(o => o.Number).ToListAsync(ct2);
+            if (openAdditions.Count > 0) throw new StatusRuleException(CancelWithOpenAdditions(string.Join(", ", openAdditions)));
 
             if (code == SalesOrderStatuses.Requested) await ReleaseAllAsync(order, ct2);
             var to = await statuses.TransitionAsync(SalesCodes.StatusDomain, SalesCodes.EntityType, order.SalesOrderId, order.StatusCodeId, SalesOrderStatuses.Cancelled, comment, ct2);
             order.StatusCodeId = to.StatusCodeId;
+            await WithdrawPendingOnCancelAsync(order, ct2);   // Lote 249
             await NotifyOrderAsync(SalesEventCodes.OrderCancelled, order, new Dictionary<string, string?> { ["reason"] = string.IsNullOrWhiteSpace(comment) ? string.Empty : comment.Trim() }, null, ct2);
             await db.SaveGuardedAsync(SalesRules.Concurrency, ct2);
         }, ct);
@@ -224,6 +237,7 @@ public sealed partial class SalesOrderService
             {
                 await db.RunInTransactionAsync(async ct2 =>
                 {
+                    await LockOrderAsync(publicId, ct2);   // Lote 249: cabecera → líneas
                     var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
                     if ((await StatusMapAsync(ct2))[order.StatusCodeId].Code != SalesOrderStatuses.Requested) throw new StatusRuleException(SalesRules.OnlyRequestedModifiable);
                     var line = order.Lines.FirstOrDefault(l => l.SalesOrderLineId == lineId) ?? throw new NotFoundException("Línea", feminine: true);
@@ -319,16 +333,37 @@ public sealed partial class SalesOrderService
         return comps.Count == 0 ? new Dictionary<int, decimal> { [line.ProductId] = 1m } : comps.ToDictionary(c => c.ComponentProductId, c => c.Quantity);
     }
 
-    /// <summary>Recalcula el impuesto de todas las líneas EN SU LUGAR (las reservas cuelgan de los ids de línea) y los totales del encabezado.</summary>
+    /// <summary>
+    /// Recalcula el impuesto de todas las líneas EN SU LUGAR (las reservas cuelgan de los ids de línea) y los totales del encabezado.
+    /// Lote 249: una línea con IVU MANUAL (TaxReason = MANUAL_OVERRIDE) conserva su porcentaje y recalcula el importe con la cantidad y el precio
+    /// (SalesChangeRules.ManualTax), queda exenta solo si el porcentaje es 0 y guarda lo que daría el cálculo de hoy (TaxComputedRatePct / TaxComputedAmount).
+    /// Las demás toman el cálculo normal (con la exención del cliente) y su razón.
+    /// </summary>
     private async Task RecalculateTaxAsync(SalesOrder order, CancellationToken ct)
     {
         var ordered = order.Lines.OrderBy(l => l.LineNo).ToList();
         var products = await db.Set<Product>().AsNoTracking().Where(p => ordered.Select(l => l.ProductId).Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, ct);
         var priced = await PriceAsync(ordered.Select(l => new PlannedLine(products[l.ProductId], l.QtyOrdered, l.UnitPrice, l.LotId)).ToList(), order.ClientId, order.RequestedDate, ct);
+        var tax = 0m;
         for (var i = 0; i < ordered.Count; i++)
-            (ordered[i].TaxRateId, ordered[i].TaxRatePct, ordered[i].TaxAmount, ordered[i].IsTaxExempt) = (priced[i].TaxRateId, priced[i].TaxRatePct, priced[i].TaxAmount, priced[i].IsExempt);
+        {
+            var l = ordered[i];
+            if (l.TaxReason == Teikem.Domain.Tax.TaxReasons.ManualOverride)
+            {
+                (l.TaxComputedRatePct, l.TaxComputedAmount) = (priced[i].TaxRatePct, priced[i].TaxAmount);
+                l.TaxRateId = priced[i].TaxRateId;
+                l.TaxAmount = SalesChangeRules.ManualTax(l.QtyOrdered, l.UnitPrice, l.TaxRatePct);
+                l.IsTaxExempt = l.TaxRatePct == 0m;
+            }
+            else
+            {
+                (l.TaxRateId, l.TaxRatePct, l.TaxAmount, l.IsTaxExempt) = (priced[i].TaxRateId, priced[i].TaxRatePct, priced[i].TaxAmount, priced[i].IsExempt);
+                l.TaxReason = priced[i].Reason;
+            }
+            tax += l.TaxAmount;
+        }
         order.Subtotal = priced.Sum(p => p.Subtotal);
-        order.TaxAmount = priced.Sum(p => p.TaxAmount);
+        order.TaxAmount = tax;
     }
 
     // ---------------------------------------------------------------- disponibilidad

@@ -28,6 +28,25 @@ public static class PickGroupRules
     public static string InGroup(string batch, string group) => $"La recolección {batch} pertenece a la recolección maestra {group}: empáquela o elimínela desde la maestra.";
     public static string DeleteBlocked(string number, string orderStatus) => $"La recolección {number} no se puede eliminar: su envío ya está en «{orderStatus}».";
 
+    // ---------------------------------------------------------------- Lote 249: unir una recolección al envío de su orden (excepción acotada a «no se suman documentos después»)
+
+    public static string JoinNotFamily(string batch) => $"La recolección {batch} no es de la misma orden ni de una adición de ella: no se une a ese envío.";
+    public static string JoinNotCollected(string batch, string status) => $"La recolección {batch} no está recolectada (está «{status}»).";
+    public static string JoinAlreadyInGroup(string batch, string group) => $"La recolección {batch} ya está en la maestra {group}.";
+    public static string JoinChooseTarget(string order) => $"Escoja con qué recolección de {order} sale (hay varias).";
+    public static string JoinTargetLeft(string batch, string status) => $"El envío de {batch} ya salió («{status}»): la recolección sale en su propio envío.";
+    public static string JoinNeedsReopen(string batch)
+        => $"{batch} ya está empacada: marque «Reabrir el empaque» (permiso warehouse.reopen-pack) para unir esta recolección a su envío.";
+    public static string JoinNoTarget(string order) => $"No hay otra recolección de {order} con la que pueda salir: empaque esta por separado.";
+    public static string JoinSelf(string batch) => $"Escoja otra recolección: {batch} no se une consigo misma.";
+    public static string JoinLinked(string batch) => $"La recolección {batch} se mandó a la compañía enlazada: no se une a otro envío.";
+
+    /// <summary>
+    /// Lote 249 — la «familia» de una orden de venta para unir envíos: la raíz (la orden sin madre) y todas las adiciones que cuelgan de ella. Las adiciones
+    /// siempre cuelgan de la raíz; por si acaso, la orden misma también entra.
+    /// </summary>
+    public static int RootOf(int salesOrderId, int? parentSalesOrderId) => parentSalesOrderId ?? salesOrderId;
+
     /// <summary>Tipo normalizado (mayúsculas) o null si no es uno de los dos.</summary>
     public static string? NormalizeKind(string? kind)
     {

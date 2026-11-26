@@ -28,6 +28,7 @@ import {
   cartLineAmount,
   cartQuantity,
   cartSummary,
+  isManualPrice,
   removeFromCart,
   setCartPieces,
   setCartPrice,
@@ -118,6 +119,7 @@ function OfferCard({ item, quantity, onStep, onSet, stock, warehouseId, pieces }
 
 export function ProductsStep({ state, onChange, stock, warehouseId }: ProductsStepProps) {
   const t = useT()
+  const f = useFormat()
   const noticeText = usePriceNoticeText()
   const catalog = useSalesCatalog(state.clientPublicId)
   const canPrice = useCan('sales.price')
@@ -227,6 +229,25 @@ export function ProductsStep({ state, onChange, stock, warehouseId }: ProductsSt
                         )}
                         {p.priceSource === 'CHAIN_LIST' && <Chip tone="deliv">{t('salesWizard.cart.originChain', { name: p.chainName ?? '' })}</Chip>}
                         {p.priceSource === 'CLIENT_LIST' && <Chip tone="deliv">{t('salesWizard.cart.originClient')}</Chip>}
+                        {/* Lote 249 (E-01): quien tiene sales.price también escribe el precio de un producto CON precio de lista; el de lista queda al lado */}
+                        {p.price != null && canPrice && (
+                          <label className="wz-money">
+                            <span aria-hidden="true">$</span>
+                            <input
+                              aria-label={t('salesWizard.products.priceOf', { sku: p.sku ?? '' })}
+                              inputMode="decimal"
+                              className="wz-qty wz-price"
+                              placeholder={t('salesWizard.products.priceOverridePlaceholder')}
+                              value={state.cart.find((l) => l.productPublicId === p.productPublicId)?.typedPrice ?? ''}
+                              disabled={!qty}
+                              onChange={(e) => onChange((s) => ({ ...s, cart: setCartPrice(s.cart, p.productPublicId ?? '', decimalText(e.target.value)) }))}
+                            />
+                          </label>
+                        )}
+                        {(() => {
+                          const line = state.cart.find((l) => l.productPublicId === p.productPublicId)
+                          return line && isManualPrice(line, p.price) ? <Chip tone="warn" title={t('salesWizard.products.manualPriceHelp', { price: f.money(p.price ?? 0) })}>{t('salesWizard.products.manualPrice')}</Chip> : null
+                        })()}
                       </span>
                     )}
                   </li>

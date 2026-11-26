@@ -1238,6 +1238,14 @@
       "empty": "No hay documentos por vencer.",
       "client": "Cliente",
       "exemptionRow": "Exención de IVU sin documento"
+    },
+    "salesChanges": {
+      "title": "Modificaciones de órdenes",
+      "inherit": "Como la compañía",
+      "attachmentYes": "Obligatoria",
+      "attachmentNo": "No obligatoria",
+      "effective": "Vigente para este cliente: segunda aprobación «{mode}»{amount}; evidencia {attachment}.",
+      "saved": "Ajustes del cliente guardados."
     }
   },
   "consignees": {
@@ -8126,6 +8134,29 @@
       "intro": "Una etiqueta por producto de la lista filtrada, con el código de barras de su SKU, el SKU en letra grande y su nombre. Cada etiqueta es una página del PDF del tamaño exacto de la etiqueta (solo la etiqueta, sin hoja). Puede volver a imprimirlas cuando quiera: no cambian nada en el sistema.",
       "working": "Leyendo productos y generando el PDF…",
       "nothing": "No hay productos para imprimir con los filtros actuales."
+    },
+    "reopenPack": {
+      "button": "Reabrir el empaque",
+      "title": "Reabrir el empaque {number}",
+      "body": "El envío de esta recolección se da de baja y la recolección vuelve a «Recolectada»: se puede cambiar la orden de venta o unirla a otro envío. No se reabre si el flete o los productos ya están facturados.",
+      "bodyGroup": "El envío de la maestra se da de baja y todas sus recolecciones vuelven a «Recolectada». No se reabre si el flete o los productos ya están facturados.",
+      "reason": "Motivo",
+      "reasonRequired": "Indique el motivo para reabrir el empaque.",
+      "confirm": "Reabrir el empaque",
+      "done": "Empaque {number} reabierto."
+    },
+    "joinShipment": {
+      "button": "Unir al envío de {order}",
+      "title": "Unir al envío de {order}",
+      "body": "La recolección {number} saldrá en el mismo envío que otra recolección de esta orden, de su orden original o de sus adiciones.",
+      "target": "Unir con",
+      "pick": "Escoja con qué recolección sale.",
+      "none": "No hay otra recolección de esta orden, de su orden original o de sus adiciones con la cual unir.",
+      "reopen": "Reabrir el empaque de {number} (warehouse.reopen-pack)",
+      "needsReopen": "{number} ya está empacada: marque «Reabrir el empaque» para unir esta recolección a su envío.",
+      "noPermission": "{number} ya está empacada y reabrir el empaque exige el permiso warehouse.reopen-pack.",
+      "confirm": "Unir al envío",
+      "done": "La recolección {number} se unió al envío."
     }
   },
   "legal": {
@@ -8989,6 +9020,24 @@
           "repeated": "Hay un umbral repetido.",
           "tooMany": "Se pueden poner hasta 10 umbrales."
         }
+      },
+      "salesChanges": {
+        "title": "Modificaciones de órdenes",
+        "subtitle": "Segunda aprobación y evidencia de la autorización del cliente al cambiar una orden ya solicitada.",
+        "mode": "Segunda aprobación",
+        "modes": {
+          "NONE": "No pide",
+          "ALWAYS": "Siempre",
+          "ABOVE_AMOUNT": "Sobre un monto"
+        },
+        "modeHelp": "Con segunda aprobación la modificación queda pendiente y no se aplica nada hasta que otra persona con el permiso la apruebe.",
+        "amount": "Monto del cambio del total",
+        "amountHelp": "Pide aprobación si el total cambia en más de este monto (hacia arriba o hacia abajo).",
+        "amountRequired": "Con «Sobre un monto» indique un monto mayor que 0.",
+        "attachment": "La evidencia de la autorización es obligatoria",
+        "attachmentHelp": "Captura del correo o del mensaje del cliente, imagen o PDF.",
+        "clientHelp": "Cada cliente puede tener la suya en su ficha (Perfil → Modificaciones de órdenes): manda la del cliente.",
+        "saved": "Ajustes de modificaciones guardados."
       }
     },
     "audit": {
@@ -10004,7 +10053,8 @@
       "trigger": "Cuándo se factura el producto vendido",
       "onDispatch": "Al despachar (recoger)",
       "onDelivery": "Al entregar",
-      "triggerHelp": "Al despachar: se factura lo que sale del almacén. Al entregar: solo lo que se retira o cuya entrega ya se entregó.",
+      "onRequest": "Cuando el usuario decida (orden aprobada)",
+      "triggerHelp": "Al despachar: se factura lo que sale del almacén. Al entregar: solo lo que se retira o cuya entrega ya se entregó. Cuando el usuario decida: se factura cuando alguien lo pide, una vez aprobada la orden.",
       "days": "Días para el vencimiento",
       "daysHelp": "Días entre la emisión de una factura y su vencimiento (0 a 365).",
       "daysError": "Escriba un número entero de 0 a 365.",
@@ -11146,7 +11196,10 @@
       "priceFromOffer": "Precio de la oferta «{name}»",
       "negotiatedWins": "Oferta: {offer}. Se cobra su precio negociado, que es más bajo.",
       "notices": "Avisos de precio de {sku}",
-      "empty": "No hay productos activos para vender."
+      "empty": "No hay productos activos para vender.",
+      "priceOverridePlaceholder": "Otro precio",
+      "manualPrice": "Precio manual",
+      "manualPriceHelp": "Precio escrito a mano; el de lista es {price}."
     },
     "cart": {
       "title": "Carrito",
@@ -14741,5 +14794,269 @@
       "CHAIN": "por su cadena"
     },
     "summary": "{n} precios especiales"
+  },
+  "salesChanges": {
+    "title": "Modificar la orden {number}",
+    "modify": "Modificar orden",
+    "rowAction": "Modificar",
+    "parent": "Adición de",
+    "next": "Siguiente",
+    "back": "Atrás",
+    "save": "Guardar la modificación",
+    "saved": "Modificación n.º {n} aplicada.",
+    "savedPending": "Modificación n.º {n} registrada: espera la segunda aprobación y no se aplicó nada todavía.",
+    "pendingExists": "La orden ya tiene la modificación n.º {n} pendiente de aprobación: resuélvala (apruebe, rechace o retire) antes de registrar otra.",
+    "stepsLabel": "Pasos de la modificación",
+    "yes": "Sí",
+    "no": "No",
+    "taxManual": "IVU manual",
+    "steps": {
+      "lines": "Líneas",
+      "terms": "Términos",
+      "auth": "Autorización",
+      "preview": "Vista previa"
+    },
+    "tabs": {
+      "approvals": "Por aprobar"
+    },
+    "kinds": {
+      "MODIFY": "Modificación",
+      "ADDITION": "Adición"
+    },
+    "channels": {
+      "PHONE": "Por teléfono",
+      "EMAIL": "Por correo",
+      "IN_PERSON": "En persona",
+      "MESSAGE": "Por mensaje"
+    },
+    "stage": {
+      "REVERSIBLE": "Recolectada: se puede deshacer",
+      "REOPENABLE": "Empacada: se puede reabrir",
+      "LEFT": "Ya salió"
+    },
+    "qb": {
+      "NOT_ISSUED": "Sin emitir",
+      "PENDING_EXPORT": "Por exportar a QuickBooks",
+      "EXPORTED_UNCONFIRMED": "Exportada, por confirmar",
+      "IN_QUICKBOOKS": "En QuickBooks"
+    },
+    "badge": {
+      "addition": "Adición",
+      "additionHelp": "Orden interna que complementa otra orden ya solicitada.",
+      "pending": "Modificación pendiente",
+      "pendingHelp": "Hay una modificación esperando la segunda aprobación; no se ha aplicado nada."
+    },
+    "batches": {
+      "title": "Recolecciones de la orden",
+      "shipment": "Envío {number}"
+    },
+    "reopen": {
+      "label": "Reabrir el empaque {packs}",
+      "shipment": "envío {number}",
+      "noPermission": "{packs} ya está empacada y reabrir el empaque exige el permiso warehouse.reopen-pack. Lo que quiera añadir puede ir en una orden interna de adición."
+    },
+    "lines": {
+      "title": "Líneas de la orden",
+      "added": "Productos que se agregan",
+      "addProduct": "Agregar un producto",
+      "addPlaceholder": "Buscar un producto…",
+      "addHelp": "El producto entra con el precio de hoy del cliente; solo quien tiene sales.price puede escribir otro.",
+      "removeAdded": "Quitar {sku} de lo que se agrega",
+      "priceToday": "Precio de hoy",
+      "priceTodayHelp": "Sin precio escrito se usa el de hoy del cliente.",
+      "allowBackorder": "Si falta inventario, dejar lo que falte en backorder"
+    },
+    "line": {
+      "removed": "Quitada",
+      "removedHelp": "La línea está quitada: para volver a pedirla, agréguela de nuevo.",
+      "ordered": "Pedido",
+      "collected": "Recolectado",
+      "packed": "Empacado",
+      "out": "Salió",
+      "invoiced": "Facturado",
+      "qty": "Cantidad",
+      "min": "Mínimo: {min}",
+      "price": "Precio",
+      "listPrice": "Precio de lista: {price}",
+      "taxManual": "IVU manual {pct} %",
+      "taxPct": "IVU manual (%)",
+      "taxNote": "Motivo del IVU manual",
+      "taxSet": "IVU manual",
+      "taxChange": "Cambiar IVU manual",
+      "taxClear": "Quitar IVU manual",
+      "taxClearUndo": "Dejar el IVU manual",
+      "taxCancel": "Cancelar IVU",
+      "remove": "Quitar línea",
+      "undoRemove": "Deshacer quitar",
+      "cannotRemove": "Ya salió parte: no se puede quitar.",
+      "errors": {
+        "quantity": "Escriba una cantidad mayor que 0 (o el mínimo que permite la línea).",
+        "price": "Escriba un precio válido.",
+        "taxPct": "El IVU debe estar entre 0 y 100 %.",
+        "taxNote": "Indique el motivo del IVU manual."
+      }
+    },
+    "terms": {
+      "consignee": "Consignatario"
+    },
+    "auth": {
+      "title": "Quién autorizó el cambio",
+      "help": "Todo cambio a una orden ya solicitada queda registrado con quién lo autorizó en el cliente, cómo y cuándo.",
+      "name": "Nombre de quien autorizó",
+      "role": "Cargo",
+      "contact": "Contacto del cliente (opcional)",
+      "contactNone": "Sin escoger",
+      "channel": "Cómo autorizó",
+      "channelPick": "Escoja…",
+      "when": "Fecha y hora de la autorización",
+      "reason": "Motivo del cambio",
+      "attachment": "Evidencia (opcional)",
+      "attachmentRequired": "Evidencia (obligatoria)",
+      "attachmentHelp": "Captura del correo o del mensaje del cliente (imagen o PDF).",
+      "attachmentRequiredHelp": "Este cliente exige la evidencia de la autorización: adjunte la captura del correo o del mensaje (imagen o PDF).",
+      "uploading": "Subiendo…",
+      "attached": "Adjunto: {name}",
+      "removeAttachment": "Quitar adjunto",
+      "errors": {
+        "name": "Indique quién autorizó el cambio en el cliente.",
+        "channel": "Indique cómo autorizó el cliente.",
+        "at": "Indique la fecha y la hora de la autorización.",
+        "reason": "Indique el motivo de la modificación.",
+        "attachment": "Adjunte la evidencia de la autorización: es obligatoria."
+      }
+    },
+    "preview": {
+      "diff": "Lo que cambia",
+      "noDiff": "No hay diferencias todavía.",
+      "totalBefore": "Total antes",
+      "totalAfter": "Total después",
+      "blocked": "No se puede registrar así:",
+      "effects": "Qué pasa en el almacén",
+      "effectsHelp": "Solo se deshace lo necesario, empezando por la recolección más reciente; el inventario vuelve a su posición y la línea queda reservada.",
+      "reopened": "Se reabre el empaque {pack}: su envío se da de baja y la recolección vuelve a «Recolectada».",
+      "reversed": "Se deshace la recolección {batch}.",
+      "credit": "Crédito: límite {limit} · en uso {exposure} · disponible {available}.",
+      "creditExceeded": "Con este cambio se excede el crédito del cliente.",
+      "creditOverride": "Autorizar el crédito excedido (orders.credit_override)",
+      "creditNoPermission": "No tiene permiso para autorizar un crédito excedido.",
+      "needsApproval": "Pide segunda aprobación",
+      "ruleAlways": "Toda modificación de este cliente pide la aprobación de otra persona.",
+      "ruleAbove": "El cambio del total pasa de {amount}: otra persona debe aprobarlo antes de aplicarse."
+    },
+    "diff": {
+      "ADDED": "Agregada",
+      "REMOVED": "Quitada",
+      "CHANGED": "Cambia",
+      "TERMS": "Términos"
+    },
+    "fields": {
+      "qtyOrdered": "Cantidad",
+      "unitPrice": "Precio",
+      "taxRatePct": "IVU (%)",
+      "taxAmount": "IVU",
+      "taxReason": "Razón del IVU",
+      "paymentMethod": "Forma de pago",
+      "paymentTerm": "Término de pago",
+      "deliveryMode": "Entrega o recogido",
+      "consignee": "Consignatario",
+      "isConsignment": "Consignación",
+      "notes": "Notas"
+    },
+    "history": {
+      "title": "Modificaciones",
+      "no": "N.º",
+      "kind": "Tipo",
+      "when": "Registrada",
+      "by": "Registró",
+      "authorized": "Autorizó (cliente)",
+      "delta": "Cambio del total",
+      "open": "Ver detalle",
+      "empty": "Esta orden no tiene modificaciones."
+    },
+    "detail": {
+      "title": "Modificación n.º {n} de {number}",
+      "loading": "Modificación",
+      "decision": "Decisión",
+      "addition": "Adición {number}"
+    },
+    "decision": {
+      "note": "Nota",
+      "noteHelp": "Obligatoria para rechazar.",
+      "noteRequired": "Escriba una nota para rechazar la modificación.",
+      "otherPerson": "La segunda aprobación la da otra persona, no quien registró la modificación.",
+      "approve": "Aprobar y aplicar",
+      "reject": "Rechazar",
+      "withdraw": "Retirar",
+      "approved": "Modificación n.º {n} aprobada y aplicada.",
+      "rejected": "Modificación n.º {n} rechazada: no se aplicó nada.",
+      "withdrawn": "Modificación n.º {n} retirada: no se aplicó nada."
+    },
+    "pending": {
+      "title": "Modificación pendiente de aprobación",
+      "heading": "Modificación n.º {n} pendiente de segunda aprobación",
+      "by": "La registró {who} el {when}; la autorizó en el cliente {authorized}. Mientras no se apruebe no se aplica nada.",
+      "details": "Ver el antes y el después"
+    },
+    "pendingTab": {
+      "panel": "Modificaciones por aprobar",
+      "search": "Buscar por orden o cliente",
+      "order": "Orden",
+      "review": "Revisar",
+      "empty": "No hay modificaciones esperando aprobación.",
+      "emptyFiltered": "Ninguna modificación pendiente coincide con la búsqueda.",
+      "help": "Aprueba otra persona que quien registró la modificación (permiso sales.modify.approve)."
+    },
+    "additions": {
+      "title": "Adiciones de esta orden"
+    },
+    "addition": {
+      "button": "Orden interna de adición",
+      "title": "Orden interna de adición a {number}",
+      "help": "Es una orden aparte que cuelga de esta, sin firma del cliente: lo que ya se recolectó, empacó, salió o facturó no se toca. Sale en el mismo envío y se factura con una factura complementaria.",
+      "noLines": "Agregue al menos un producto.",
+      "create": "Crear la adición",
+      "saved": "Adición {number} creada y solicitada.",
+      "savedPending": "Adición registrada (modificación n.º {n}): espera la segunda aprobación y todavía no se creó la orden.",
+      "mayNeedApproval": "Puede pedir segunda aprobación"
+    },
+    "invoices": {
+      "title": "Facturas y QuickBooks",
+      "ofAddition": "de la adición {number}"
+    },
+    "blockers": {
+      "billed": "La orden ya está facturada: solo se le puede añadir. Quitar o bajar se hace con una nota de crédito.",
+      "draft": "La orden está en borrador: se cambia desde su edición, no con una modificación.",
+      "cancelled": "La orden está cancelada: no se puede modificar.",
+      "leftComplete": "La orden ya salió completa: solo se le puede añadir con una orden interna de adición.",
+      "nothing": "Indique al menos un cambio.",
+      "removeAll": "No se pueden quitar todas las líneas: para eso cancele la orden.",
+      "termsLeft": "Ya salió parte de la orden: el pago, la entrega y el consignatario ya no se cambian.",
+      "lineRemoved": "La línea {n} ({sku}) está quitada: para volver a pedirla, agréguela de nuevo.",
+      "lineClosed": "La línea {n} ({sku}) está cerrada: su cantidad ya no se cambia.",
+      "productRepeated": "El producto {sku} ya está en la orden: cambie la cantidad de su línea.",
+      "belowLeft": "No se puede bajar {sku} a {qty}: ya salieron {left}.",
+      "removeLeft": "No se puede quitar {sku}: ya salieron {left}.",
+      "priceLeft": "El precio de {sku} ya no se cambia: parte de la línea ya salió.",
+      "taxLeft": "El IVU de {sku} ya no se cambia: parte de la línea ya salió.",
+      "noTaxOverride": "La línea {n} ({sku}) no tiene IVU manual.",
+      "lineNeedsReopen": "{sku} está en el empaque {pack}: para cambiarla marque «Reabrir el empaque» (permiso warehouse.reopen-pack).",
+      "termsNeedReopen": "La orden está en el empaque {pack}: para cambiar el pago, la entrega o el consignatario marque «Reabrir el empaque» (permiso warehouse.reopen-pack).",
+      "batchInvoiced": "La recolección {batch} ya está facturada ({invoices}): no se puede deshacer.",
+      "attachmentRequired": "Adjunte la evidencia de la autorización del cliente: es obligatoria para este cliente.",
+      "changed": "La orden cambió mientras se modificaba; vuelva a intentar.",
+      "pendingExists": "Ya hay una modificación pendiente en esta orden."
+    },
+    "reasons": {
+      "pickup": "Es un recogido: lo recolectado ya se lo llevó el cliente.",
+      "linked": "La despacha una compañía enlazada.",
+      "manual": "Es un despacho manual.",
+      "noShipment": "El empaque no tiene envío.",
+      "invoiced": "Tiene productos ya facturados.",
+      "shipmentInactive": "El envío {shipment} está anulado.",
+      "shipmentStatus": "El envío {shipment} ya está «{status}».",
+      "shipmentAdvanced": "El envío {shipment} ya pasó de su etapa inicial.",
+      "freightInvoiced": "El flete del envío {shipment} ya está facturado.",
+      "status": "La recolección está «{status}»."
+    }
   }
 }

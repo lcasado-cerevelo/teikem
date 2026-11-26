@@ -13473,3 +13473,368 @@ Since this batch, the «Receives email notices» mark applies to all client noti
 
 **A document no longer shows in «Expiring documents».**
 It is renewed (another active document of the same client and type with a later «Until»), it was removed, or the client is deactivated.
+
+## Batch 249 — Sales order modifications: changing an already requested order with the client's authorization
+<!-- kemi:staff -->
+
+> **The API returns its messages in Spanish only**, so each question quotes the exact Spanish message. Chapter: [57 — Sales order modifications](57-modificaciones-ordenes-venta.md). Screens: [L249](../frontend/l249-modificar-orden.md) (Spanish edition). Rule behind it all: **every change to an already requested order is recorded with who authorized it at the client**; what is already collected is undone only as needed, what is packed is reopened with a special permission, and what already left or was invoiced only admits an **internal addition order**. The `{…}` and `…` in the messages are parts that change.
+
+### Client authorization and evidence
+
+**What does «Indique quién autorizó el cambio en el cliente.» mean? (HTTP 400)**
+The name of the person who authorized is missing. Every change to an already requested order is recorded with who authorized it at the client: type their name (and, optionally, title and contact).
+
+**What does «El nombre de quien autorizó no puede pasar de 150 caracteres.» mean? (HTTP 400)**
+Shorten the name.
+
+**What does «El cargo de quien autorizó no puede pasar de 100 caracteres.» mean? (HTTP 400)**
+Shorten the title.
+
+**What does «Indique cómo autorizó el cliente (por teléfono, por correo, en persona o por mensaje).» mean? (HTTP 400)**
+The channel is missing. Choose «How it was authorized» (by API, `PHONE`, `EMAIL`, `IN_PERSON` or `MESSAGE`).
+
+**What does «El canal de autorización no es válido: use PHONE, EMAIL, IN_PERSON o MESSAGE.» mean? (HTTP 400)**
+By API, `authorizationChannel` is not one of the four values. It does not appear on the screen: the selector already sends a valid one.
+
+**What does «La fecha de la autorización no puede ser futura.» mean? (HTTP 400)**
+The authorization date and time is after now (5 minutes of clock skew are tolerated). Fix it or leave it empty (= now).
+
+**What does «La fecha de la autorización no puede ser anterior a la orden.» mean? (HTTP 400)**
+The authorization cannot be earlier than the creation of the order. Type the real date and time, or leave it empty.
+
+**What does «Indique el motivo de la modificación.» mean? (HTTP 400)**
+Type why the order is being changed.
+
+**What does «El motivo de la modificación no puede pasar de 500 caracteres.» mean? (HTTP 400)**
+Shorten the reason.
+
+**What does «Adjunte la evidencia de la autorización del cliente (captura del correo o del mensaje): es obligatoria para este cliente.» mean? (HTTP 400)**
+The company or the client requires evidence (Settings → Operation → «Order modifications», or the client record → Profile). Upload the screenshot of the e-mail or message (image or PDF). If it should not be required, change the client setting to «Not required» or «Same as the company» (`clients.update`).
+
+**What does «Adjunte el archivo de la evidencia (imagen o PDF).» mean? (HTTP 400)**
+The file arrived empty or did not arrive. Upload it again.
+
+**What does «Ese archivo ya respalda otra modificación: adjunte otro.» mean? (HTTP 409)**
+A file backs a single modification. Upload the file of this authorization.
+
+**What does «Archivo no encontrado.» mean? (HTTP 404)**
+The file does not exist, is deactivated or does not belong to this order (nor to its original order, in an addition). Upload it from this order.
+
+**What does «Contacto no encontrado.» mean? (HTTP 404)**
+The contact of who authorized is not an active contact of the order's client. Pick it from the client's list or leave it empty.
+
+**What does «El motivo admite como máximo 500 caracteres.» mean? (HTTP 400)**
+The reason to reopen the pack (`reopenReason` or the «Reason» box) is over 500. Shorten it.
+
+### Operations and quantities
+
+**What does «Indique al menos un cambio.» mean? (HTTP 400)**
+The modification has no operations, or what it asks for is already what the order has (no difference). Change something before saving.
+
+**What does «Operación no válida: use ADD, QTY, REMOVE, PRICE, TAX, CLEAR_TAX, TERMS o NOTES.» mean? (HTTP 400)**
+By API, `ops[].kind` is not a known operation.
+
+**What does «La cantidad debe ser mayor que cero.» mean? (HTTP 400)**
+The new quantity is 0 or empty. To remove the line use «Remove line» (`REMOVE`).
+
+**What does «La cantidad admite como máximo 3 decimales.» mean? (HTTP 400)**
+Type up to 3 decimals.
+
+**What does «La cantidad excede el máximo permitido.» mean? (HTTP 400)**
+Type a smaller quantity.
+
+**What does «El precio no es válido.» mean? (HTTP 400)**
+The price is negative or too large.
+
+**What does «El precio admite como máximo 4 decimales.» mean? (HTTP 400)**
+Type up to 4 decimals.
+
+**What does «Indique el precio nuevo de la línea.» mean? (HTTP 400)**
+The `PRICE` operation has no `unitPrice`.
+
+**What does «Indique los términos que cambian (forma de pago, entrega o consignatario).» mean? (HTTP 400)**
+The `TERMS` operation has no term. Send at least one in `terms`.
+
+**What does «Las notas no pueden pasar de 500 caracteres.» mean? (HTTP 400)**
+Shorten the notes.
+
+**What does «rowVersion inválido: se espera el valor base64 devuelto por la ficha.» mean? (HTTP 400)**
+By API, `rowVersion` is not the value returned by `edit-options`. Read the order again and send it as is.
+
+**What does «Producto no encontrado.» mean? (HTTP 404)**
+The product does not exist or belongs to another company.
+
+**What does «Orden de venta no encontrada.» mean? (HTTP 404)**
+The order does not exist or belongs to another company.
+
+**What does «Modificación no encontrada.» mean? (HTTP 404)**
+The modification does not exist, or is not of that order.
+
+### What cannot be changed depending on the stage
+
+**What does «La orden ya está facturada: solo se le puede añadir. Quitar o bajar se hace con una nota de crédito.» mean? (HTTP 422)**
+Some line already has an invoiced quantity, or the shipping charge is already invoiced (an open run's draft and an order only collected but already invoiced with the «on dispatch» basis also count). Use **«Internal addition order»** to add; to remove or lower, a credit note or return.
+
+**What does «La orden ya salió completa: solo se le puede añadir con una orden interna de adición.» mean? (HTTP 422)**
+Something already left and nothing is left in the warehouse (neither reserved, nor on backorder, nor collected or packed without leaving). Use the internal addition order.
+
+**What does «La orden está en borrador: se cambia desde su edición, no con una modificación.» mean? (HTTP 422)**
+A draft is not modified with this record: edit it from its screen and request it.
+
+**What does «La orden está cancelada: no se puede modificar.» mean? (HTTP 422)**
+A cancelled order cannot be changed. Create another.
+
+**What does «No se pueden quitar todas las líneas: para eso cancele la orden.» mean? (HTTP 422)**
+The modification would leave the order with no lines. Cancel the order instead of removing them all.
+
+**What does «Ya salió parte de la orden: el pago, la entrega y el consignatario ya no se cambian.» mean? (HTTP 422)**
+Part of the order already left: payment, delivery or pickup and consignee can no longer be touched. Notes can.
+
+**What does «No se puede bajar {sku} a {cantidad}: ya salieron {salido}.» mean? (HTTP 422)**
+What already left is not touched (a pickup counts as left). Lower only down to what left, or return the goods with a return.
+
+**What does «No se puede quitar {sku}: ya salieron {salido}.» mean? (HTTP 422)**
+The line has goods that already left: it cannot be removed. Lower it to what left, or return.
+
+**What does «El precio de {sku} ya no se cambia: parte de la línea ya salió.» mean? (HTTP 422)**
+A line with something already left does not change price. What you want to charge differently goes in an internal addition order or a credit note.
+
+**What does «El IVU de {sku} ya no se cambia: parte de la línea ya salió.» mean? (HTTP 422)**
+Same as the price: the IVU of a line with something already left is not changed by hand.
+
+**What does «{sku} está en el empaque {EMP}: para cambiarla marque «Reabrir el empaque» (permiso warehouse.reopen-pack).» mean? (HTTP 422)**
+The line is in a pack that can still be reopened. Check **«Reopen the pack»** (needs `warehouse.reopen-pack`): the shipment is voided and the pick returns to «Collected». Without the permission, what you want to add goes in an internal addition order.
+
+**What does «La orden está en el empaque {EMP}: para cambiar el pago, la entrega o el consignatario marque «Reabrir el empaque» (permiso warehouse.reopen-pack).» mean? (HTTP 422)**
+Changing the terms with a pack would leave the shipment and the COD outdated. Check «Reopen the pack».
+
+**What does «La línea {n} ({sku}) está quitada: para volver a pedirla, agréguela de nuevo.» mean? (HTTP 422)**
+The line was already removed (ordered 0 and closed). Add the product again: the same line is reactivated.
+
+**What does «La línea {n} ({sku}) está cerrada: su cantidad ya no se cambia.» mean? (HTTP 422)**
+The line was closed with a shortage (closed backorder). Its quantity no longer changes; price, IVU and removing follow the normal rules.
+
+**What does «La línea {n} ({sku}) viene más de una vez en la modificación.» mean? (HTTP 422)**
+By API, the same line has the same operation twice, `REMOVE` next to another, or `TAX` next to `CLEAR_TAX`. Send a single operation per line.
+
+**What does «La línea {id} no es de esta orden.» mean? (HTTP 422)**
+By API, `lineId` is not a line of this order.
+
+**What does «Indique la línea que se cambia.» mean? (HTTP 422)**
+By API, the operation has no `lineId`.
+
+**What does «El producto {sku} ya está en la orden: cambie la cantidad de su línea.» mean? (HTTP 422)**
+That product already has an active line. Use `QTY` on its line instead of adding it.
+
+**What does «Indique el producto que se agrega.» mean? (HTTP 422)**
+By API, the `ADD` operation has no `productPublicId`.
+
+**What does «El kit {sku} se pide en piezas enteras.» mean? (HTTP 422)**
+A kit does not allow fractions. Type a whole quantity.
+
+**What does «La línea {n} ({sku}) no tiene IVU manual.» mean? (HTTP 422)**
+`CLEAR_TAX` on a line that has no manual IVU. There is nothing to remove.
+
+**What does «Los términos vienen dos veces en la modificación.» mean? (HTTP 422)**
+By API, the modification has two `TERMS` operations. Send one.
+
+**What does «Las notas vienen dos veces en la modificación.» mean? (HTTP 422)**
+By API, the modification has two `NOTES` operations. Send one.
+
+**What does «La modificación dejaría la orden incoherente (línea {n}): no se aplicó.» mean? (HTTP 422)**
+The order checker detected that the change would leave the line with quantities that do not add up (for example, reserved plus backorder plus shipped different from ordered, or the subtotal different from the sum of the lines). Nothing was applied. Tell support with the order and the line.
+
+**What does «La orden cambió mientras se modificaba; vuelva a intentar.» mean? (HTTP 409)**
+Between the preview and saving, someone dispatched, packed or undid a pick of the order. Open the order again and repeat the modification.
+
+**What does «La orden cambió al mismo tiempo. Recárguela e intente de nuevo.» mean? (HTTP 409)**
+Another person or process saved the order at the same instant. Reload it and repeat.
+
+**What does «El registro fue modificado por otro usuario; recargue e intente de nuevo.» mean? (HTTP 409)**
+With `rowVersion`: the order (or the pick) changed since you opened it. Reload it and repeat.
+
+### Permissions
+
+**What does «Cambiar el precio exige el permiso de precios (sales.price).» mean? (HTTP 403)**
+The price you typed differs from today's for that client and you do not have `sales.price`. Leave it at the list price or ask for the permission.
+
+**What does «Falta el permiso 'sales.tax'.» mean? (HTTP 403)**
+Manual IVU requires `sales.tax` (besides `sales.modify`). Ask the administrator.
+
+**What does «Reabrir el empaque exige el permiso warehouse.reopen-pack.» mean? (HTTP 403)**
+Only whoever has `warehouse.reopen-pack` (by default, the administrator) reopens a pack. Ask for it, or put what is missing in an internal addition order.
+
+**What does «Falta el permiso 'orders.credit_override'.» mean? (HTTP 403)**
+You checked «Authorize the exceeded credit» without having `orders.credit_override`. Ask someone who has it to authorize.
+
+**What does «Falta el permiso 'sales.modify'.» mean? (HTTP 403)**
+Modifying an already requested order, uploading the evidence and creating the addition require `sales.modify` (the «Sales» role no longer has it). To approve or reject it is `sales.modify.approve`; to join a shipment, `warehouse.pick`.
+
+### Second approval
+
+**What does «La orden ya tiene una modificación por aprobar (n.º {n}): apruébela, recházela o retírela antes de registrar otra.» mean? (HTTP 409)**
+There is a single pending one per order (an addition also counts). Resolve the pending one in «To approve» or from the order.
+
+**What does «La segunda aprobación la da otra persona: quien registró la modificación no puede aprobarla.» mean? (HTTP 403)**
+It is on purpose. Ask another person with `sales.modify.approve` to approve it; whoever registered it can withdraw it.
+
+**What does «La orden cambió desde que se registró la modificación (se despachó, se facturó, se empacó o se modificó): recházela y registre otra.» mean? (HTTP 409)**
+Between the registration and the approval the order changed, and what was going to be applied is no longer valid. Reject it (with a note) and register a new one over today's order.
+
+**What does «La modificación ya no está pendiente de aprobar.» mean? (HTTP 409)**
+Someone else already approved, rejected or withdrew it (or the order was cancelled). Reload.
+
+**What does «Indique por qué se rechaza la modificación.» mean? (HTTP 400)**
+Rejecting requires a note.
+
+**What does «La nota de la decisión no puede pasar de 500 caracteres.» mean? (HTTP 400)**
+Shorten the note.
+
+**What does «Solo quien registró la modificación o quien puede modificar órdenes la retira.» mean? (HTTP 403)**
+Withdrawing a pending one is done by who registered it or who has `sales.modify`.
+
+**What does «El modo de segunda aprobación debe ser NONE, ALWAYS o ABOVE_AMOUNT.» mean? (HTTP 400)**
+By API, `approvalMode` is not one of the three values.
+
+**What does «Con «Arriba de un monto» (ABOVE_AMOUNT) indique un monto mayor que 0.» mean? (HTTP 400)**
+With «Above an amount» the amount is needed, greater than 0.
+
+**What does «El monto de la segunda aprobación admite hasta 2 decimales.» mean? (HTTP 400)**
+Type the amount with up to 2 decimals.
+
+### Credit and invoiced picks
+
+**What does «El cliente excede su límite de crédito: límite …, en curso …, esta orden ….» mean? (HTTP 422)**
+The order's new total makes the client exceed their limit (only checked if the total **goes up**). Whoever has `orders.credit_override` can authorize it by checking «Authorize the exceeded credit»; whoever authorizes credit is also notified. Whoever lacks `orders.view_price` sees the message without figures.
+
+**What does «La recolección {PK} ya está facturada ({FAC-…}): no se puede deshacer.» mean? (HTTP 409)**
+With the «on dispatch» or «on delivery» billing basis, the goods of that pick are already on an issued invoice, and the invoice is not reopened. Resolve it with a **return** or a credit note. With the «when the user decides» basis (`ON_REQUEST`) what was invoiced does not count. It appears when lowering a quantity in a modification and also when deleting the pick by hand.
+
+**What does «El IVU manual exige el módulo de impuestos encendido.» mean? (HTTP 422)**
+The `TAX` module is off for the company. Ask the platform to turn it on.
+
+**What does «El IVU de la línea debe estar entre 0 y 100 %.» mean? (HTTP 400)**
+Type a percentage from 0 to 100. 0 leaves the line exempt.
+
+**What does «El IVU de la línea admite hasta 4 decimales.» mean? (HTTP 400)**
+Type the percentage with up to 4 decimals.
+
+**What does «Indique el porcentaje de IVU de la línea.» mean? (HTTP 400)**
+The `TAX` operation has no `taxPct`.
+
+**What does «Indique el motivo del IVU manual.» mean? (HTTP 400)**
+Manual IVU always carries its reason (field `note`).
+
+**What does «El motivo del IVU manual no puede pasar de 250 caracteres.» mean? (HTTP 400)**
+Shorten the reason.
+
+### Reopening the pack and joining the shipment
+
+**What does «Indique el motivo para reabrir el empaque.» mean? (HTTP 400)**
+Reopening a pack requires the reason (it stays in the pick's history).
+
+**What does «La recolección {PK} no está empacada.» mean? (HTTP 422)**
+Only a pick in «Packed» status is reopened. A collected one can already be changed or undone without reopening; a manual dispatch is not reopened.
+
+**What does «La recolección {PK} está en la recolección maestra {PK-M}: reabra el empaque desde la maestra.» mean? (HTTP 422)**
+The pick belongs to a master: use «Reopen the pack» on the master (all its picks return to «Collected»).
+
+**What does «La recolección {PK} se mandó a la compañía enlazada: el empaque no se reabre.» mean? (HTTP 422)**
+What a linked company counts has already left: it is not reopened.
+
+**What does «El envío {ORD} ya está «{estatus}»: el empaque {PK} no se puede reabrir.» mean? (HTTP 422)**
+The shipment already left its initial stage (or is voided or does not exist). It is only reopened while the shipment has not advanced. What is missing goes in an internal addition order, in its own shipment.
+
+**What does «El flete del envío {ORD} ya está facturado: el empaque {PK} no se reabre.» mean? (HTTP 422)**
+The freight, check or return fee of the shipment are already on a live invoice: it is not reopened. Use the internal addition order.
+
+**What does «La factura del cliente del envío {ORD} ya se procesó: el empaque {PK} no se reabre.» mean? (HTTP 422)**
+The client's invoice of that shipment was already processed. It is not reopened.
+
+**What does «El empaque {PK} tiene productos ya facturados ({FAC-…}): no se reabre. Para añadir, use una orden interna de adición.» mean? (HTTP 422)**
+The goods of that pack were already invoiced (with any billing basis). It is not reopened; what you want to add leaves in its own shipment with an internal addition order.
+
+**What does «La recolección {PK} no es de la misma orden ni de una adición de ella: no se une a ese envío.» mean? (HTTP 422)**
+«Join the shipment» only works inside the order's family (itself, its original and the original's additions). With unrelated documents «documents are not added afterwards» still applies.
+
+**What does «La recolección {PK} no está recolectada (está «{estatus}»).» mean? (HTTP 422)**
+Only a pick in «Collected» status is joined.
+
+**What does «La recolección {PK} ya está en la maestra {PK-M}.» mean? (HTTP 422)**
+It is already grouped with another. No need to join it.
+
+**What does «Escoja con qué recolección de {OV} sale (hay varias).» mean? (HTTP 400)**
+There are several possible destinations: choose one in «Join with» (`targetBatchPublicId`).
+
+**What does «El envío de {PK} ya salió («{estatus}»): la recolección sale en su propio envío.» mean? (HTTP 422)**
+The destination already left; nothing can be added to it. Pack this pick separately.
+
+**What does «{PK} ya está empacada: marque «Reabrir el empaque» (permiso warehouse.reopen-pack) para unir esta recolección a su envío.» mean? (HTTP 422)**
+The destination is already packed. Check «Reopen the pack of …» and type the reason (needs `warehouse.reopen-pack`): the new master takes the same EMP number.
+
+**What does «No hay otra recolección de {OV} con la que pueda salir: empaque esta por separado.» mean? (HTTP 422)**
+There is no other pick of the family to join it with. Pack it alone.
+
+**What does «Escoja otra recolección: {PK} no se une consigo misma.» mean? (HTTP 400)**
+The chosen destination is the same pick.
+
+**What does «La recolección {PK} se mandó a la compañía enlazada: no se une a otro envío.» mean? (HTTP 422)**
+What a linked company counts has already left: it is not joined.
+
+**What does «Los documentos deben ser del mismo cliente: «…» y «…» son de clientes distintos. Haga recolecciones separadas.» mean? (HTTP 400)**
+When joining, both picks must be of the same client. Pack them separately.
+
+**What does «Los documentos deben ser del mismo almacén: «…» y «…» son de almacenes distintos.» mean? (HTTP 400)**
+When joining, both picks must be of the same warehouse.
+
+### Additions and billing
+
+**What does «Indique los productos de la adición.» mean? (HTTP 400)**
+The internal addition order has no lines. Add at least one product.
+
+**What does «Solo se le puede añadir a una orden solicitada, parcial o despachada.» mean? (HTTP 422)**
+The parent order is a draft, is cancelled or was completed in another way. Additions are only made to a requested, partial or shipped order.
+
+**What does «La orden tiene adiciones abiertas ({OV-…}): cancélelas o despáchelas antes de cancelar esta.» mean? (HTTP 422)**
+An order with additions that are neither cancelled nor shipped is not cancelled. Cancel or ship those additions first. A modification pending approval is withdrawn on its own when cancelling.
+
+**What does «La base de facturación debe ser ON_DISPATCH (al despachar), ON_DELIVERY (al entregar) u ON_REQUEST (cuando el usuario lo decida, ya solicitada la orden).» mean? (HTTP 400)**
+By API, `salesBillingTrigger` of `PUT /billing/settings` is not one of the three bases. See chapter 19 and chapter 57 (section 11).
+
+### Frequent cases
+
+**Why can't I modify the order?**
+Read the message. «Already invoiced» or «already left complete»: it can only be added to with «Internal addition order». A draft is edited from its screen. If you do not see the «Modify order» button, you lack `sales.modify` (the Sales role no longer has it).
+
+**I lowered a quantity and the warehouse says a pick was undone.**
+It is the minimal reversal: only the necessary pick (the most recent) was undone. The inventory went back to its bin and the line was reserved again; the warehouse must dispatch again. The «Sales order changed» notice and the «Modifications» panel say so.
+
+**The modification stayed «pending approval» and the order did not change.**
+The company or the client requires a second approval. Another person with `sales.modify.approve` approves it from the «To approve» tab. Meanwhile nothing was applied and the warehouse can keep working.
+
+**I set a manual IVU and the other lines keep their exemption. Is that a bug?**
+No. Manual IVU only affects that line; the client's exemption keeps applying to the others. With «Remove manual IVU» the line returns to its normal calculation, with the exemption if the document is still valid.
+
+**What is the difference between modifying and the internal addition order?**
+Modifying changes the order that already exists. The addition creates a new order, linked to the original, for what can no longer be changed; it leaves in the same shipment (with «Join the shipment of OV-…») and is invoiced apart with «complements FAC-…» if the original was already invoiced.
+
+**The addition left in a separate shipment.**
+Use «Join the shipment of OV-…» on its pick. If the original was packed, its pack has to be reopened (`warehouse.reopen-pack`). A pack with already invoiced products is not reopened: the addition leaves in its own shipment.
+
+**It does not let me approve my own modification.**
+It is on purpose: the second approval is given by another person. Whoever registered it can withdraw it.
+
+**I do not see the «To approve» tab.**
+It needs `sales.modify.approve` and the sales orders module turned on.
+
+**The client requires evidence and I do not have it.**
+If the setting is «Required» (client or company), without a file the modification is not registered. Change the client's setting to «Not required» or «Same as the company» if appropriate (`clients.update`).
+
+**I want to invoice the order when I decide and not on dispatch.**
+Change the company's billing basis to `ON_REQUEST` (`PUT /api/v1/billing/settings`, field `salesBillingTrigger`; the Billing screen currently offers the other two). With it, what was ordered and not invoiced is invoiced without waiting for the dispatch.
+
+**I cannot type the price of a product with a list price.**
+Typing a price different from today's requires `sales.price`. Whoever has it can change the price of any line, in the guided order and in the modification.
+
+**Where do I see who authorized a change?**
+In the order's «Modifications» panel (or `GET /api/v1/sales-orders/{id}/changes/{changeId}`): who registered it, who authorized at the client, title, channel, date, reason, evidence, the before and after and what happened in the warehouse.

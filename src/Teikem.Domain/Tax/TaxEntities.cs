@@ -44,7 +44,10 @@ public static class TaxReasons
     public const string NotTaxableCharge = "NOT_TAXABLE_CHARGE";
     /// <summary>Lote 248 — el producto está dentro de un período de exención por temporada (TaxExemptionPeriod): la línea sale sin impuesto.</summary>
     public const string ExemptProductPeriod = "EXEMPT_PRODUCT_PERIOD";
-    /// <summary>Lote 248 — contrato con el Lote E (IVU manual por línea): aquí solo se declara, no se usa.</summary>
+    /// <summary>
+    /// Lote 248 (declarado) / Lote 249 (dueño) — IVU MANUAL de una línea de venta: lo escribe SOLO una modificación (sales.tax + motivo) y se limpia al quitar el IVU
+    /// manual (vuelve el cálculo normal, con la exención del cliente si aplica). Solo afecta esa línea. Ver SalesChangeRules.ManualTax.
+    /// </summary>
     public const string ManualOverride = "MANUAL_OVERRIDE";
 }
 

@@ -12,6 +12,7 @@ import { useT } from '../../kernel/i18n'
 import { Field, Form, NumberInput, Panel, Select, TextInput, Toggle, toast } from '../../kernel/ui'
 import { IconIdCard } from '../../kernel/ui/screenIcons'
 import { clientKeys, useUpdateClientProfile } from './api'
+import { ClientSalesChangeSettings } from './ClientSalesChangeSettings'
 import {
   buildProfileRequest,
   LEGAL_NAME_MAX,
@@ -156,6 +157,8 @@ export function ClientProfilePanel({ client }: { client: ClientDetail }) {
           </div>
         </Can>
       </Form>
+      {/* Lote 249: segunda aprobación de las modificaciones de órdenes de ESTE cliente (se guarda aparte del perfil) */}
+      {sales && <ClientSalesChangeSettings clientPublicId={publicId} canEdit={canEdit} />}
     </Panel>
   )
 }

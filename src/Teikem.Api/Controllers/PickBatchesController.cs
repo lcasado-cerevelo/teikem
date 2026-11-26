@@ -79,6 +79,13 @@ public sealed class PickBatchesController(PickBatchService batches, PickBatchDoc
         return NoContent();
     }
 
+    /// <summary>
+    /// Lote 249 — reabre el empaque de la maestra (warehouse.reopen-pack; motivo obligatorio): anula su envío mientras siga en la etapa inicial y sin nada facturado, y
+    /// todas sus recolecciones vuelven a COLLECTED. Sin motivo → 400; no empacada, envío avanzado o facturado → 422; RowVersion viejo → 409.
+    /// </summary>
+    [HttpPost("groups/{publicId:guid}/reopen-pack"), RequirePermission(PermissionCatalog.WarehouseReopenPack)]
+    public Task<PickGroupDto> ReopenGroupPack(Guid publicId, [FromBody] PickBatchReopenRequest req, CancellationToken ct) => groups.ReopenPackAsync(publicId, req, ct);
+
     /// <summary>Ficha: líneas (posición, lote, serie, costo congelado, movimiento y reversa), orden del empaque y acciones posibles.</summary>
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<PickBatchDto> Get(Guid publicId, CancellationToken ct) => batches.GetAsync(publicId, ct);
@@ -110,6 +117,25 @@ public sealed class PickBatchesController(PickBatchService batches, PickBatchDoc
     [HttpPost("{publicId:guid}/pack"), RequirePermission(PermissionCatalog.WarehousePick)]
     public Task<PickBatchPackResultDto> Pack(Guid publicId, [FromBody] PickBatchPackRequest req, CancellationToken ct)
         => batches.PackAsync(publicId, req, ct);
+
+    /// <summary>
+    /// Lote 249 — reabre el empaque de una recolección suelta (warehouse.reopen-pack; motivo obligatorio): anula su envío mientras siga en la etapa inicial y sin
+    /// nada facturado (flete, cotejo, devolución ni productos) y la recolección vuelve a COLLECTED; al volver a empacarla se reutiliza su número. La de una maestra
+    /// se reabre desde la maestra (422). Sin motivo → 400; no empacada, envío avanzado o facturado → 422; RowVersion viejo → 409.
+    /// </summary>
+    [HttpPost("{publicId:guid}/reopen-pack"), RequirePermission(PermissionCatalog.WarehouseReopenPack)]
+    public Task<PickBatchDto> ReopenPack(Guid publicId, [FromBody] PickBatchReopenRequest req, CancellationToken ct)
+        => batches.ReopenPackAsync(publicId, req, ct);
+
+    /// <summary>
+    /// Lote 249 — une una recolección COLLECTED de una orden de venta al envío de su familia (la misma orden, su raíz o las adiciones de la raíz), del mismo cliente y
+    /// almacén: se suma a la maestra sin empacar del destino o nace una maestra con las dos. Si el destino ya está empacado exige reopenPack (+ warehouse.reopen-pack,
+    /// lo revisa el servicio) y motivo, y la maestra toma el número del envío reabierto. Otra familia, envío que ya salió o no recolectada → 422; varios destinos
+    /// sin escoger → 400. Para documentos sin relación sigue valiendo «no se suman documentos después».
+    /// </summary>
+    [HttpPost("{publicId:guid}/join-order-shipment"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public Task<PickGroupDto> JoinOrderShipment(Guid publicId, [FromBody] PickBatchJoinOrderRequest req, CancellationToken ct)
+        => groups.JoinOrderShipmentAsync(publicId, req, ct);
 
     /// <summary>
     /// Elimina (204): restaura el inventario a la posición original (ADJUSTMENT PICK_BATCH_REVERSAL) y pasa a CANCELLED. Si

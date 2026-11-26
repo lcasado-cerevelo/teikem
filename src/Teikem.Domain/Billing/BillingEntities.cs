@@ -39,12 +39,16 @@ public static class BillingRunStatuses
     public const string Exported = "EXPORTED";
 }
 
-/// <summary>Base de facturación del producto vendido (ajuste de la compañía): al despachar (recoger) o al entregar.</summary>
+/// <summary>
+/// Base de facturación del producto vendido (ajuste de la compañía): al despachar (recoger), al entregar o, desde el Lote 249 (respuesta de Luis 2026-11-26), ON_REQUEST:
+/// cuando el usuario lo decida, ya solicitada la orden (lo facturable es lo pedido y aún no facturado, sin esperar el despacho).
+/// </summary>
 public static class SalesBillingTriggers
 {
     public const string OnDispatch = "ON_DISPATCH";
     public const string OnDelivery = "ON_DELIVERY";
-    public static readonly string[] All = { OnDispatch, OnDelivery };
+    public const string OnRequest = "ON_REQUEST";
+    public static readonly string[] All = { OnDispatch, OnDelivery, OnRequest };
 }
 
 /// <summary>

@@ -511,6 +511,7 @@ function SettingsTab() {
               <select id="bs-trigger" value={shownTrigger} disabled={!canEdit} onChange={(e) => setTrigger(e.target.value)}>
                 <option value="ON_DISPATCH">{t('billing.settings.onDispatch')}</option>
                 <option value="ON_DELIVERY">{t('billing.settings.onDelivery')}</option>
+                <option value="ON_REQUEST">{t('billing.settings.onRequest')}</option>
               </select>
               <p className="help">{t('billing.settings.triggerHelp')}</p>
             </div>

@@ -73,7 +73,7 @@ const SESSION = {
   setLang: () => {},
   logout: async () => {},
   switchTenant: async () => {},
-  permissions: new Set(['sales.view', 'sales.create', 'sales.cancel', 'sales.backorder', 'warehouse.pick', 'orders.create', 'orders.credit_override', 'clients.read', 'inventory.view', 'warehouse.manage']),
+  permissions: new Set(['sales.view', 'sales.create', 'sales.cancel', 'sales.modify', 'sales.backorder', 'warehouse.pick', 'orders.create', 'orders.credit_override', 'clients.read', 'inventory.view', 'warehouse.manage']),
   modules: new Set(['SALES_ORDERS', 'CATALOG', 'WMS_LOTSERIAL']),
   reloadMe: async () => {},
 } as unknown as Session
@@ -246,21 +246,18 @@ describe('SalesOrdersScreen', () => {
     await waitFor(() => expect(sent('POST', `/api/v1/sales-orders/${DRAFT}/request`)[0]?.body).toEqual({ allowBackorder: false, overrideCredit: true }))
   })
 
-  it('una orden solicitada muestra lo reservado y lo pendiente, deja cambiar la cantidad de una línea y cancelar', async () => {
+  it('una orden solicitada muestra lo reservado y lo pendiente, deja modificarla (con autorización) y cancelar', async () => {
     const user = userEvent.setup()
     wrap()
     await user.click(await screen.findByText('OV-00002'))
     const dialog = await screen.findByRole('dialog', { name: /Orden OV-00002/ })
     expect(within(dialog).getByText('Entregar el viernes')).toBeInTheDocument()
     const row = within(dialog).getByText('MED').closest('tr, li') as HTMLElement
-    await user.click(within(row).getByRole('button', { name: 'Cambiar cantidad' }))
-    const qty = await screen.findByRole('dialog', { name: /Cambiar la cantidad de MED/ })
-    const input = within(qty).getByLabelText('Cantidad pedida')
-    await user.clear(input)
-    await user.type(input, '12')
-    await user.click(within(qty).getByRole('switch'))
-    await user.click(within(qty).getByRole('button', { name: 'Guardar cantidad' }))
-    await waitFor(() => expect(sent('PATCH', `/api/v1/sales-orders/${REQ}/lines/20`)[0]?.body).toEqual({ quantity: 12, allowBackorder: true }))
+    // Lote 249: cambiar la cantidad ya no es un diálogo suelto: abre «Modificar la orden» (con quién autorizó, vista previa y registro)
+    await user.click(within(row).getByRole('button', { name: 'Modificar' }))
+    const modify = await screen.findByRole('dialog', { name: /Modificar la orden OV-00002/ })
+    await user.click(within(modify).getAllByRole('button', { name: 'Cerrar' }).at(-1)!)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /Modificar la orden OV-00002/ })).not.toBeInTheDocument())
 
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar orden' }))
     const confirm = await screen.findByRole('dialog', { name: /Cancelar la orden OV-00002/ })

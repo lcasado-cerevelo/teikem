@@ -302,7 +302,8 @@ public sealed class ClientChainAnalysisTests
         await w.F.Db.SaveChangesAsync();
         w.F.Db.ChangeTracker.Clear();
         var orders = new SalesOrderDataSource(w.F.Db, w.F.Lookups, w.F.Tenant, Clock);
-        Assert.Equal(new[] { "ChainId", "ChainName" }, orders.Fields.TakeLast(2).Select(x => x.Key).ToArray());
+        Assert.Contains(orders.Fields, x => x.Key == "ChainId");
+        Assert.Contains(orders.Fields, x => x.Key == "ChainName");
         var orderRows = (await orders.LoadAsync(new DataQuery(), default)).ToDictionary(r => (int)r["Id"]!);
         Assert.Equal(((int?)w.Walgreens.ClientChainId, "Walgreens"), ((int?)orderRows[order.SalesOrderId]["ChainId"], (string?)orderRows[order.SalesOrderId]["ChainName"]));
         Assert.Equal(((object?)null, (object?)null), (orderRows[noChainOrder.SalesOrderId]["ChainId"], orderRows[noChainOrder.SalesOrderId]["ChainName"]));

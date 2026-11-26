@@ -26,7 +26,7 @@ contra SQL Server). Lo facturable de una línea es `despachado − devuelto − 
 despachado entre la fecha inicial y la final. El kit se factura **en kits**.
 
 **Base de facturación (ajuste de la compañía).** `ON_DISPATCH` (por omisión, Advance Logistics): se factura al despachar. `ON_DELIVERY` (Island Wide): se factura lo que no lleva entrega (retiro) o cuya
-orden de transporte ya está **Entregada**. Se cambia en `PUT /billing/settings` junto con los **días de vencimiento** (30 por omisión).
+orden de transporte ya está **Entregada**. `ON_REQUEST` (Lote 249): se factura **cuando el usuario lo decida**, ya solicitada la orden: lo facturable es lo pedido, menos lo devuelto y lo ya facturado, sin esperar el despacho (detalle en el [capítulo 57](57-modificaciones-ordenes-venta.md), sección 11). Se cambia en `PUT /billing/settings` junto con los **días de vencimiento** (30 por omisión).
 
 ## 2b. El flete de las órdenes de transporte (Lote 74)
 
@@ -209,7 +209,7 @@ Lote 224 (2026-11-07), pedido de vendedores, parte P6. Una venta **en consignaci
 | Ajuste al mismo monto | `El monto unitario es el mismo; no hay nada que ajustar.` | 422 |
 | Anular una factura que no está emitida ni vencida | `Solo se anula una factura emitida o vencida.` | 422 |
 | Anular una factura con pagos | `La factura tiene pagos registrados: no se puede anular.` | 422 |
-| Base de facturación inválida | `La base de facturación debe ser ON_DISPATCH (al despachar) u ON_DELIVERY (al entregar).` | 400 |
+| Base de facturación inválida | `La base de facturación debe ser ON_DISPATCH (al despachar), ON_DELIVERY (al entregar) u ON_REQUEST (cuando el usuario lo decida, ya solicitada la orden).` | 400 |
 | Días de vencimiento fuera de 0–365 | `Los días de vencimiento deben estar entre 0 y 365.` | 400 |
 | Pago sin monto / monto inválido | `Indique el monto del pago.` / `El monto del pago debe ser mayor que cero y tener hasta 2 decimales.` | 400 |
 | Pago sin método / método inexistente | `Indique el método de pago.` / `El método de pago no existe.` | 400 |

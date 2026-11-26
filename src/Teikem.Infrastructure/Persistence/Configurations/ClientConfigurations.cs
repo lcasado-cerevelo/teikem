@@ -28,6 +28,8 @@ public sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         b.Property(c => c.ShippingMode).HasColumnType("varchar(10)");
         b.Property(c => c.ShippingCharge).HasColumnType("decimal(18,2)");
         b.Property(c => c.ShippingFreeFrom).HasColumnType("decimal(18,2)");
+        b.Property(c => c.SalesChangeApprovalMode).HasMaxLength(12);   // Lote 249 (NULL = hereda de la compañía; CHECK CK_Client_SalesChangeApproval en el SQL)
+        b.Property(c => c.SalesChangeApprovalAmount).HasColumnType("decimal(18,2)");
         b.Property(c => c.RowVersion).IsRowVersion();
         b.HasIndex(c => new { c.TenantId, c.Code }).IsUnique().HasDatabaseName("UQ_Client_Tenant_Code");
         b.HasIndex(c => c.PublicId);

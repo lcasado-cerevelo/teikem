@@ -31,7 +31,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
     /// Lote 230: Substituted = pieza real → pieza original del kit que sustituye. Lote 247: Resolved = el precio que dio la resolución para el cliente (y su cadena
     /// ChainId) al escribir la línea; ApplyLines copia su origen en la línea (null = no se escribe el origen).
     /// </remarks>
-    private sealed record PlannedLine(Product Product, decimal Quantity, decimal UnitPrice, int? LotId, IReadOnlyList<(int ProductId, decimal Quantity)>? Components = null, bool CustomComponents = false,
+    internal sealed record PlannedLine(Product Product, decimal Quantity, decimal UnitPrice, int? LotId, IReadOnlyList<(int ProductId, decimal Quantity)>? Components = null, bool CustomComponents = false,
         IReadOnlyDictionary<int, int>? Substituted = null, ResolvedPrice? Resolved = null, int? ChainId = null);
 
     // ---------------------------------------------------------------- consulta
@@ -128,6 +128,22 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
 
     public async Task<SalesOrderDto> CreateAsync(SalesOrderRequest req, CancellationToken ct)
     {
+        var (id, planned, clientId, today) = await CreateCoreAsync(req, null, ct);
+        return await WithLinePricesAsync(await GetAsync(id, ct), planned, clientId, today, ct);   // Lote 229: de dónde salió cada precio y los avisos
+    }
+
+    /// <summary>
+    /// Lote 249 — opciones internas del alta que el API no expone: ParentSalesOrderId = la orden de la que esta es la ADICIÓN (la pone solo
+    /// <see cref="CreateAdditionCoreAsync"/>; POST /sales-orders no la acepta).
+    /// </summary>
+    internal sealed record SalesOrderCreateOptions(int? ParentSalesOrderId = null);
+
+    /// <summary>
+    /// El alta de siempre (borrador). Lote 249: con <paramref name="options"/> la orden nace con ParentSalesOrderId. Dentro de una transacción ajena (la de la
+    /// adición) el contador OV ya lo aseguró quien la abrió: aquí no se vuelve a asegurar.
+    /// </summary>
+    internal async Task<(Guid Id, List<PlannedLine> Planned, int ClientId, DateOnly Today)> CreateCoreAsync(SalesOrderRequest req, SalesOrderCreateOptions? options, CancellationToken ct)
+    {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         var tenantId = T.RequireTenantId();
         var client = await ResolveClientAsync(req.ClientPublicId, ct);
@@ -145,7 +161,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         if (req.SellerUserId is int chosenSeller && req.ClearSeller != true) await ValidateSellerChoiceAsync(client.ClientId, chosenSeller, ct);
         var sellerUserId = req.ClearSeller == true ? null : req.SellerUserId;
 
-        await numbers.EnsureAsync(SalesCodes.NumberKind, null, ct);
+        if (db.Database.CurrentTransaction is null) await numbers.EnsureAsync(SalesCodes.NumberKind, null, ct);
         var id = await db.RunInTransactionAsync(async ct2 =>
         {
             var initial = await statuses.GetInitialAsync(SalesCodes.StatusDomain, ct2);
@@ -155,6 +171,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
                 PublicId = Guid.NewGuid(), TenantId = tenantId, Number = NumberFormat.Resolve(SalesCodes.NumberPattern, seq), WarehouseId = warehouse.WarehouseId,
                 ClientId = client.ClientId, ConsigneeId = consigneeId, RequestedBy = tenant.UserId, RequestedDate = today, RequiredDate = req.RequiredDate, Notes = notes,
                 StatusCodeId = initial.StatusCodeId, SellerUserId = sellerUserId,
+                ParentSalesOrderId = options?.ParentSalesOrderId,   // Lote 249: la adición cuelga de su orden raíz
             };
             ApplyLines(order, priced);
             ApplyTerms(order, terms);   // Lote 222
@@ -166,7 +183,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             await db.SaveGuardedAsync(SalesRules.NumberTaken, ct2);
             return order.PublicId;
         }, ct);
-        return await WithLinePricesAsync(await GetAsync(id, ct), planned, client.ClientId, today, ct);   // Lote 229: de dónde salió cada precio y los avisos
+        return (id, planned, client.ClientId, today);
     }
 
     // ---------------------------------------------------------------- edición (solo borrador)
@@ -442,7 +459,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         return map.Count == 0 ? null : map;
     }
 
-    private sealed record PricedLine(PlannedLine Line, decimal Subtotal, decimal TaxAmount, decimal TaxRatePct, int? TaxRateId, bool IsExempt);
+    /// <remarks>Lote 249: Reason = la razón del impuesto que dio el cálculo (TaxReasons; null sin el módulo TAX): se copia en SalesOrderLine.TaxReason.</remarks>
+    private sealed record PricedLine(PlannedLine Line, decimal Subtotal, decimal TaxAmount, decimal TaxRatePct, int? TaxRateId, bool IsExempt, string? Reason = null);
 
     /// <summary>Calcula el impuesto de cada línea (si el módulo TAX está encendido) y devuelve las líneas con su copia.</summary>
     private async Task<List<PricedLine>> PriceAsync(IReadOnlyList<PlannedLine> lines, int clientId, DateOnly date, CancellationToken ct)
@@ -456,7 +474,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         return lines.Select((l, i) =>
         {
             var r = calc.Lines[i];
-            return new PricedLine(l, r.Net, r.TaxAmount, r.TaxRatePct, r.TaxRateId, r.IsTaxExempt);
+            return new PricedLine(l, r.Net, r.TaxAmount, r.TaxRatePct, r.TaxRateId, r.IsTaxExempt, r.Reason);
         }).ToList();
     }
 
@@ -468,7 +486,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             var line = new SalesOrderLine
             {
                 TenantId = order.TenantId, LineNo = ++no, ProductId = p.Line.Product.ProductId, LotId = p.Line.LotId, QtyOrdered = p.Line.Quantity, UnitPrice = p.Line.UnitPrice,
-                TaxRateId = p.TaxRateId, TaxRatePct = p.TaxRatePct, TaxAmount = p.TaxAmount, IsTaxExempt = p.IsExempt,
+                TaxRateId = p.TaxRateId, TaxRatePct = p.TaxRatePct, TaxAmount = p.TaxAmount, IsTaxExempt = p.IsExempt, TaxReason = p.Reason,
             };
             // Lote 247: la copia del origen del precio (UnitPrice sigue siendo el que dio el usuario; distinto de ResolvedUnitPrice = precio manual con sales.price)
             if (p.Line.Resolved is { } resolved) SetPriceOrigin(line, PriceOriginRules.Copy(resolved, p.Line.ChainId));
@@ -498,7 +516,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
     {
         var ids = orders.Select(o => o.SalesOrderId).ToList();
         var lineStats = await db.Set<SalesOrderLine>().Where(l => ids.Contains(l.SalesOrderId)).GroupBy(l => l.SalesOrderId)
-            .Select(g => new { Id = g.Key, Count = g.Count(), Back = g.Any(l => l.QtyBackordered > 0 && !l.IsClosed) }).ToDictionaryAsync(x => x.Id, ct);
+            .Select(g => new { Id = g.Key, Count = g.Count(l => !(l.QtyOrdered == 0 && l.IsClosed)), Back = g.Any(l => l.QtyBackordered > 0 && !l.IsClosed) }).ToDictionaryAsync(x => x.Id, ct);   // Lote 249: sin las quitadas
+        var pendingIds = (await db.Set<SalesOrderChange>().AsNoTracking().Where(c => ids.Contains(c.SalesOrderId) && c.IsPending).Select(c => c.SalesOrderId).ToListAsync(ct)).ToHashSet();
         var clients = await db.Set<Client>().Where(c => orders.Select(o => o.ClientId).Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, ct);
         var warehouses = await db.Set<Warehouse>().Where(w => orders.Select(o => o.WarehouseId).Contains(w.WarehouseId)).ToDictionaryAsync(w => w.WarehouseId, ct);
         var users = await UserNamesAsync(orders.Where(o => o.RequestedBy is not null).Select(o => o.RequestedBy!.Value), ct);
@@ -519,7 +538,8 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
                 o.AssignedToUserId, o.AssignedToUserId is int au ? assignees.GetValueOrDefault(au) : null,
                 o.IsUrgent, o.AwaitingClientApproval, o.IsConsignment, o.PaymentChanged, ShippingRules.EffectiveMode(o.DeliveryMode, o.ConsigneeId is not null), o.ShippingCharge,   // Lote 222
                 o.SalesRouteId is int sr ? routes.GetValueOrDefault(sr) : null, o.SellerUserId is int su ? sellers.GetValueOrDefault(su) : null,   // Lote 244
-                chain?.Name, chain?.PublicId);   // Lote 245
+                chain?.Name, chain?.PublicId,   // Lote 245
+                o.ParentSalesOrderId is not null, pendingIds.Contains(o.SalesOrderId));   // Lote 249
         }).ToList();
     }
 
@@ -541,6 +561,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
         var draftIds = orders.Where(o => map[o.StatusCodeId].Code == SalesOrderStatuses.Draft).Select(o => o.SalesOrderId).ToHashSet();
         var sellerViews = await SellerViewsAsync(orders, draftIds, ct);   // Lote 244: la copia o, en borrador, la elección / la propuesta
         var origins = await PriceOriginNamesAsync(orders.SelectMany(o => o.Lines).ToList(), ct);   // Lote 247: nombres ACTUALES de lista, oferta y cadena
+        var family = await ChangeFamilyOfAsync(orders, map, ct);   // Lote 249: madre, adiciones y modificaciones
         // Lote 69: kits — la foto de componentes de cada línea y lo reservado de cada componente
         var allLineIds = orders.SelectMany(o => o.Lines.Select(l => l.SalesOrderLineId)).ToList();
         var snapshots = (await db.Set<SalesOrderLineComponent>().AsNoTracking().Where(c => allLineIds.Contains(c.SalesOrderLineId)).ToListAsync(ct))
@@ -562,6 +583,7 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
             var w = warehouses[o.WarehouseId];
             var cons = o.ConsigneeId is int ci ? consignees.GetValueOrDefault(ci) : null;
             var sv = sellerViews.GetValueOrDefault(o.SalesOrderId);
+            var fam = family.GetValueOrDefault(o.SalesOrderId);
             var lines = o.Lines.OrderBy(l => l.LineNo).Select(l =>
             {
                 var p = products[l.ProductId];
@@ -578,7 +600,10 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
                 var ch = l.PriceChainId is int chid ? origins.Chains.GetValueOrDefault(chid) : null;
                 return new SalesOrderLineDto(l.SalesOrderLineId, l.LineNo, p.PublicId, p.Sku, p.Name, l.LotId, l.QtyOrdered, l.QtyReserved, l.QtyBackordered, l.QtyShipped, l.IsClosed,
                     l.UnitPrice, SalesRules.LineAmount(l.QtyOrdered, l.UnitPrice), l.TaxRatePct, l.TaxAmount, l.IsTaxExempt, comps is { Count: > 0 }, comps,
-                    l.PriceSource, pl?.PublicId, pl?.Name, of?.PublicId, of?.Name, ch?.PublicId, ch?.Name, l.ResolvedUnitPrice, IsManualPrice(l));   // Lote 247
+                    l.PriceSource, pl?.PublicId, pl?.Name, of?.PublicId, of?.Name, ch?.PublicId, ch?.Name, l.ResolvedUnitPrice, IsManualPrice(l),   // Lote 247
+                    l.QtyOrdered == 0m && l.IsClosed, l.TaxReason, l.TaxOverrideNote,   // Lote 249
+                    l.TaxReason == Teikem.Domain.Tax.TaxReasons.ManualOverride ? l.TaxComputedRatePct : null,
+                    l.TaxReason == Teikem.Domain.Tax.TaxReasons.ManualOverride ? l.TaxComputedAmount : null);
             }).ToList();
             return new SalesOrderDto(o.PublicId, o.Number, s.Code, s.Label, s.Color, c.PublicId, c.Name, cons?.PublicId, cons?.Name, w.PublicId, w.Name, o.RequestedDate, o.RequiredDate,
                 o.Notes, o.Subtotal, o.TaxAmount, TotalOf(o), o.Lines.Any(l => SalesRules.IsBackordered(l.QtyBackordered, l.IsClosed)),
@@ -588,8 +613,42 @@ public sealed partial class SalesOrderService(TeikemDbContext db, ITenantContext
                 // Lote 244: ruta de venta y vendedor
                 SalesRouteId = sv?.RouteId, SalesRouteName = sv?.RouteName, SellerUserId = sv?.SellerUserId, SellerName = sv?.SellerName,
                 SellerProposed = sv?.Proposed ?? false, SalesCopyAtUtc = o.SalesCopyAtUtc,
+                // Lote 249: la familia de la orden (madre y adiciones) y sus modificaciones
+                ParentPublicId = fam?.ParentPublicId, ParentNumber = fam?.ParentNumber, Additions = fam?.Additions ?? new List<SalesOrderAdditionRefDto>(),
+                PendingChangePublicId = fam?.PendingPublicId, PendingChangeNo = fam?.PendingNo, ChangeCount = fam?.ChangeCount ?? 0,
+                RowVersion = o.RowVersion is { Length: > 0 } rv ? Convert.ToBase64String(rv) : null,
             };
         }).ToList();
+    }
+
+    private sealed record ChangeFamilyView(Guid? ParentPublicId, string? ParentNumber, List<SalesOrderAdditionRefDto> Additions, Guid? PendingPublicId, int? PendingNo, int ChangeCount);
+
+    /// <summary>Lote 249 — para el detalle: la madre (si es adición), las adiciones (con estatus y total) y las modificaciones (cuántas y la pendiente), en tres consultas.</summary>
+    private async Task<Dictionary<int, ChangeFamilyView>> ChangeFamilyOfAsync(IReadOnlyList<SalesOrder> orders, Dictionary<int, StatusInfo> map, CancellationToken ct)
+    {
+        var ids = orders.Select(o => o.SalesOrderId).ToList();
+        var parentIds = orders.Where(o => o.ParentSalesOrderId is not null).Select(o => o.ParentSalesOrderId!.Value).Distinct().ToList();
+        var parents = parentIds.Count == 0 ? new Dictionary<int, (Guid PublicId, string Number)>()
+            : (await db.Set<SalesOrder>().AsNoTracking().Where(o => parentIds.Contains(o.SalesOrderId)).Select(o => new { o.SalesOrderId, o.PublicId, o.Number }).ToListAsync(ct))
+                .ToDictionary(o => o.SalesOrderId, o => (o.PublicId, o.Number));
+        var children = await db.Set<SalesOrder>().AsNoTracking().Where(o => o.ParentSalesOrderId != null && ids.Contains(o.ParentSalesOrderId.Value))
+            .OrderBy(o => o.SalesOrderId).ToListAsync(ct);
+        var changes = await db.Set<SalesOrderChange>().AsNoTracking().Where(c => ids.Contains(c.SalesOrderId))
+            .Select(c => new { c.SalesOrderId, c.PublicId, c.ChangeNo, c.IsPending }).ToListAsync(ct);
+        var result = new Dictionary<int, ChangeFamilyView>();
+        foreach (var o in orders)
+        {
+            var parent = o.ParentSalesOrderId is int pid && parents.TryGetValue(pid, out var pr) ? pr : ((Guid, string)?)null;
+            var adds = children.Where(c => c.ParentSalesOrderId == o.SalesOrderId).Select(c =>
+            {
+                var st = map.GetValueOrDefault(c.StatusCodeId);
+                return new SalesOrderAdditionRefDto(c.PublicId, c.Number, st?.Code ?? string.Empty, st?.Label ?? string.Empty, TotalOf(c));
+            }).ToList();
+            var mine = changes.Where(c => c.SalesOrderId == o.SalesOrderId).ToList();
+            var pending = mine.FirstOrDefault(c => c.IsPending);
+            result[o.SalesOrderId] = new ChangeFamilyView(parent?.Item1, parent?.Item2, adds, pending?.PublicId, pending?.ChangeNo, mine.Count);
+        }
+        return result;
     }
 
     /// <summary>Lote 247: ¿el precio de la línea se escribió a mano? Solo con origen guardado (las líneas de antes del lote no lo tienen) y distinto del resuelto.</summary>

@@ -94,6 +94,12 @@ public class SalesOrder : ITenantScoped, IHasStatus, IAuditStamped
     public int? SellerUserId { get; set; }
     public DateTime? SalesCopyAtUtc { get; set; }
 
+    /// <summary>
+    /// Lote 249 (Lote E): la orden de la que esta es la ADICIÓN (orden complementaria que nace de una modificación «agregar a una orden que ya salió»).
+    /// NULL = orden normal. La FK compuesta (ParentSalesOrderId, TenantId) y CK_SalesOrder_ParentNotSelf viven en SQL.
+    /// </summary>
+    public int? ParentSalesOrderId { get; set; }
+
     public List<SalesOrderLine> Lines { get; set; } = new();
 }
 
@@ -132,6 +138,16 @@ public class SalesOrderLine : ITenantScoped
     public int? OfferId { get; set; }
     public int? PriceChainId { get; set; }
     public decimal? ResolvedUnitPrice { get; set; }
+
+    // --- Lote 249 (Lote E): IVU MANUAL de la línea (exige sales.tax y motivo). TaxReason = la razón del impuesto (TaxReasons); con MANUAL_OVERRIDE la línea
+    // conserva el % y el importe puestos a mano y guarda lo que daba el cálculo (TaxComputedRatePct / TaxComputedAmount), la nota, quién y cuándo
+    // (CK_SalesOrderLine_TaxOverride en SQL). Solo afecta esa línea: la exención del cliente sigue intacta para las demás. Las líneas de antes quedan en NULL.
+    public string? TaxReason { get; set; }
+    public string? TaxOverrideNote { get; set; }
+    public decimal? TaxComputedRatePct { get; set; }
+    public decimal? TaxComputedAmount { get; set; }
+    public int? TaxOverrideBy { get; set; }
+    public DateTime? TaxOverrideAtUtc { get; set; }
 
     /// <summary>Lote 69: si la línea es de un kit, la FOTO de sus componentes al guardar el borrador (cantidad por kit). Vacío = producto normal.</summary>
     public List<SalesOrderLineComponent> Components { get; set; } = new();

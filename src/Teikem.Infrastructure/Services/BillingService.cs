@@ -26,6 +26,8 @@ namespace Teikem.Infrastructure.Services;
 /// - Nunca se factura dos veces: al GENERAR se reclama lo facturado (SalesOrderLine.QtyInvoiced) bajo bloqueo de la línea; cancelar la corrida o anular la factura lo libera exactamente.
 /// - El cálculo se congela al generar; el ajuste manual de un monto cambia la línea y deja el calculado y el motivo. Aprobar y anular exigen AAL2 (en el controlador).
 /// - Estatus por StatusService: corrida GENERATED → REVIEWED → APPROVED → EXPORTED (o CANCELLED); factura DRAFT → ISSUED → PAID (o VOID).
+/// - Lote 249: base ON_REQUEST (lo pedido y aún no facturado, sin esperar el despacho); la línea de una orden de ADICIÓN dice «(adición de OV-… · complementa FAC-…)» (sin columna nueva,
+///   sin cambiar montos); y los candados van SIEMPRE cabecera de la orden de venta → líneas (generar, cancelar la corrida, anular la factura), el mismo orden de los demás escritores.
 /// </summary>
 public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, INumberSequenceService numbers, ILookupCache lookups, ITenantClock clock,
     OrderQuoteService quotes, TaxService taxes)
@@ -65,14 +67,48 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
     // ================================================================ qué hay por facturar
 
     private sealed record Eligible(int LineId, int OrderId, string OrderNumber, int ClientId, int? CurrencyLookupId, int ProductId, string Sku, string Name, decimal Ordered, decimal Shipped,
-        decimal Invoiced, decimal UnitPrice, decimal TaxAmount, decimal TaxRatePct, int? TaxRateId, bool Exempt, decimal Billable);
+        decimal Invoiced, decimal UnitPrice, decimal TaxAmount, decimal TaxRatePct, int? TaxRateId, bool Exempt, decimal Billable, int? ParentOrderId = null);
+
+    /// <summary>Lote 249: estatus de la orden de venta que la base ON_REQUEST factura (solicitada en adelante, nunca borrador ni cancelada).</summary>
+    private static readonly string[] OnRequestStatuses = { SalesOrderStatuses.Requested, SalesOrderStatuses.Partial, SalesOrderStatuses.Shipped };
+
+    private async Task<List<int>> OnRequestStatusIdsAsync(CancellationToken ct)
+        => await db.StatusCodes.AsNoTracking().Where(s => s.Entity == SalesCodes.StatusDomain && OnRequestStatuses.Contains(s.InternalCode)).Select(s => s.StatusCodeId).ToListAsync(ct);
+
+    /// <summary>
+    /// Lote 249: con la base ON_REQUEST lo facturable es lo PEDIDO y aún no facturado, sin esperar el despacho (respuesta de Luis 2026-11-26), de las órdenes ya solicitadas (no en borrador, no
+    /// canceladas y no detenidas esperando la aprobación del cliente nuevo). El hecho que cae en el período es el momento en que se solicitó la orden.
+    /// </summary>
+    private async Task<List<Eligible>> EligibleOnRequestAsync(int? clientId, DateOnly start, DateOnly end, bool onlyInPeriod, CancellationToken ct)
+    {
+        var statusIds = await OnRequestStatusIdsAsync(ct);
+        var (rangeFrom, toExclusive) = clock.UtcRange(onlyInPeriod ? start : null, end);
+        var lines = await (from l in db.Set<SalesOrderLine>().AsNoTracking()
+                           join o in db.Set<SalesOrder>().AsNoTracking() on l.SalesOrderId equals o.SalesOrderId
+                           join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
+                           where l.QtyOrdered - l.QtyReturned - l.QtyInvoiced > 0m && statusIds.Contains(o.StatusCodeId) && !o.AwaitingClientApproval
+                                 && (clientId == null || o.ClientId == clientId)
+                                 && (rangeFrom == null || (o.RequestedAtUtc ?? o.CreatedAtUtc) >= rangeFrom) && (toExclusive == null || (o.RequestedAtUtc ?? o.CreatedAtUtc) < toExclusive)
+                           select new { Line = l, Order = o, p.Sku, p.Name }).ToListAsync(ct);
+        var result = new List<Eligible>();
+        foreach (var x in lines.OrderBy(x => x.Order.ClientId).ThenBy(x => x.Order.SalesOrderId).ThenBy(x => x.Line.LineNo))
+        {
+            var l = x.Line;
+            var billable = BillingRules.BillableOnRequest(l.QtyOrdered, l.QtyReserved, l.QtyShipped, l.QtyReturned, l.QtyInvoiced, l.IsClosed);
+            if (billable <= 0m) continue;
+            result.Add(new Eligible(l.SalesOrderLineId, x.Order.SalesOrderId, x.Order.Number, x.Order.ClientId, x.Order.CurrencyLookupId, l.ProductId, x.Sku, x.Name, l.QtyOrdered, l.QtyShipped,
+                l.QtyInvoiced, l.UnitPrice, l.TaxAmount, l.TaxRatePct, l.TaxRateId, l.IsTaxExempt, billable, x.Order.ParentSalesOrderId));
+        }
+        return result;
+    }
 
     /// <summary>
     /// Líneas de orden de venta con algo despachado por facturar. Lo despachado se mide con las recolecciones activas de la orden (hasta la fecha final, o dentro del período); con base
-    /// «al entregar» solo cuentan las que no llevan entrega (retiro) o cuya orden de transporte ya se entregó.
+    /// «al entregar» solo cuentan las que no llevan entrega (retiro) o cuya orden de transporte ya se entregó. Lote 249: con base ON_REQUEST, lo pedido (EligibleOnRequestAsync).
     /// </summary>
     private async Task<List<Eligible>> EligibleAsync(int? clientId, DateOnly start, DateOnly end, bool onlyInPeriod, string trigger, CancellationToken ct)
     {
+        if (trigger == SalesBillingTriggers.OnRequest) return await EligibleOnRequestAsync(clientId, start, end, onlyInPeriod, ct);
         var lines = await (from l in db.Set<SalesOrderLine>().AsNoTracking()
                            join o in db.Set<SalesOrder>().AsNoTracking() on l.SalesOrderId equals o.SalesOrderId
                            join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
@@ -107,7 +143,37 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
             var billable = onlyInPeriod ? Math.Min(unbilled, inRange) : Math.Min(unbilled, Math.Max(0m, inRange - l.QtyInvoiced));
             if (billable <= 0m) continue;
             result.Add(new Eligible(l.SalesOrderLineId, x.Order.SalesOrderId, x.Order.Number, x.Order.ClientId, x.Order.CurrencyLookupId, l.ProductId, x.Sku, x.Name, l.QtyOrdered, l.QtyShipped,
-                l.QtyInvoiced, l.UnitPrice, l.TaxAmount, l.TaxRatePct, l.TaxRateId, l.IsTaxExempt, billable));
+                l.QtyInvoiced, l.UnitPrice, l.TaxAmount, l.TaxRatePct, l.TaxRateId, l.IsTaxExempt, billable, x.Order.ParentSalesOrderId));
+        }
+        return result;
+    }
+
+    // ================================================================ referencia de las órdenes de adición (Lote 249)
+
+    /// <summary>
+    /// Lote 249: el número de cada orden madre y los números de sus facturas NO anuladas (por sus líneas de producto o por su cargo de envío), en orden de factura. beforeInvoiceId = solo las
+    /// facturas anteriores a esa (la que se está mirando no se complementa a sí misma ni a las que vinieron después).
+    /// </summary>
+    private async Task<Dictionary<int, (string Number, List<string> Invoices)>> ParentRefsAsync(IReadOnlyCollection<int> parentIds, int? beforeInvoiceId, CancellationToken ct)
+    {
+        var result = new Dictionary<int, (string Number, List<string> Invoices)>();
+        if (parentIds.Count == 0) return result;
+        var ids = parentIds.Distinct().ToList();
+        var numbers = await db.Set<SalesOrder>().AsNoTracking().Where(o => ids.Contains(o.SalesOrderId)).Select(o => new { o.SalesOrderId, o.Number }).ToListAsync(ct);
+        var voidId = (await statuses.GetByCodeAsync(BillingCodes.InvoiceStatusDomain, InvoiceStatuses.Void, ct)).StatusCodeId;
+        var byLine = await (from il in db.Set<InvoiceLine>().AsNoTracking()
+                            join i in db.Set<Invoice>().AsNoTracking() on il.InvoiceId equals i.InvoiceId
+                            join sl in db.Set<SalesOrderLine>().AsNoTracking() on il.SalesOrderLineId equals (int?)sl.SalesOrderLineId
+                            where ids.Contains(sl.SalesOrderId) && i.StatusCodeId != voidId && (beforeInvoiceId == null || i.InvoiceId < beforeInvoiceId)
+                            select new { OrderId = sl.SalesOrderId, i.InvoiceId, i.InvoiceNumber }).ToListAsync(ct);
+        var byShipping = await (from il in db.Set<InvoiceLine>().AsNoTracking()
+                                join i in db.Set<Invoice>().AsNoTracking() on il.InvoiceId equals i.InvoiceId
+                                where il.SalesOrderId != null && ids.Contains(il.SalesOrderId.Value) && i.StatusCodeId != voidId && (beforeInvoiceId == null || i.InvoiceId < beforeInvoiceId)
+                                select new { OrderId = il.SalesOrderId!.Value, i.InvoiceId, i.InvoiceNumber }).ToListAsync(ct);
+        foreach (var n in numbers)
+        {
+            var invoices = byLine.Concat(byShipping).Where(r => r.OrderId == n.SalesOrderId).GroupBy(r => r.InvoiceId).OrderBy(g => g.Key).Select(g => g.First().InvoiceNumber).ToList();
+            result[n.SalesOrderId] = (n.Number, invoices);
         }
         return result;
     }
@@ -150,6 +216,11 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         var runId = await db.RunInTransactionAsync(async ct2 =>
         {
             var tenantId = T.RequireTenantId();
+            // 0) Lote 249: primero las CABECERAS de las órdenes (en orden de id) y después sus líneas: todos los escritores de líneas de una orden solicitada (despachar, modificar,
+            //    deshacer recolección, facturar) siguen el orden cabecera → líneas y no hay ciclo de interbloqueo con la modificación ni con el despacho
+            var headers = await LockOrdersAsync(snapshot.Select(s => s.OrderId), ct2);
+            var onRequest = settings.SalesBillingTrigger == SalesBillingTriggers.OnRequest;
+            var billableStatusIds = onRequest ? (await OnRequestStatusIdsAsync(ct2)).ToHashSet() : new HashSet<int>();
             // 1) se bloquean las líneas (en orden) y se vuelve a calcular lo facturable con lo que hay AHORA: dos corridas a la vez no facturan lo mismo
             var ids = snapshot.Select(s => s.LineId).Distinct().OrderBy(i => i).ToList();
             var locked = await LockLinesAsync(ids, ct2);
@@ -164,7 +235,11 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
             foreach (var e in snapshot)
             {
                 var line = locked[e.LineId];
-                var qty = Math.Min(e.Billable, BillingRules.Billable(line.QtyShipped, line.QtyReturned, line.QtyInvoiced));
+                var now = onRequest
+                    ? (billableStatusIds.Contains(headers[e.OrderId].StatusCodeId) && !headers[e.OrderId].AwaitingClientApproval
+                        ? BillingRules.BillableOnRequest(line.QtyOrdered, line.QtyReserved, line.QtyShipped, line.QtyReturned, line.QtyInvoiced, line.IsClosed) : 0m)
+                    : BillingRules.Billable(line.QtyShipped, line.QtyReturned, line.QtyInvoiced);
+                var qty = Math.Min(e.Billable, now);
                 if (qty <= 0m) continue;
                 var tax = BillingRules.TaxPortion(line.TaxAmount, line.QtyOrdered, qty, Math.Max(0m, line.QtyOrdered - line.QtyInvoiced), taxBy.GetValueOrDefault(e.LineId));
                 work.Add((e, qty, tax));
@@ -203,12 +278,17 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
             var shippingWork = new List<SalesOrder>();
             foreach (var orderId in work.Select(w => w.E.OrderId).Distinct().OrderBy(i => i))
             {
-                var so = await db.LockSalesOrderAsync(orderId, ct2);
+                var so = headers[orderId];   // ya bloqueada en el paso 0
                 if (so.ShippingInvoiced || so.ShippingCharge <= 0m) continue;
                 so.ShippingInvoiced = true;
                 shippingWork.Add(so);
             }
             var shippingChargeId = shippingWork.Count == 0 ? 0 : await lookups.GetIdAsync(BillingCodes.ChargeTypeDomain, SalesShippingCodes.ChargeType, ct2);
+            // 1d) Lote 249: la referencia de las órdenes de ADICIÓN (su madre y las facturas no anuladas de la madre) para la descripción de la línea; no cambia montos ni cantidades
+            var parents = await ParentRefsAsync(work.Where(w => w.E.ParentOrderId != null).Select(w => w.E.ParentOrderId!.Value).ToList(), null, ct2);
+            string DescribeLine(Eligible e) => e.ParentOrderId is int pid && parents.TryGetValue(pid, out var pr)
+                ? BillingRules.Describe(e.OrderNumber, e.Sku, e.Name, pr.Number, pr.Invoices)
+                : BillingRules.Describe(e.OrderNumber, e.Sku, e.Name);
 
             // 2) la corrida y una factura por cliente y moneda
             var runInitial = await statuses.GetInitialAsync(BillingCodes.RunStatusDomain, ct2);
@@ -233,7 +313,7 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
                 foreach (var w in work.Where(w => w.E.ClientId == key.ClientId && (w.E.CurrencyLookupId ?? usd) == key.Currency))
                     invoice.Lines.Add(new InvoiceLine
                     {
-                        ProductId = w.E.ProductId, ChargeTypeLookupId = productSale, Description = BillingRules.Describe(w.E.OrderNumber, w.E.Sku, w.E.Name), Quantity = w.Qty, UnitAmount = w.E.UnitPrice,
+                        ProductId = w.E.ProductId, ChargeTypeLookupId = productSale, Description = DescribeLine(w.E), Quantity = w.Qty, UnitAmount = w.E.UnitPrice,
                         SalesOrderLineId = w.E.LineId, TaxRateId = w.E.TaxRateId, TaxRatePct = w.E.TaxRatePct, TaxAmount = w.Tax, IsTaxExempt = w.E.Exempt,
                     });
                 foreach (var so in shippingWork.Where(o => o.ClientId == key.ClientId && (o.CurrencyLookupId ?? usd) == key.Currency))
@@ -472,6 +552,17 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         return result;
     }
 
+    /// <summary>
+    /// Lote 249: bloquea las CABECERAS de las órdenes de venta (en orden de id ascendente) y las devuelve rastreadas. Se llama SIEMPRE antes de LockLinesAsync: el orden de candados es
+    /// cabecera → líneas, el mismo de despachar, modificar y deshacer una recolección.
+    /// </summary>
+    private async Task<Dictionary<int, SalesOrder>> LockOrdersAsync(IEnumerable<int> orderIds, CancellationToken ct)
+    {
+        var result = new Dictionary<int, SalesOrder>();
+        foreach (var id in orderIds.Distinct().OrderBy(i => i)) result[id] = await db.LockSalesOrderAsync(id, ct);
+        return result;
+    }
+
     /// <summary>Bloquea las líneas (en orden de id, siempre el mismo, para no interbloquear) y las devuelve rastreadas con lo que hay AHORA.</summary>
     private async Task<Dictionary<int, SalesOrderLine>> LockLinesAsync(IReadOnlyList<int> ids, CancellationToken ct)
     {
@@ -546,21 +637,29 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
         return await GetRunAsync(runId, ct);
     }
 
-    /// <summary>Devuelve a «por facturar» lo que reclamaron las líneas de estas facturas (bajo bloqueo de las líneas de orden de venta y de las órdenes de transporte).</summary>
+    /// <summary>
+    /// Devuelve a «por facturar» lo que reclamaron las líneas de estas facturas (bajo bloqueo de las órdenes de venta, de sus líneas y de las órdenes de transporte). Lote 249: primero las
+    /// cabeceras de TODAS las órdenes de venta tocadas (las de las líneas de producto y las del cargo de envío), después las líneas: orden cabecera → líneas.
+    /// </summary>
     private async Task ReleaseAsync(IReadOnlyList<Invoice> invoices, CancellationToken ct)
     {
         var claimed = invoices.SelectMany(i => i.Lines).Where(l => l.SalesOrderLineId != null).GroupBy(l => l.SalesOrderLineId!.Value).ToDictionary(g => g.Key, g => g.Sum(l => l.Quantity));
+        var shippingOrders = invoices.SelectMany(i => i.Lines).Where(l => l.SalesOrderId != null).Select(l => l.SalesOrderId!.Value).Distinct().ToList();
+        var claimedIds = claimed.Keys.ToList();
+        var lineOrders = claimedIds.Count == 0 ? new List<int>()
+            : await db.Set<SalesOrderLine>().AsNoTracking().Where(l => claimedIds.Contains(l.SalesOrderLineId)).Select(l => l.SalesOrderId).Distinct().ToListAsync(ct);
+        var headers = await LockOrdersAsync(lineOrders.Concat(shippingOrders), ct);
         if (claimed.Count > 0)
         {
-            var locked = await LockLinesAsync(claimed.Keys.OrderBy(i => i).ToList(), ct);
+            var locked = await LockLinesAsync(claimedIds.OrderBy(i => i).ToList(), ct);
             foreach (var (lineId, qty) in claimed)
                 if (locked.TryGetValue(lineId, out var line)) line.QtyInvoiced = Math.Max(0m, line.QtyInvoiced - qty);
         }
         foreach (var orderId in invoices.SelectMany(i => i.Lines).Where(l => l.TransportOrderId != null && !l.IsReturnFee).Select(l => l.TransportOrderId!.Value).Distinct().OrderBy(i => i))
             (await db.LockTransportOrderAsync(orderId, ct)).FreightInvoiced = false;
-        // Lote 222: el cargo de envío de la orden de venta vuelve a «por facturar»
-        foreach (var orderId in invoices.SelectMany(i => i.Lines).Where(l => l.SalesOrderId != null).Select(l => l.SalesOrderId!.Value).Distinct().OrderBy(i => i))
-            (await db.LockSalesOrderAsync(orderId, ct)).ShippingInvoiced = false;
+        // Lote 222: el cargo de envío de la orden de venta vuelve a «por facturar» (la cabecera ya está bloqueada)
+        foreach (var orderId in shippingOrders.OrderBy(i => i))
+            headers[orderId].ShippingInvoiced = false;
         // Lote 115: el cargo por devolución se libera aparte del flete
         foreach (var orderId in invoices.SelectMany(i => i.Lines).Where(l => l.TransportOrderId != null && l.IsReturnFee).Select(l => l.TransportOrderId!.Value).Distinct().OrderBy(i => i))
             (await db.LockTransportOrderAsync(orderId, ct)).ReturnFeeInvoiced = false;
@@ -754,7 +853,24 @@ public sealed class BillingService(TeikemDbContext db, ITenantContext tenant, St
                 DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(p.PaidAtUtc, DateTimeKind.Utc), clock.Zone)), p.Reference, p.VoidedAtUtc, p.VoidReason));
         }
         var total = i.Subtotal + i.TaxAmount;
-        return new InvoiceDto(i.PublicId, i.InvoiceNumber, st.Code, st.Label, st.Color, c.PublicId, c.Name, i.IssueDate, i.DueDate, currency, i.Subtotal, i.TaxAmount, total, paid, total - paid - credited, i.BillingRunId, i.Notes, lines, payDtos, credited);
+        var complements = await ComplementsAsync(i, lineIds, ct);
+        return new InvoiceDto(i.PublicId, i.InvoiceNumber, st.Code, st.Label, st.Color, c.PublicId, c.Name, i.IssueDate, i.DueDate, currency, i.Subtotal, i.TaxAmount, total, paid, total - paid - credited, i.BillingRunId, i.Notes, lines, payDtos, credited,
+            complements);
+    }
+
+    /// <summary>Lote 249: las facturas (no anuladas, anteriores a esta) de las órdenes madre de las órdenes de adición que trae la factura, sin repetir y en orden de factura.</summary>
+    private async Task<IReadOnlyList<string>> ComplementsAsync(Invoice i, List<int> salesLineIds, CancellationToken ct)
+    {
+        var shippingOrderIds = i.Lines.Where(l => l.SalesOrderId != null).Select(l => l.SalesOrderId!.Value).Distinct().ToList();
+        if (salesLineIds.Count == 0 && shippingOrderIds.Count == 0) return Array.Empty<string>();
+        var orderIds = salesLineIds.Count == 0 ? new List<int>()
+            : await db.Set<SalesOrderLine>().AsNoTracking().Where(l => salesLineIds.Contains(l.SalesOrderLineId)).Select(l => l.SalesOrderId).Distinct().ToListAsync(ct);
+        orderIds = orderIds.Concat(shippingOrderIds).Distinct().ToList();
+        var parentIds = await db.Set<SalesOrder>().AsNoTracking().Where(o => orderIds.Contains(o.SalesOrderId) && o.ParentSalesOrderId != null)
+            .Select(o => o.ParentSalesOrderId!.Value).Distinct().ToListAsync(ct);
+        if (parentIds.Count == 0) return Array.Empty<string>();
+        var refs = await ParentRefsAsync(parentIds, i.InvoiceId, ct);
+        return refs.Values.SelectMany(r => r.Invoices).Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList();
     }
 
     private async Task<Dictionary<int, (Guid PublicId, string Name)>> ClientsAsync(IEnumerable<int> ids, CancellationToken ct)

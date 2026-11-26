@@ -39,6 +39,7 @@ internal static class SalesDataSourceHelpers
 /// Lote 244: SalesRouteId/SalesRouteName y SellerUserId/SellerName salen de la COPIA congelada al solicitar la orden (SalesCopyAtUtc); vacíos en los borradores (la
 /// elección del borrador no es la copia) y en las órdenes solicitadas antes del lote.
 /// Lote 245: ChainId/ChainName = la cadena ACTUAL del cliente, EN VIVO (sin copia en la orden), para Gráficos e Indicadores de órdenes.
+/// Lote 249: IsAddition = la orden es una orden interna de ADICIÓN (ParentSalesOrderId); ParentOrderNumber = el número de la orden que complementa.
 /// </summary>
 public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant, ITenantClock? clock = null) : IDataSource
 {
@@ -87,6 +88,8 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
         new DataField("SellerName", "Vendedor", "Seller", DataFieldType.Text),
         new DataField("ChainId", "Id de la cadena", "Chain id", DataFieldType.Number),   // Lote 245: EN VIVO, la cadena actual del cliente
         new DataField("ChainName", "Cadena", "Chain", DataFieldType.Text),
+        new DataField("IsAddition", "Es adición", "Is addition", DataFieldType.Bool),   // Lote 249
+        new DataField("ParentOrderNumber", "Orden que complementa", "Complements order", DataFieldType.Text),
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = new[]
@@ -142,6 +145,10 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
         // Lote 245: la cadena ACTUAL del cliente de cada orden (sin copia en la orden: si el cliente cambia de cadena, sus órdenes viejas salen con la nueva)
         var clientChain = await ClientChainQueries.ClientChainMapAsync(db, orders.Select(o => o.ClientId).Distinct().ToList(), ct);
         var chains = await ClientChainQueries.ChainsByIdAsync(db, clientChain.Values, ct);
+        // Lote 249: el número de la orden que complementa cada adición
+        var parentIds = orders.Where(o => o.ParentSalesOrderId != null).Select(o => o.ParentSalesOrderId!.Value).Distinct().ToList();
+        var parentNumbers = parentIds.Count == 0 ? new Dictionary<int, string>()
+            : await db.Set<SalesOrder>().AsNoTracking().Where(o => parentIds.Contains(o.SalesOrderId)).ToDictionaryAsync(o => o.SalesOrderId, o => o.Number, ct);
 
         var rows = new List<DataRow>(orders.Count);
         foreach (var o in orders)
@@ -187,6 +194,8 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
                 ["SellerName"] = copy && o.SellerUserId is int su ? sellerNames.GetValueOrDefault(su) : null,
                 ["ChainId"] = clientChain.TryGetValue(o.ClientId, out var chainId) && chains.ContainsKey(chainId) ? (int?)chainId : null,
                 ["ChainName"] = clientChain.TryGetValue(o.ClientId, out var chainId2) && chains.TryGetValue(chainId2, out var chain) ? chain.Name : null,
+                ["IsAddition"] = o.ParentSalesOrderId != null,
+                ["ParentOrderNumber"] = o.ParentSalesOrderId is int pid ? parentNumbers.GetValueOrDefault(pid) : null,
             });
         }
         return rows;
@@ -196,6 +205,7 @@ public sealed class SalesOrderDataSource(TeikemDbContext db, ILookupCache lookup
 /// <summary>
 /// Fuente SALES_ORDER_LINE: una fila por línea con los datos de su orden (número, cliente, almacén, estatus). Actividad de período por la fecha de creación de la orden
 /// (CreatedAtUtc). DaysWaiting = días que lleva esperando un backorder pendiente (no cerrado) desde que se solicitó la orden.
+/// Lote 249: IsRemoved = línea quitada por una modificación (pedido 0 y cerrada); TaxReason = la razón del impuesto; HasTaxOverride = IVU manual (MANUAL_OVERRIDE).
 /// </summary>
 public sealed class SalesOrderLineDataSource(TeikemDbContext db, ITenantContext tenant) : IDataSource
 {
@@ -231,6 +241,9 @@ public sealed class SalesOrderLineDataSource(TeikemDbContext db, ITenantContext 
         new DataField("LineTotal", "Total de la línea", "Line total", DataFieldType.Number, IsMoney: true),
         new DataField("TaxAmount", "Impuesto", "Tax", DataFieldType.Number, IsMoney: true),
         new DataField("CreatedAtUtc", "Creada el", "Created at", DataFieldType.Date),
+        new DataField("IsRemoved", "Quitada", "Removed", DataFieldType.Bool),   // Lote 249
+        new DataField("TaxReason", "Razón del impuesto", "Tax reason", DataFieldType.Text),
+        new DataField("HasTaxOverride", "IVU manual", "Manual tax", DataFieldType.Bool),
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = Array.Empty<DataRelation>();
@@ -288,6 +301,9 @@ public sealed class SalesOrderLineDataSource(TeikemDbContext db, ITenantContext 
                 ["LineTotal"] = l.QtyOrdered * l.UnitPrice,
                 ["TaxAmount"] = l.TaxAmount,
                 ["CreatedAtUtc"] = o.CreatedAtUtc,
+                ["IsRemoved"] = l.QtyOrdered == 0m && l.IsClosed,
+                ["TaxReason"] = l.TaxReason,
+                ["HasTaxOverride"] = l.TaxReason == Teikem.Domain.Tax.TaxReasons.ManualOverride,
             });
         }
         return rows;

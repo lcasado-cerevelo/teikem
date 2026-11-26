@@ -4,7 +4,7 @@
 // `PickBatchDetailActions`: botones Eliminar (warehouse.pick; si está PACKED además orders.cancel; solo con `canDelete`) y
 // Empacar (warehouse.pick + orders.create; solo con `canPack`). Los usan `PickBatchDetailScreen` (ruta
 // `/warehouse/pick-batches/:publicId`) y `PickBatchDetailModal` (clic en una fila de la lista). Manual 06 §7.
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import type { components } from '../../kernel/api/schema'
@@ -16,6 +16,8 @@ import { productLabel, type PickBatchDto } from './api'
 import { manualIssueKardexLink } from './manualIssueView'
 import { formatDateTime, formatMoneyValue, formatNumber } from './lineRules'
 import { PICK_BATCH_STATUS_DOMAIN, usePickBatchCanDelete } from './pickBatchView'
+import { JoinOrderShipmentDialog } from './JoinOrderShipmentDialog'
+import { ReopenPackDialog } from './ReopenPackDialog'
 import './warehouse.css'
 
 type PickLine = components['schemas']['PickBatchLineDto']
@@ -32,6 +34,10 @@ export interface PickBatchDetailActionsProps {
 export function PickBatchDetailActions({ batch, onPack, onDelete }: PickBatchDetailActionsProps) {
   const t = useT()
   const canDelete = usePickBatchCanDelete()
+  // Lote 249: reabrir el empaque (una recolección empacada que no está en una maestra) y unirla al envío de su orden (la orden, su raíz o sus adiciones)
+  const [reopening, setReopening] = useState(false)
+  const [joining, setJoining] = useState(false)
+  const canJoin = batch.statusCode === 'COLLECTED' && Boolean(batch.salesOrderPublicId) && !batch.groupPublicId && !batch.isManual
   return (
     <>
       {/* la guarda de permiso va dentro de canDelete: warehouse.pick (empaque) o warehouse.issue (despacho manual) */}
@@ -40,6 +46,20 @@ export function PickBatchDetailActions({ batch, onPack, onDelete }: PickBatchDet
           {t('warehouse.pickBatches.detail.delete')}
         </button>
       )}
+      <Can perm="warehouse.reopen-pack">
+        {batch.canReopenPack && !batch.groupPublicId && (
+          <button type="button" className="btn" onClick={() => setReopening(true)}>
+            {t('warehouse.reopenPack.button')}
+          </button>
+        )}
+      </Can>
+      <Can perm="warehouse.pick">
+        {canJoin && (
+          <button type="button" className="btn" onClick={() => setJoining(true)}>
+            {t('warehouse.joinShipment.button', { order: batch.salesOrderNumber ?? '' })}
+          </button>
+        )}
+      </Can>
       <Can perm={['warehouse.pick', 'orders.create']}>
         {batch.canPack && (
           <button type="button" className="btn flow" onClick={onPack}>
@@ -47,6 +67,8 @@ export function PickBatchDetailActions({ batch, onPack, onDelete }: PickBatchDet
           </button>
         )}
       </Can>
+      {reopening && <ReopenPackDialog publicId={batch.publicId ?? ''} number={batch.packBatchNumber ?? batch.number ?? ''} rowVersion={batch.rowVersion} onClose={() => setReopening(false)} />}
+      {joining && <JoinOrderShipmentDialog batch={batch} onClose={() => setJoining(false)} />}
     </>
   )
 }

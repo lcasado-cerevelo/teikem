@@ -20,7 +20,7 @@ public sealed record SalesOrderCancelRequest(string? Comment = null);
 [Route("api/v1/sales-orders")]
 [Authorize]
 [RequireModule(ModuleKeys.SalesOrders)]
-public sealed class SalesOrdersController(SalesOrderService sales) : ControllerBase
+public sealed class SalesOrdersController(SalesOrderService sales, SalesOrderChangeService changes) : ControllerBase
 {
     /// <summary>
     /// Lista paginada (más reciente primero). Filtros: status (DRAFT, REQUESTED, PARTIAL, SHIPPED, CANCELLED), cliente, buscador q (número, cliente, producto),
@@ -94,9 +94,13 @@ public sealed class SalesOrdersController(SalesOrderService sales) : ControllerB
     [HttpPost("{publicId:guid}/request"), RequirePermission(PermissionCatalog.SalesCreate)]
     public Task<SalesOrderDto> Request(Guid publicId, [FromBody] SalesOrderRequestRequest? req, CancellationToken ct) => sales.RequestAsync(publicId, req, ct);
 
-    /// <summary>Cambia la cantidad y/o el precio de una línea de una orden solicitada (reajusta la reserva).</summary>
-    [HttpPatch("{publicId:guid}/lines/{lineId:int}"), RequirePermission(PermissionCatalog.SalesCreate)]
-    public Task<SalesOrderDto> ModifyLine(Guid publicId, int lineId, [FromBody] SalesOrderLineModifyRequest req, CancellationToken ct) => sales.ModifyLineAsync(publicId, lineId, req, ct);
+    /// <summary>
+    /// Cambia la cantidad y/o el precio de una línea de una orden solicitada. Lote 249: es un ADAPTADOR de la «Modificación de la orden» (sales.modify): exige quién
+    /// autorizó en el cliente, cómo y el motivo (sin ellos, 400 con los mensajes de la modificación) y sigue sus reglas (reversa mínima, empaques, facturada, crédito,
+    /// segunda aprobación). El precio distinto del de lista exige además sales.price.
+    /// </summary>
+    [HttpPatch("{publicId:guid}/lines/{lineId:int}"), RequirePermission(PermissionCatalog.SalesModify)]
+    public Task<SalesOrderDto> ModifyLine(Guid publicId, int lineId, [FromBody] SalesOrderLineModifyRequest req, CancellationToken ct) => changes.ModifyLineAsync(publicId, lineId, req, ct);
 
     /// <summary>Líneas con backorder de las órdenes solicitadas, la más antigua primero, con lo disponible hoy y lo que se podría surtir ahora.</summary>
     [HttpGet("backorders"), RequirePermission(PermissionCatalog.SalesView)]

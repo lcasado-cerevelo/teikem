@@ -34,7 +34,22 @@ public sealed record PickBatchDto(int Id, Guid PublicId, string Number, Guid War
     bool IsActive, string RowVersion, bool IsManual = false, string? ReasonCode = null, string? ReasonLabel = null, string? Note = null,
     string? OwnerClientName = null, Guid? GroupPublicId = null, string? GroupNumber = null,
     // 2026-10-21: la orden de venta que originó el despacho (si la hay), para abrirla desde el despacho
-    Guid? SalesOrderPublicId = null, string? SalesOrderNumber = null);
+    Guid? SalesOrderPublicId = null, string? SalesOrderNumber = null,
+    // Lote 249: se puede reabrir el empaque (PACKED suelta, no manual, con su envío activo en la etapa inicial). Las guardas de facturación las revisa la acción.
+    bool CanReopenPack = false);
+
+/// <summary>
+/// Lote 249 — POST /pick-batches/{id}/reopen-pack y POST /pick-batches/groups/{id}/reopen-pack (warehouse.reopen-pack): anula el envío (en la etapa inicial) y la
+/// recolección vuelve a COLLECTED. Reason obligatorio (≤ 500, va al historial); RowVersion = el de la ficha (409 si cambió).
+/// </summary>
+public sealed record PickBatchReopenRequest(string? Reason = null, string? RowVersion = null);
+
+/// <summary>
+/// Lote 249 — POST /pick-batches/{id}/join-order-shipment (warehouse.pick): une una recolección COLLECTED de una orden de venta al envío de su familia (la misma
+/// orden, su raíz o las adiciones de la raíz). TargetBatchPublicId = la recolección con la que sale (opcional si solo hay una posible). ReopenPack = si el destino ya
+/// está empacado, reabrirlo en la misma llamada (exige además warehouse.reopen-pack y Reason). Note = nota de la maestra nueva.
+/// </summary>
+public sealed record PickBatchJoinOrderRequest(Guid? TargetBatchPublicId = null, bool? ReopenPack = null, string? Reason = null, string? Note = null);
 
 public sealed record PickBatchPageDto(int Total, int Skip, int Take, IReadOnlyList<PickBatchDto> Items);
 

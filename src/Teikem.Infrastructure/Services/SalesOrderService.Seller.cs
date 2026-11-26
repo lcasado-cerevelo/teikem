@@ -43,8 +43,24 @@ public sealed partial class SalesOrderService
     /// ese momento (la directa o la de su representante), el vendedor (<see cref="SalesRouteRules.FreezeSeller"/>: la elección si sigue valiendo y activa, si no
     /// la propuesta; puede quedar NULL) y la marca SalesCopyAtUtc.
     /// </summary>
+    /// <remarks>
+    /// Lote 249: la orden interna de ADICIÓN copia la ruta y el vendedor de su orden madre (así las comisiones y los análisis por vendedor la juntan con la
+    /// original), sin volver a resolverlos con la regla de hoy.
+    /// </remarks>
     private async Task FreezeSellerAsync(SalesOrder order, CancellationToken ct)
     {
+        if (order.ParentSalesOrderId is int parentId)
+        {
+            var parent = await db.Set<SalesOrder>().AsNoTracking().Where(o => o.SalesOrderId == parentId)
+                .Select(o => new { o.SalesRouteId, o.SellerUserId }).FirstOrDefaultAsync(ct);
+            if (parent is not null)
+            {
+                order.SalesRouteId = parent.SalesRouteId;
+                order.SellerUserId = parent.SellerUserId;
+                order.SalesCopyAtUtc = DateTime.UtcNow;
+                return;
+            }
+        }
         var team = await SellerTeamAsync(order.ClientId, order.RequestedBy, ct);
         var chosen = order.SellerUserId;
         var chosenOk = chosen is int c && team is not null && SalesRouteRules.IsAllowedSellerChoice(c, team.Candidates);

@@ -11,7 +11,7 @@ namespace Teikem.Tests;
 /// </summary>
 public class RawSqlConfinementTests
 {
-    private static readonly string[] Allowed = { "FleetQueries.cs", "NumberSequenceService.cs", "DriverPayPolicyService.cs", "TripQueries.cs", "InventoryQueries.cs", "StopGeocodeProcessor.cs", "QuickBooksService.PurchaseOrders.cs" };   // Lote 246: candado UPDLOCK de las órdenes de compra a exportar (parametrizado y con TenantId =)   // 2026-10-22: la ubicación de las paradas trabaja entre compañías por diseño (con GEOGRAPHY y contadores); su caché lleva TenantId y todo va parametrizado
+    private static readonly string[] Allowed = { "FleetQueries.cs", "NumberSequenceService.cs", "DriverPayPolicyService.cs", "TripQueries.cs", "InventoryQueries.cs", "StopGeocodeProcessor.cs", "QuickBooksService.PurchaseOrders.cs", "SalesOrderService.Changes.cs" };   // Lote 249: candado UPDLOCK de las líneas de la orden a modificar (parametrizado y con TenantId =)   // Lote 246: candado UPDLOCK de las órdenes de compra a exportar (parametrizado y con TenantId =)   // 2026-10-22: la ubicación de las paradas trabaja entre compañías por diseño (con GEOGRAPHY y contadores); su caché lleva TenantId y todo va parametrizado
 
     private static readonly Regex RawSqlApi = new(@"\b(FromSql\w*|SqlQuery\w*|ExecuteSql\w*)\s*[<(]", RegexOptions.Compiled);
 

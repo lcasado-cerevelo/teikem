@@ -18,9 +18,10 @@ public sealed record InvoiceListItemDto(Guid PublicId, string Number, string Sta
 public sealed record InvoiceLineDto(int Id, string Description, string ChargeType, Guid? ProductPublicId, string? Sku, string? SalesOrderNumber, decimal Quantity, decimal UnitAmount,
     decimal? OriginalUnitAmount, bool IsAdjusted, string? AdjustmentNote, decimal LineSubtotal, decimal? TaxRatePct, decimal TaxAmount, bool IsTaxExempt, string? TransportOrderNumber = null, int? RateComponentId = null);
 
+/// <summary>Lote 249: Complements = los números de las facturas (no anuladas, anteriores a esta) de la orden madre de cada orden de ADICIÓN que trae la factura; vacío si no trae adiciones.</summary>
 public sealed record InvoiceDto(Guid PublicId, string Number, string Status, string StatusLabel, string StatusColor, Guid ClientPublicId, string ClientName, DateOnly? IssueDate,
     DateOnly? DueDate, string Currency, decimal Subtotal, decimal TaxAmount, decimal Total, decimal Paid, decimal Balance, int? RunId, string? Notes,
-    IReadOnlyList<InvoiceLineDto> Lines, IReadOnlyList<PaymentDto>? Payments = null, decimal Credited = 0m);
+    IReadOnlyList<InvoiceLineDto> Lines, IReadOnlyList<PaymentDto>? Payments = null, decimal Credited = 0m, IReadOnlyList<string>? Complements = null);
 
 public sealed record BillingRunDto(int Id, DateOnly PeriodStart, DateOnly PeriodEnd, string Status, string StatusLabel, string StatusColor, Guid? ClientPublicId, string? ClientName, string? Note,
     int InvoiceCount, decimal TotalAmount, DateTime GeneratedAtUtc, DateTime? ReviewedAtUtc, DateTime? ApprovedAtUtc, DateTime? ExportedAtUtc, IReadOnlyList<InvoiceListItemDto> Invoices);

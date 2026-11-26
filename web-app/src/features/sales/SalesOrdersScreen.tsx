@@ -42,6 +42,7 @@ import { EMPTY_ORDERS_FILTERS, hasOrdersFilters, ordersApiFilters, type OrdersFi
 import { IconCart } from '../../kernel/ui/screenIcons'
 import { OrderBadges } from './OrderBadges'
 import { OrderModal } from './OrderModal'
+import { PendingApprovalsTab } from './changes/PendingApprovalsTab'
 import { QuickBooksTab } from './QuickBooksTab'
 import { ReturnEditor, ReturnModal, ReturnsTab } from './ReturnsParts'
 import { ORDER_STATUSES } from './salesRules'
@@ -56,8 +57,8 @@ import {
 import '../tax/tax.css'
 import './sales.css'
 
-type TabKey = 'orders' | 'backorders' | 'returns' | 'quickbooks'
-const TAB_KEYS: readonly TabKey[] = ['orders', 'backorders', 'returns', 'quickbooks']
+type TabKey = 'orders' | 'backorders' | 'returns' | 'quickbooks' | 'approvals'
+const TAB_KEYS: readonly TabKey[] = ['orders', 'backorders', 'returns', 'quickbooks', 'approvals']
 /** Lote 225: la pestaña QuickBooks la ven los tres permisos de QuickBooks (quien marca o exporta necesita ver la lista, como el API). */
 const QUICKBOOKS_PERMS = 'sales.quickbooks.view|sales.quickbooks.mark|sales.quickbooks.export'
 
@@ -332,8 +333,10 @@ export default function SalesOrdersScreen() {
   const [params, setParams] = useSearchParams()
   const { permissions } = useAccess()
   const canQuickBooks = permAllowed(QUICKBOOKS_PERMS, permissions)
+  // Lote 249: la bandeja «Por aprobar» (segunda aprobación de las modificaciones) es de quien tiene sales.modify.approve
+  const canApprove = permAllowed('sales.modify.approve', permissions)
   const raw = params.get('tab') as TabKey | null
-  const tab: TabKey = raw && TAB_KEYS.includes(raw) && (raw !== 'quickbooks' || canQuickBooks) ? raw : 'orders'
+  const tab: TabKey = raw && TAB_KEYS.includes(raw) && (raw !== 'quickbooks' || canQuickBooks) && (raw !== 'approvals' || canApprove) ? raw : 'orders'
   const setTab = (k: TabKey) =>
     setParams(
       (prev) => {
@@ -383,6 +386,7 @@ export default function SalesOrdersScreen() {
           { key: 'orders', label: t('sales.tabs.orders') },
           { key: 'backorders', label: t('sales.tabs.backorders') },
           { key: 'returns', label: t('sales.tabs.returns') },
+          ...(canApprove ? [{ key: 'approvals' as const, label: t('salesChanges.tabs.approvals') }] : []),
           ...(canQuickBooks ? [{ key: 'quickbooks' as const, label: t('sales.tabs.quickbooks') }] : []),
         ]}
       />
@@ -390,6 +394,8 @@ export default function SalesOrdersScreen() {
         <OrdersTab onOpen={openOrder} filters={orderFilters} onFilters={setOrderFilters} />
       ) : tab === 'backorders' ? (
         <BackordersTab onOpen={setOpenId} />
+      ) : tab === 'approvals' ? (
+        <PendingApprovalsTab />
       ) : tab === 'quickbooks' ? (
         <QuickBooksTab />
       ) : (
@@ -400,6 +406,7 @@ export default function SalesOrdersScreen() {
           key={openId}
           publicId={openId === 'new' ? null : openId}
           onClose={() => setOpenId(null)}
+          onOpenOrder={setOpenId}
           onReturn={(orderId) => {
             setOpenId(null)
             setNewReturn({ orderId })

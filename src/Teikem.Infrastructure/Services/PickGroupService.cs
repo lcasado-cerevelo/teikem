@@ -326,6 +326,294 @@ public sealed class PickGroupService(
         }, ct);
     }
 
+    // ================================================================ Lote 249: reabrir el empaque de la maestra
+
+    /// <summary>
+    /// Lote 249 — reabre el empaque de la maestra (warehouse.reopen-pack; motivo obligatorio): anula su envío (en la etapa inicial y sin nada facturado) y TODAS sus
+    /// recolecciones vuelven a COLLECTED; la maestra queda sin envío (COLLECTED) y se puede volver a empacar con el mismo número.
+    /// </summary>
+    public async Task<PickGroupDto> ReopenPackAsync(Guid publicId, PickBatchReopenRequest? req, CancellationToken ct)
+    {
+        await batches.EnsureReopenPermissionAsync(ct);
+        var (reason, error) = PickBatchRules.NormalizeReopenReason(req?.Reason);
+        if (error is not null) throw new ValidationException("reason", error);
+        var current = await db.Set<PickGroup>().AsNoTracking().FirstOrDefaultAsync(x => x.PublicId == publicId && x.IsActive, ct) ?? throw NotFound();
+        await db.RunInTransactionAsync(ct2 => ReopenPackCoreAsync(current.PickGroupId, reason!, ct2, req?.RowVersion), ct);
+        return await GetAsync(publicId, ct);
+    }
+
+    /// <summary>
+    /// Núcleo de reabrir la maestra: corre en la transacción de quien llama (o abre la suya) y NO revisa el permiso (lo exige quien llama). Candados: las recolecciones
+    /// de la maestra en id ascendente y luego el envío. Devuelve el número EMP que quedó libre (el del envío anulado, que es el de la maestra).
+    /// </summary>
+    internal async Task<string> ReopenPackCoreAsync(int groupId, string reason, CancellationToken ct, string? rowVersion = null)
+    {
+        var (normalized, error) = PickBatchRules.NormalizeReopenReason(reason);
+        if (error is not null) throw new ValidationException("reason", error);
+        return await db.RunInTransactionAsync(async ct2 =>
+        {
+            var memberIds = await db.Set<PickBatch>().AsNoTracking().Where(b => b.PickGroupId == groupId && b.IsActive).OrderBy(b => b.PickBatchId)
+                .Select(b => b.PickBatchId).ToListAsync(ct2);
+            foreach (var id in memberIds) await db.LockPickBatchAsync(id, ct2);
+            var group = await db.Set<PickGroup>().AsTracking().FirstOrDefaultAsync(x => x.PickGroupId == groupId, ct2) ?? throw NotFound();
+            if (!group.IsActive) throw NotFound();
+            EnsureRowVersion(group, rowVersion);
+            if (group.TransportOrderId is not int orderId || memberIds.Count == 0) throw new StatusRuleException(PickBatchRules.ReopenNotPacked(group.Number));
+            var packed = await db.StatusIdAsync(StatusDomains.PickBatchStatus, PickBatchStatuses.Packed, ct2);
+            var members = await db.Set<PickBatch>().AsNoTracking().Where(b => memberIds.Contains(b.PickBatchId)).ToListAsync(ct2);
+            if (members.Any(m => m.StatusCodeId != packed || m.TransportOrderId != orderId)) throw new StatusRuleException(PickBatchRules.ReopenNotPacked(group.Number));
+
+            var shipment = await batches.ReopenMembersCoreAsync(group.Number, orderId, memberIds, normalized!, ct2);
+            group = await db.Set<PickGroup>().AsTracking().FirstAsync(x => x.PickGroupId == groupId, ct2);
+            group.TransportOrderId = null;
+            group.PackedAtUtc = null;
+            group.PackedBy = null;
+            await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+            await batches.NotifyPackReopenedAsync(group.PublicId, group.Number,
+                members.Where(m => m.SalesOrderId != null).Select(m => m.SalesOrderId!.Value).Distinct().ToList(), shipment, normalized!, ct2);
+            return shipment.PackBatchNumber;
+        }, ct);
+    }
+
+    /// <summary>
+    /// Lote 249 — la maestra que se quedó sin recolecciones activas (porque una modificación de la orden deshizo las suyas) queda IsActive = 0. Devuelve si la
+    /// desactivó. Corre en la transacción de quien llama; lo usa la modificación de órdenes de venta después de deshacer recolecciones.
+    /// </summary>
+    public async Task<bool> DeactivateIfEmptyAsync(int groupId, CancellationToken ct)
+    {
+        var group = await db.Set<PickGroup>().AsTracking().FirstOrDefaultAsync(g => g.PickGroupId == groupId, ct);
+        if (group is null || !group.IsActive) return false;
+        if (await db.Set<PickBatch>().AsNoTracking().AnyAsync(b => b.PickGroupId == groupId && b.IsActive, ct)) return false;
+        group.IsActive = false;
+        await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
+        return true;
+    }
+
+    // ================================================================ Lote 249: unir una recolección al envío de su orden
+
+    /// <summary>Lo que se decidió al unir: la recolección que se une, el destino (maestra o recolección suelta), su envío y las recolecciones por bloquear.</summary>
+    private sealed record JoinPlan(int JoiningId, string JoiningNumber, int? DestGroupId, int? DestBatchId, Guid DestBatchPublicId, string DestNumber, int? DestOrderId,
+        IReadOnlyList<int> LockIds, int ClientId, int WarehouseId);
+
+    /// <summary>Un destino posible: una maestra (con todas sus recolecciones) o una recolección suelta; Left = su envío ya salió.</summary>
+    private sealed record JoinUnit(int? GroupId, int? BatchId, Guid RepresentativePublicId, string Number, int? OrderId, bool Left, string? OrderStatus,
+        IReadOnlyList<int> MemberIds, int WarehouseId, int? ClientId, int SalesOrderId, int Rank);
+
+    /// <summary>
+    /// Lote 249 — EXCEPCIÓN ACOTADA a la regla del Lote 176 «no se suman documentos después»: une una recolección COLLECTED de una orden de venta (activa, sin maestra, no
+    /// manual ni enlazada) al envío de su FAMILIA (la misma orden, su raíz o las adiciones de la raíz), del mismo cliente y almacén. Destino: TargetBatchPublicId, o el
+    /// único posible. Si el destino está en una maestra sin empacar, se suma a ella; si es una recolección suelta COLLECTED, nace una maestra con número del contador;
+    /// si está empacado, exige ReopenPack (warehouse.reopen-pack y motivo) y lo reabre en la misma transacción: la maestra nueva toma el número EMP del envío reabierto
+    /// (el que ya veía el cliente). Si el envío del destino ya salió → 422. Para documentos sin relación sigue valiendo «no se suman documentos después».
+    /// </summary>
+    public async Task<PickGroupDto> JoinOrderShipmentAsync(Guid batchPublicId, PickBatchJoinOrderRequest? req, CancellationToken ct)
+    {
+        await modules.EnsureEnabledAsync(ModuleKeys.SalesOrders, ct);
+        var reopenRequested = req?.ReopenPack == true;
+        string? reason = null;
+        if (reopenRequested)
+        {
+            await batches.EnsureReopenPermissionAsync(ct);
+            var (r, reasonError) = PickBatchRules.NormalizeReopenReason(req!.Reason);
+            if (reasonError is not null) throw new ValidationException("reason", reasonError);
+            reason = r;
+        }
+        var (note, noteError) = PickBatchRules.NormalizeNote(req?.Note);
+        if (noteError is not null) throw new ValidationException("note", noteError);
+        var joiningId = await db.Set<PickBatch>().AsNoTracking().Where(b => b.PublicId == batchPublicId && b.IsActive).Select(b => (int?)b.PickBatchId).FirstOrDefaultAsync(ct)
+                        ?? throw BatchNotFound();
+
+        // El contador de empaque en autocommit ANTES de la transacción (patrón de CreateAsync); dentro solo se consume.
+        await numbers.EnsureAsync(NumberKinds.PackBatch, null, ct);
+        var tenantId = ((TenantContext)tenant).RequireTenantId();
+        var groupPublicId = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var plan = await PlanJoinAsync(joiningId, req?.TargetBatchPublicId, ct2);
+            // Candados: las recolecciones (la que se une y las del destino) en id ascendente; después se vuelve a decidir con lo bloqueado.
+            foreach (var id in plan.LockIds.Distinct().OrderBy(x => x)) await db.LockPickBatchAsync(id, ct2);
+            var locked = await PlanJoinAsync(joiningId, plan.DestBatchPublicId, ct2);
+            if (locked.DestGroupId != plan.DestGroupId || locked.DestBatchId != plan.DestBatchId || locked.DestOrderId != plan.DestOrderId
+                || !locked.LockIds.OrderBy(x => x).SequenceEqual(plan.LockIds.OrderBy(x => x)))
+                throw new ConflictException(DbExtensions.ConcurrencyMessage);
+
+            string? released = null;
+            if (locked.DestOrderId is not null)
+            {
+                if (!reopenRequested) throw new StatusRuleException(PickGroupRules.JoinNeedsReopen(locked.DestNumber));
+                released = locked.DestGroupId is int g
+                    ? await ReopenPackCoreAsync(g, reason!, ct2)
+                    : await batches.ReopenPackCoreAsync(locked.DestBatchId!.Value, reason!, ct2);
+            }
+
+            int groupId;
+            Guid publicId;
+            if (locked.DestGroupId is int destGroup)
+            {
+                var existing = await db.Set<PickGroup>().AsNoTracking().FirstAsync(x => x.PickGroupId == destGroup, ct2);
+                (groupId, publicId) = (existing.PickGroupId, existing.PublicId);
+            }
+            else
+            {
+                // La maestra nueva: con el número del envío reabierto (el que ya veía el cliente) o, si no se reabrió (o ese número ya es de otra maestra), del contador.
+                var number = released is not null && !await db.Set<PickGroup>().AsNoTracking().AnyAsync(x => x.Number == released, ct2)
+                    ? released
+                    : NumberingRules.Resolve(NumberingRules.PackBatchPattern, await numbers.NextAsync(NumberKinds.PackBatch, null, ct2));
+                var group = new PickGroup
+                {
+                    PublicId = Guid.NewGuid(), TenantId = tenantId, WarehouseId = locked.WarehouseId, ClientId = locked.ClientId, Number = number, Note = note,
+                    CollectedAtUtc = DateTime.UtcNow, CollectedBy = tenant.UserId, IsActive = true,
+                };
+                db.Set<PickGroup>().Add(group);
+                await db.SaveGuardedAsync(PickGroupRules.NumberTaken, ct2);
+                (groupId, publicId) = (group.PickGroupId, group.PublicId);
+            }
+
+            var join = new List<int> { locked.JoiningId };
+            if (locked.DestGroupId is null) join.Add(locked.DestBatchId!.Value);
+            var rows = await db.Set<PickBatch>().AsTracking().Where(b => join.Contains(b.PickBatchId)).ToListAsync(ct2);
+            foreach (var b in rows) b.PickGroupId = groupId;
+            await db.SaveGuardedAsync(PickGroupRules.NumberTaken, ct2);
+            return publicId;
+        }, ct);
+        return await GetAsync(groupPublicId, ct);
+    }
+
+    /// <summary>
+    /// Decide el destino de la unión (sin escribir nada). targetPublicId = la recolección elegida (o null: el único destino posible de la familia). Las guardas, en
+    /// orden: la recolección que se une (de una orden de venta, recolectada, sin maestra, no enlazada); la familia; el mismo cliente y almacén; que el destino no
+    /// haya salido. Un destino empacado no se rechaza aquí: lo decide quien llama (ReopenPack).
+    /// </summary>
+    private async Task<JoinPlan> PlanJoinAsync(int joiningId, Guid? targetPublicId, CancellationToken ct)
+    {
+        var joining = await db.Set<PickBatch>().AsNoTracking().FirstOrDefaultAsync(b => b.PickBatchId == joiningId, ct) ?? throw BatchNotFound();
+        if (!joining.IsActive) throw BatchNotFound();
+        if (joining.SalesOrderId is not int salesOrderId || PickBatchRules.IsManual(joining.ManualIssueReasonId))
+            throw new StatusRuleException(PickGroupRules.JoinNotFamily(joining.Number));
+        var collected = await db.StatusIdAsync(StatusDomains.PickBatchStatus, PickBatchStatuses.Collected, ct);
+        var packed = await db.StatusIdAsync(StatusDomains.PickBatchStatus, PickBatchStatuses.Packed, ct);
+        if (joining.StatusCodeId != collected) throw new StatusRuleException(PickGroupRules.JoinNotCollected(joining.Number, await StatusLabelAsync(joining.StatusCodeId, ct)));
+        if (joining.PickGroupId is int inGroup)
+            throw new StatusRuleException(PickGroupRules.JoinAlreadyInGroup(joining.Number,
+                await db.Set<PickGroup>().AsNoTracking().Where(g => g.PickGroupId == inGroup).Select(g => g.Number).FirstOrDefaultAsync(ct) ?? string.Empty));
+        if (await db.Set<Teikem.Domain.Integrations.TenantLinkOrder>().AsNoTracking().AnyAsync(l => l.PickBatchId == joining.PickBatchId, ct))
+            throw new StatusRuleException(PickGroupRules.JoinLinked(joining.Number));
+
+        // La familia: la raíz y sus adiciones (y la orden misma, por si acaso).
+        var order = await db.Set<SalesOrder>().AsNoTracking().Where(s => s.SalesOrderId == salesOrderId)
+            .Select(s => new { s.SalesOrderId, s.ParentSalesOrderId, s.PublicId }).FirstOrDefaultAsync(ct) ?? throw new NotFoundException("Orden de venta", feminine: true);
+        var rootId = PickGroupRules.RootOf(order.SalesOrderId, order.ParentSalesOrderId);
+        var family = await db.Set<SalesOrder>().AsNoTracking()
+            .Where(s => s.SalesOrderId == rootId || s.ParentSalesOrderId == rootId || s.SalesOrderId == salesOrderId)
+            .Select(s => new { s.SalesOrderId, s.PublicId, s.Number }).ToListAsync(ct);
+        var familyIds = family.Select(f => f.SalesOrderId).ToHashSet();
+        var rootNumber = family.FirstOrDefault(f => f.SalesOrderId == rootId)?.Number ?? family.First(f => f.SalesOrderId == salesOrderId).Number;
+        var joiningDoc = await ResolveDocAsync(PickGroupRules.KindSalesOrder, order.PublicId, ct);
+
+        // Las recolecciones candidatas: la elegida o las activas de la familia (sin la que se une, sin despachos manuales).
+        List<PickBatch> candidates;
+        if (targetPublicId is Guid tp)
+        {
+            var target = await db.Set<PickBatch>().AsNoTracking().FirstOrDefaultAsync(b => b.PublicId == tp, ct) ?? throw BatchNotFound();
+            if (target.PickBatchId == joining.PickBatchId) throw new ValidationException("targetBatchPublicId", PickGroupRules.JoinSelf(joining.Number));
+            if (!target.IsActive) throw BatchNotFound();
+            if (target.SalesOrderId is not int targetOrder || !familyIds.Contains(targetOrder) || PickBatchRules.IsManual(target.ManualIssueReasonId))
+                throw new StatusRuleException(PickGroupRules.JoinNotFamily(joining.Number));
+            candidates = new List<PickBatch> { target };
+        }
+        else
+        {
+            var ids = familyIds.ToList();
+            candidates = await db.Set<PickBatch>().AsNoTracking()
+                .Where(b => b.IsActive && b.SalesOrderId != null && ids.Contains(b.SalesOrderId.Value) && b.PickBatchId != joining.PickBatchId && b.ManualIssueReasonId == null)
+                .OrderByDescending(b => b.PickBatchId).ToListAsync(ct);
+        }
+
+        // Los destinos: una maestra cuenta una vez (con todas sus recolecciones activas); una recolección suelta, por sí sola.
+        var candidateIds = candidates.Select(c => c.PickBatchId).ToList();
+        var linked = (await db.Set<Teikem.Domain.Integrations.TenantLinkOrder>().AsNoTracking().Where(l => candidateIds.Contains(l.PickBatchId))
+            .Select(l => l.PickBatchId).ToListAsync(ct)).ToHashSet();
+        var units = new List<JoinUnit>();
+        var seenGroups = new HashSet<int>();
+        var rank = 0;
+        foreach (var c in candidates)
+        {
+            rank++;
+            if (linked.Contains(c.PickBatchId))
+            {
+                if (targetPublicId is not null) throw new StatusRuleException(PickGroupRules.JoinLinked(c.Number));
+                continue;
+            }
+            if (c.PickGroupId is int gid)
+            {
+                if (!seenGroups.Add(gid)) continue;
+                var g = await db.Set<PickGroup>().AsNoTracking().FirstOrDefaultAsync(x => x.PickGroupId == gid, ct);
+                if (g is null || !g.IsActive) continue;
+                var memberIds = await db.Set<PickBatch>().AsNoTracking().Where(b => b.PickGroupId == gid && b.IsActive).OrderBy(b => b.PickBatchId)
+                    .Select(b => b.PickBatchId).ToListAsync(ct);
+                var (left, label) = await ShipmentLeftAsync(g.TransportOrderId, ct);
+                units.Add(new JoinUnit(gid, null, c.PublicId, g.Number, g.TransportOrderId, left, label, memberIds, g.WarehouseId, g.ClientId, c.SalesOrderId!.Value, rank));
+            }
+            else
+            {
+                if (c.StatusCodeId != collected && c.StatusCodeId != packed)
+                {
+                    if (targetPublicId is not null) throw new StatusRuleException(PickGroupRules.JoinTargetLeft(c.Number, await StatusLabelAsync(c.StatusCodeId, ct)));
+                    continue;
+                }
+                var (left, label) = await ShipmentLeftAsync(c.TransportOrderId, ct);
+                units.Add(new JoinUnit(null, c.PickBatchId, c.PublicId, c.Number, c.TransportOrderId, left, label, new[] { c.PickBatchId }, c.WarehouseId, null, c.SalesOrderId!.Value, rank));
+            }
+        }
+
+        JoinUnit unit;
+        var open = units.Where(u => !u.Left).ToList();
+        if (targetPublicId is not null)
+        {
+            unit = units.FirstOrDefault() ?? throw new StatusRuleException(PickGroupRules.JoinNoTarget(rootNumber));
+            if (unit.Left) throw new StatusRuleException(PickGroupRules.JoinTargetLeft(unit.Number, unit.OrderStatus ?? "—"));
+        }
+        else if (open.Count == 1) unit = open[0];
+        else if (open.Count > 1) throw new ValidationException("targetBatchPublicId", PickGroupRules.JoinChooseTarget(rootNumber));
+        else
+        {
+            var left = units.OrderBy(u => u.Rank).FirstOrDefault();
+            throw new StatusRuleException(left is null ? PickGroupRules.JoinNoTarget(rootNumber) : PickGroupRules.JoinTargetLeft(left.Number, left.OrderStatus ?? "—"));
+        }
+
+        // El mismo cliente y almacén (mensajes de la maestra del Lote 176).
+        var destOrder = family.First(f => f.SalesOrderId == unit.SalesOrderId);
+        var destDoc = await ResolveDocAsync(PickGroupRules.KindSalesOrder, destOrder.PublicId, ct);
+        var destClientId = unit.ClientId ?? destDoc.ClientId;
+        if (destClientId != joiningDoc.ClientId)
+            throw new ValidationException("targetBatchPublicId", PickGroupRules.OtherClient(destDoc.Number + " (" + destDoc.ClientName + ")", joiningDoc.Number + " (" + joiningDoc.ClientName + ")"));
+        if (unit.WarehouseId != joining.WarehouseId || destDoc.WarehouseId != joiningDoc.WarehouseId)
+            throw new ValidationException("targetBatchPublicId", PickGroupRules.OtherWarehouse(destDoc.Number + " (" + destDoc.WarehouseCode + ")", joiningDoc.Number + " (" + joiningDoc.WarehouseCode + ")"));
+
+        var lockIds = unit.MemberIds.Append(joining.PickBatchId).Distinct().ToList();
+        return new JoinPlan(joining.PickBatchId, joining.Number, unit.GroupId, unit.BatchId, unit.RepresentativePublicId, unit.Number, unit.OrderId, lockIds,
+            joiningDoc.ClientId, joining.WarehouseId);
+    }
+
+    /// <summary>¿Ya salió el envío? Sin envío = no; con envío, salió si está inactivo o pasó de la etapa inicial. Devuelve también el nombre de su estatus.</summary>
+    private async Task<(bool Left, string? Label)> ShipmentLeftAsync(int? transportOrderId, CancellationToken ct)
+    {
+        if (transportOrderId is not int id) return (false, null);
+        var o = await (from t in db.TransportOrders.AsNoTracking()
+                       join s in db.StatusCodes.AsNoTracking() on t.StatusCodeId equals s.StatusCodeId
+                       where t.TransportOrderId == id
+                       select new { t.IsActive, s.IsInitial, s.LabelJson }).FirstOrDefaultAsync(ct);
+        if (o is null) return (true, "—");
+        return (!o.IsActive || !o.IsInitial, MultilingualText.Resolve(o.LabelJson, tenant.Lang));
+    }
+
+    private async Task<string> StatusLabelAsync(int statusCodeId, CancellationToken ct)
+    {
+        var s = await db.StatusCodes.AsNoTracking().Where(x => x.StatusCodeId == statusCodeId).Select(x => new { x.InternalCode, x.LabelJson }).FirstOrDefaultAsync(ct);
+        return s is null ? "—" : MultilingualText.Resolve(s.LabelJson, tenant.Lang);
+    }
+
+    private static NotFoundException BatchNotFound() => new(PickBatchService.PickBatchLabel, null, true);
+
     /// <summary>La ficha que vio quien actúa sigue siendo la vigente (409 si cambió). Se compara aquí porque el seguimiento del contexto se limpia en medio de la operación.</summary>
     private static void EnsureRowVersion(PickGroup group, string? rowVersion)
     {

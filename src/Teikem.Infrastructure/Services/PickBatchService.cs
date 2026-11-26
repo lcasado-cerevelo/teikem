@@ -58,7 +58,8 @@ public sealed class PickBatchService(
     OrderService orders,
     Teikem.Infrastructure.Abstractions.ISalesDispatchReversal? salesReversal = null,
     Teikem.Infrastructure.Abstractions.IExitNoticeDispatchReversal? exitReversal = null,
-    ValuationService? valuation = null)   // Lote 148: costo de la salida según el método de valuación (sin él, el costo del producto)
+    ValuationService? valuation = null,   // Lote 148: costo de la salida según el método de valuación (sin él, el costo del producto)
+    Teikem.Infrastructure.Notifications.INotificationPublisher? notifications = null)   // Lote 249: aviso «Empaque reabierto» (sin él, no avisa)
 {
     public const string PickBatchLabel = "Recolección";
 
@@ -774,6 +775,184 @@ public sealed class PickBatchService(
         }, ct);
     }
 
+    // ================================================================ Lote 249: reabrir el empaque (PACKED → COLLECTED)
+
+    /// <summary>El envío anulado al reabrir un empaque: su PublicId, su número y el número de empaque (EMP) que quedó libre.</summary>
+    internal sealed record ReopenedShipment(Guid OrderPublicId, string OrderNumber, string PackBatchNumber);
+
+    /// <summary>
+    /// Lote 249 — reabre el empaque de una recolección suelta (warehouse.reopen-pack; motivo obligatorio): anula su envío (baja lógica, solo en la etapa inicial y
+    /// sin nada facturado) y la recolección vuelve a COLLECTED con el historial «Empaque reabierto: …». Volver a empacarla reutiliza el mismo número EMP.
+    /// </summary>
+    public async Task<PickBatchDto> ReopenPackAsync(Guid publicId, PickBatchReopenRequest? req, CancellationToken ct)
+    {
+        await EnsureReopenPermissionAsync(ct);
+        var (reason, error) = PickBatchRules.NormalizeReopenReason(req?.Reason);
+        if (error is not null) throw new ValidationException("reason", error);
+        var current = await ResolveAsync(publicId, ct);
+        if (!current.IsActive) throw NotFound();
+        await db.RunInTransactionAsync(ct2 => ReopenPackCoreAsync(current.PickBatchId, reason!, ct2, req?.RowVersion), ct);
+        return await GetAsync(publicId, ct);
+    }
+
+    /// <summary>
+    /// Núcleo de reabrir una recolección suelta. Corre en la transacción de quien llama (o abre la suya) y NO revisa el permiso: lo exige quien llama
+    /// (<see cref="EnsureReopenPermissionAsync"/>). Devuelve el número EMP que quedó libre (el del envío anulado).
+    /// </summary>
+    internal async Task<string> ReopenPackCoreAsync(int batchId, string reason, CancellationToken ct, string? rowVersion = null)
+    {
+        var (normalized, error) = PickBatchRules.NormalizeReopenReason(reason);
+        if (error is not null) throw new ValidationException("reason", error);
+        return await db.RunInTransactionAsync(async ct2 =>
+        {
+            var batch = await LockAsync(batchId, ct2);
+            if (!batch.IsActive) throw NotFound();
+            EnsureRowVersion(batch.RowVersion, rowVersion);
+            var code = await StatusCodeOfAsync(batch.StatusCodeId, ct2);
+            var groupNumber = batch.PickGroupId is int gid ? await GroupNumberAsync(gid, ct2) : null;
+            if (PickBatchRules.ReopenBatchError(batch.Number, code, PickBatchRules.IsManual(batch.ManualIssueReasonId), groupNumber) is string blocked)
+                throw new StatusRuleException(blocked);
+            if (batch.TransportOrderId is not int orderId) throw new StatusRuleException(PickBatchRules.ReopenNotPacked(batch.Number));
+
+            var shipment = await ReopenMembersCoreAsync(batch.Number, orderId, new[] { batch.PickBatchId }, normalized!, ct2);
+            await NotifyPackReopenedAsync(batch.PublicId, batch.Number, batch.SalesOrderId is int salesOrderId ? new[] { salesOrderId } : Array.Empty<int>(),
+                shipment, normalized!, ct2);
+            return shipment.PackBatchNumber;
+        }, ct);
+    }
+
+    /// <summary>
+    /// Lote 249 — lo común de reabrir una recolección suelta o una maestra: revisa el envío (compañía enlazada, etapa inicial, flete/cotejo/devolución y productos
+    /// facturados), lo da de baja por OrderService (libera OrderNumber y PackBatchNumber; sin transición de estatus: no salen webhooks ni avisos de estatus) y pasa
+    /// cada recolección PACKED → COLLECTED por StatusService.StepBackAsync, sin envío, fecha de empaque ni factura del cliente (CK_PickBatch_Packed). Las recolecciones
+    /// ya vienen bloqueadas por quien llama (orden del lote: recolecciones ascendentes → envío). number = la recolección o la maestra (para los mensajes).
+    /// </summary>
+    internal async Task<ReopenedShipment> ReopenMembersCoreAsync(string number, int transportOrderId, IReadOnlyCollection<int> memberIds, string reason, CancellationToken ct)
+    {
+        var ids = memberIds.Distinct().ToList();
+        var linkedId = await db.Set<Teikem.Domain.Integrations.TenantLinkOrder>().AsNoTracking().Where(l => ids.Contains(l.PickBatchId))
+            .Select(l => (int?)l.PickBatchId).FirstOrDefaultAsync(ct);
+        var linkedNumber = linkedId is int lid
+            ? await db.Set<PickBatch>().AsNoTracking().Where(b => b.PickBatchId == lid).Select(b => b.Number).FirstOrDefaultAsync(ct) ?? number
+            : null;
+
+        var order = await (from o in db.TransportOrders.AsNoTracking()
+                           join s in db.StatusCodes.AsNoTracking() on o.StatusCodeId equals s.StatusCodeId
+                           where o.TransportOrderId == transportOrderId
+                           select new
+                           {
+                               o.PublicId, o.OrderNumber, o.PackBatchNumber, o.IsActive, s.IsInitial, s.LabelJson,
+                               o.FreightInvoiced, o.ReturnFeeInvoiced, o.InvoiceProcessedAtUtc,
+                           }).FirstOrDefaultAsync(ct);
+
+        var voidId = await db.StatusCodes.AsNoTracking()
+            .Where(s => s.Entity == Teikem.Domain.Billing.BillingCodes.InvoiceStatusDomain && s.InternalCode == Teikem.Domain.Billing.InvoiceStatuses.Void)
+            .Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct);
+        var liveInvoices = db.Set<Teikem.Domain.Billing.Invoice>().AsNoTracking().Where(i => i.IsActive && (voidId == null || i.StatusCodeId != voidId));
+        var shipmentBilled = order is not null && await (from l in db.Set<Teikem.Domain.Billing.InvoiceLine>().AsNoTracking()
+                                                         join i in liveInvoices on l.InvoiceId equals i.InvoiceId
+                                                         where l.TransportOrderId == transportOrderId
+                                                         select l.InvoiceLineId).AnyAsync(ct);
+
+        // Productos de las líneas de venta que atienden estas recolecciones (sin las ya revertidas) con algo facturado, y sus facturas vivas.
+        var salesLineIds = await db.Set<PickBatchLine>().AsNoTracking()
+            .Where(l => ids.Contains(l.PickBatchId) && l.SalesOrderLineId != null && l.ReversalTxnId == null)
+            .Select(l => l.SalesOrderLineId!.Value).Distinct().ToListAsync(ct);
+        var invoicedLineIds = salesLineIds.Count == 0
+            ? new List<int>()
+            : await db.Set<Teikem.Domain.Sales.SalesOrderLine>().AsNoTracking().Where(l => salesLineIds.Contains(l.SalesOrderLineId) && l.QtyInvoiced > 0m)
+                .Select(l => l.SalesOrderLineId).ToListAsync(ct);
+        var invoiceNumbers = invoicedLineIds.Count == 0
+            ? new List<string>()
+            : await (from l in db.Set<Teikem.Domain.Billing.InvoiceLine>().AsNoTracking()
+                     join i in liveInvoices on l.InvoiceId equals i.InvoiceId
+                     where l.SalesOrderLineId != null && invoicedLineIds.Contains(l.SalesOrderLineId.Value)
+                     select i.InvoiceNumber).Distinct().OrderBy(n => n).ToListAsync(ct);
+
+        var check = new ReopenPackCheck(number, order?.OrderNumber, order?.IsActive == true, order?.IsInitial == true,
+            order is null ? null : MultilingualText.Resolve(order.LabelJson, tenant.Lang),
+            FreightInvoiced: order?.FreightInvoiced == true, ReturnFeeInvoiced: order?.ReturnFeeInvoiced == true, HasLiveInvoiceLine: shipmentBilled,
+            InvoiceProcessed: order?.InvoiceProcessedAtUtc is not null, HasInvoicedProduct: invoicedLineIds.Count > 0, ProductInvoiceNumbers: invoiceNumbers,
+            LinkedBatchNumber: linkedNumber);
+        if (PickBatchRules.ReopenShipmentError(check) is string blocked) throw new StatusRuleException(blocked);
+
+        // El envío se da de baja (se une a esta transacción); desde Órdenes la guarda D12 lo impide.
+        await orders.DeleteAsync(order!.PublicId, OrderScope.Any, new OrderDeletionOptions(EntityTypes.PickBatch), ct);
+
+        var comment = PickBatchRules.ReopenHistoryComment(reason, order.OrderNumber);
+        var members = await db.Set<PickBatch>().AsTracking().Where(b => ids.Contains(b.PickBatchId)).OrderBy(b => b.PickBatchId).ToListAsync(ct);
+        foreach (var b in members)
+        {
+            var collected = await statuses.StepBackAsync(StatusDomains.PickBatchStatus, EntityTypes.PickBatch, b.PickBatchId, b.StatusCodeId, PickBatchStatuses.Collected, comment, ct);
+            b.StatusCodeId = collected.StatusCodeId;
+            b.TransportOrderId = null;
+            b.PackedAtUtc = null;
+            b.PackedBy = null;
+            b.ClientInvoiceNumber = null;
+        }
+        await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
+        return new ReopenedShipment(order.PublicId, order.OrderNumber, order.PackBatchNumber);
+    }
+
+    /// <summary>
+    /// Lote 249 — warehouse.reopen-pack con el mensaje propio del lote (403). PermissionService deja el evento PERMISSION_DENIED como siempre.
+    /// </summary>
+    internal async Task EnsureReopenPermissionAsync(CancellationToken ct)
+    {
+        try
+        {
+            await permissions.EnsureAsync(PermissionCatalog.WarehouseReopenPack, ct);
+        }
+        catch (ForbiddenException)
+        {
+            throw new ForbiddenException(PickBatchRules.ReopenPermission);
+        }
+    }
+
+    /// <summary>
+    /// Lote 249 — aviso «Empaque reabierto» (SALES_PACK_REOPENED) en la transacción de quien reabre: uno por orden de venta atendida (una recolección suelta
+    /// atiende una). Clave REOPEN-{recolección o maestra}-{envío} (con el id de la orden si la maestra atiende varias). Sin publicador o sin orden de venta no avisa.
+    /// </summary>
+    internal async Task NotifyPackReopenedAsync(Guid sourcePublicId, string number, IReadOnlyCollection<int> salesOrderIds, ReopenedShipment shipment, string reason,
+        CancellationToken ct)
+    {
+        if (notifications is null || salesOrderIds.Count == 0) return;
+        var ids = salesOrderIds.Distinct().ToList();
+        var by = tenant.UserId is int uid
+            ? await db.Users.AsNoTracking().Where(u => u.Id == uid).Select(u => string.IsNullOrWhiteSpace(u.FullName) ? u.UserName : u.FullName).FirstOrDefaultAsync(ct)
+            : null;
+        var rows = await (from s in db.Set<Teikem.Domain.Sales.SalesOrder>().AsNoTracking()
+                          join c in db.Clients.AsNoTracking() on s.ClientId equals c.ClientId
+                          join w in db.Set<Warehouse>().AsNoTracking() on s.WarehouseId equals w.WarehouseId
+                          where ids.Contains(s.SalesOrderId)
+                          orderby s.SalesOrderId
+                          select new { s.SalesOrderId, s.PublicId, s.Number, Client = c.Name, Warehouse = w.Name }).ToListAsync(ct);
+        foreach (var o in rows)
+        {
+            var key = rows.Count == 1 ? $"REOPEN-{sourcePublicId:N}-{shipment.OrderPublicId:N}" : $"REOPEN-{sourcePublicId:N}-{shipment.OrderPublicId:N}-{o.SalesOrderId}";
+            await notifications.PublishAsync(Teikem.Infrastructure.Notifications.SalesChangeEventCodes.PackReopened, new Dictionary<string, string?>
+            {
+                ["orderNumber"] = o.Number,
+                ["client"] = o.Client,
+                ["warehouse"] = o.Warehouse,
+                ["orderPublicId"] = o.PublicId.ToString("N"),
+                ["batchNumber"] = number,
+                ["shipmentNumber"] = shipment.OrderNumber,
+                ["reopenedBy"] = by ?? string.Empty,
+                ["reason"] = reason,
+            }, key, ct);
+        }
+        // El publicador solo anota en la cola del contexto: se guarda aquí, dentro de la transacción de quien reabre (si se revierte, no avisa).
+        if (rows.Count > 0) await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
+    }
+
+    /// <summary>La ficha que vio quien actúa sigue siendo la vigente (409 si cambió); sin RowVersion no se compara.</summary>
+    private static void EnsureRowVersion(byte[]? current, string? rowVersion)
+    {
+        if (string.IsNullOrWhiteSpace(rowVersion)) return;
+        if (rowVersion.Trim() != Convert.ToBase64String(current ?? Array.Empty<byte>())) throw new ConflictException(DbExtensions.ConcurrencyMessage);
+    }
+
     // ================================================================ armado de DTOs (sin N+1)
 
     private async Task<Dictionary<int, PickBatchDto>> BuildDtosAsync(IReadOnlyCollection<int> ids, CancellationToken ct)
@@ -884,7 +1063,11 @@ public sealed class PickBatchService(
                 Convert.ToBase64String(b.RowVersion ?? Array.Empty<byte>()),
                 isManual, reason?.Code, reason?.Label, b.Note, ownerName,
                 b.PickGroupId is int pg && groupsById.TryGetValue(pg, out var grp) ? grp.PublicId : null, b.PickGroupId is int pg2 && groupsById.TryGetValue(pg2, out var grp2) ? grp2.Number : null,
-                b.SalesOrderId is int so && salesById.TryGetValue(so, out var sale) ? sale.PublicId : null, b.SalesOrderId is int so2 && salesById.TryGetValue(so2, out var sale2) ? sale2.Number : null);
+                b.SalesOrderId is int so && salesById.TryGetValue(so, out var sale) ? sale.PublicId : null, b.SalesOrderId is int so2 && salesById.TryGetValue(so2, out var sale2) ? sale2.Number : null,
+                // Lote 249: reabrir solo una PACKED suelta con su envío activo en la etapa inicial (las guardas de facturación las revisa la acción)
+                b.IsActive && !isManual && b.PickGroupId is null && order is not null
+                    && PickBatchRules.ReopenShipmentError(new ReopenPackCheck(b.Number, order.OrderNumber, order.IsActive, orderStatus?.IsInitial == true, null)) is null
+                    && PickBatchRules.ReopenBatchError(b.Number, statusCode, isManual, null) is null);
         }
         return result;
     }

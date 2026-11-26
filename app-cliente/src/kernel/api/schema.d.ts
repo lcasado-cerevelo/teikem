@@ -5863,6 +5863,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/client-documents/expiring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    withinDays?: number;
+                    includeExpired?: boolean;
+                    includeMissing?: boolean;
+                    client?: string;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExpiringClientDocumentsDto"];
+                        "application/json": components["schemas"]["ExpiringClientDocumentsDto"];
+                        "text/json": components["schemas"]["ExpiringClientDocumentsDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/client-messages/conversations": {
         parameters: {
             query?: never;
@@ -6996,6 +7061,9 @@ export interface paths {
                         file?: string;
                         documentType?: string;
                         notes?: string;
+                        documentNumber?: string;
+                        validFrom?: string;
+                        validTo?: string;
                     };
                 };
             };
@@ -7050,6 +7118,117 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    documentPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientDocumentPatchRequest"];
+                    "text/json": components["schemas"]["ClientDocumentPatchRequest"];
+                    "application/*+json": components["schemas"]["ClientDocumentPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientDocumentDto"];
+                        "application/json": components["schemas"]["ClientDocumentDto"];
+                        "text/json": components["schemas"]["ClientDocumentDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/clients/{publicId}/tax-exemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"][];
+                        "application/json": components["schemas"]["TaxExemptionDto"][];
+                        "text/json": components["schemas"]["TaxExemptionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                        /** Format: uuid */
+                        clientDocumentPublicId?: string;
+                        documentType?: string;
+                        documentNumber?: string;
+                        /** Format: date */
+                        validFrom?: string;
+                        /** Format: date */
+                        validTo?: string;
+                        scope?: string;
+                        componentCodes?: string[];
+                        notes?: string;
+                        exemptionType?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientTaxExemptionCaptureDto"];
+                        "application/json": components["schemas"]["ClientTaxExemptionCaptureDto"];
+                        "text/json": components["schemas"]["ClientTaxExemptionCaptureDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -24998,6 +25177,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pick-batches/groups/{publicId}/reopen-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PickBatchReopenRequest"];
+                    "text/json": components["schemas"]["PickBatchReopenRequest"];
+                    "application/*+json": components["schemas"]["PickBatchReopenRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickGroupDto"];
+                        "application/json": components["schemas"]["PickGroupDto"];
+                        "text/json": components["schemas"]["PickGroupDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pick-batches/{publicId}": {
         parameters: {
             query?: never;
@@ -25140,6 +25364,96 @@ export interface paths {
                         "text/plain": components["schemas"]["PickBatchPackResultDto"];
                         "application/json": components["schemas"]["PickBatchPackResultDto"];
                         "text/json": components["schemas"]["PickBatchPackResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pick-batches/{publicId}/reopen-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PickBatchReopenRequest"];
+                    "text/json": components["schemas"]["PickBatchReopenRequest"];
+                    "application/*+json": components["schemas"]["PickBatchReopenRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickBatchDto"];
+                        "application/json": components["schemas"]["PickBatchDto"];
+                        "text/json": components["schemas"]["PickBatchDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pick-batches/{publicId}/join-order-shipment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PickBatchJoinOrderRequest"];
+                    "text/json": components["schemas"]["PickBatchJoinOrderRequest"];
+                    "application/*+json": components["schemas"]["PickBatchJoinOrderRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickGroupDto"];
+                        "application/json": components["schemas"]["PickGroupDto"];
+                        "text/json": components["schemas"]["PickGroupDto"];
                     };
                 };
             };
@@ -35978,6 +36292,601 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-order-changes/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    skip?: number;
+                    take?: number;
+                    q?: string;
+                    sort?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesChangePendingPageDto"];
+                        "application/json": components["schemas"]["SalesChangePendingPageDto"];
+                        "text/json": components["schemas"]["SalesChangePendingPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-order-changes/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesChangeSettingsDto"];
+                        "application/json": components["schemas"]["SalesChangeSettingsDto"];
+                        "text/json": components["schemas"]["SalesChangeSettingsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesChangeSettingsRequest"];
+                    "text/json": components["schemas"]["SalesChangeSettingsRequest"];
+                    "application/*+json": components["schemas"]["SalesChangeSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesChangeSettingsDto"];
+                        "application/json": components["schemas"]["SalesChangeSettingsDto"];
+                        "text/json": components["schemas"]["SalesChangeSettingsDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-order-changes/settings/clients/{clientPublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesClientChangeSettingsDto"];
+                        "application/json": components["schemas"]["SalesClientChangeSettingsDto"];
+                        "text/json": components["schemas"]["SalesClientChangeSettingsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    clientPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesClientChangeSettingsRequest"];
+                    "text/json": components["schemas"]["SalesClientChangeSettingsRequest"];
+                    "application/*+json": components["schemas"]["SalesClientChangeSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesClientChangeSettingsDto"];
+                        "application/json": components["schemas"]["SalesClientChangeSettingsDto"];
+                        "text/json": components["schemas"]["SalesClientChangeSettingsDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/edit-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderEditOptionsDto"];
+                        "application/json": components["schemas"]["SalesOrderEditOptionsDto"];
+                        "text/json": components["schemas"]["SalesOrderEditOptionsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/changes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderChangeRequest"];
+                    "text/json": components["schemas"]["SalesOrderChangeRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderChangeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderChangePreviewDto"];
+                        "application/json": components["schemas"]["SalesOrderChangePreviewDto"];
+                        "text/json": components["schemas"]["SalesOrderChangePreviewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderChangeListItemDto"][];
+                        "application/json": components["schemas"]["SalesOrderChangeListItemDto"][];
+                        "text/json": components["schemas"]["SalesOrderChangeListItemDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderChangeRequest"];
+                    "text/json": components["schemas"]["SalesOrderChangeRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderChangeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderChangeDto"];
+                        "application/json": components["schemas"]["SalesOrderChangeDto"];
+                        "text/json": components["schemas"]["SalesOrderChangeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/changes/{changePublicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    changePublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderChangeDto"];
+                        "application/json": components["schemas"]["SalesOrderChangeDto"];
+                        "text/json": components["schemas"]["SalesOrderChangeDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/changes/{changePublicId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    changePublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderChangeDecisionRequest"];
+                    "text/json": components["schemas"]["SalesOrderChangeDecisionRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderChangeDecisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderChangeDto"];
+                        "application/json": components["schemas"]["SalesOrderChangeDto"];
+                        "text/json": components["schemas"]["SalesOrderChangeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/changes/{changePublicId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    changePublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderChangeDecisionRequest"];
+                    "text/json": components["schemas"]["SalesOrderChangeDecisionRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderChangeDecisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderChangeDto"];
+                        "application/json": components["schemas"]["SalesOrderChangeDto"];
+                        "text/json": components["schemas"]["SalesOrderChangeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/changes/{changePublicId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    changePublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderChangeDecisionRequest"];
+                    "text/json": components["schemas"]["SalesOrderChangeDecisionRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderChangeDecisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderChangeDto"];
+                        "application/json": components["schemas"]["SalesOrderChangeDto"];
+                        "text/json": components["schemas"]["SalesOrderChangeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/change-attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StoredFileDto"];
+                        "application/json": components["schemas"]["StoredFileDto"];
+                        "text/json": components["schemas"]["StoredFileDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/{publicId}/additions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SalesOrderAdditionRequest"];
+                    "text/json": components["schemas"]["SalesOrderAdditionRequest"];
+                    "application/*+json": components["schemas"]["SalesOrderAdditionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesOrderChangeDto"];
+                        "application/json": components["schemas"]["SalesOrderChangeDto"];
+                        "text/json": components["schemas"]["SalesOrderChangeDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sales-orders": {
         parameters: {
             query?: never;
@@ -38138,6 +39047,67 @@ export interface paths {
                         "text/plain": components["schemas"]["SalesStockDto"];
                         "application/json": components["schemas"]["SalesStockDto"];
                         "text/json": components["schemas"]["SalesStockDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales-orders/tax-notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    client?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesTaxNoticeDto"];
+                        "application/json": components["schemas"]["SalesTaxNoticeDto"];
+                        "text/json": components["schemas"]["SalesTaxNoticeDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -40810,6 +41780,218 @@ export interface paths {
                         "text/plain": components["schemas"]["TaxCalcDto"];
                         "application/json": components["schemas"]["TaxCalcDto"];
                         "text/json": components["schemas"]["TaxCalcDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemption-periods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"][];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"][];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxExemptionPeriodRequest"];
+                    "text/json": components["schemas"]["TaxExemptionPeriodRequest"];
+                    "application/*+json": components["schemas"]["TaxExemptionPeriodRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemption-periods/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxExemptionPeriodPatchRequest"];
+                    "text/json": components["schemas"]["TaxExemptionPeriodPatchRequest"];
+                    "application/*+json": components["schemas"]["TaxExemptionPeriodPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/tax/exemption-periods/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemption-periods/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"];
                     };
                 };
             };
@@ -47303,6 +48485,30 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             createdByName?: string | null;
+            documentNumber?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            /** Format: int32 */
+            daysToExpiry?: number | null;
+            expiryState?: string | null;
+            isTax?: boolean;
+            requiresValidTo?: boolean;
+            backsExemption?: boolean;
+            rowVersion?: string | null;
+            suggestExemption?: boolean;
+        };
+        ClientDocumentPatchRequest: {
+            documentNumber?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            clearValidFrom?: boolean;
+            clearValidTo?: boolean;
+            notes?: string | null;
+            rowVersion?: string | null;
         };
         ClientInitialContractRequest: {
             /** Format: date */
@@ -47492,6 +48698,13 @@ export interface components {
         };
         ClientServiceTeamRequest: {
             userIds?: number[] | null;
+        };
+        ClientTaxExemptionCaptureDto: {
+            exemption?: components["schemas"]["TaxExemptionDto"];
+            /** Format: uuid */
+            documentPublicId?: string;
+            /** Format: uuid */
+            filePublicId?: string;
         };
         CodCollectionDto: {
             /** Format: int64 */
@@ -50428,6 +51641,42 @@ export interface components {
             notes?: string | null;
             lines?: components["schemas"]["ExitNoticeLineRequest"][] | null;
         };
+        ExpiringClientDocumentDto: {
+            rowKind?: string | null;
+            /** Format: uuid */
+            documentPublicId?: string | null;
+            /** Format: uuid */
+            exemptionPublicId?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientCode?: string | null;
+            clientName?: string | null;
+            documentType?: string | null;
+            documentTypeLabel?: string | null;
+            documentNumber?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            /** Format: int32 */
+            daysToExpiry?: number | null;
+            expiryState?: string | null;
+            isTax?: boolean;
+            requiresValidTo?: boolean;
+            backsExemption?: boolean;
+            /** Format: uuid */
+            filePublicId?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        ExpiringClientDocumentsDto: {
+            /** Format: int32 */
+            warnDays?: number;
+            /** Format: int32 */
+            withinDays?: number;
+            truncated?: boolean;
+            items?: components["schemas"]["ExpiringClientDocumentDto"][] | null;
+        };
         ExpiringDocumentDto: {
             rowKey?: string | null;
             ownerKind?: string | null;
@@ -51250,6 +52499,7 @@ export interface components {
             payments?: components["schemas"]["PaymentDto"][] | null;
             /** Format: double */
             credited?: number;
+            complements?: string[] | null;
         };
         InvoiceLineAdjustRequest: {
             /** Format: double */
@@ -53413,6 +54663,14 @@ export interface components {
             /** Format: uuid */
             salesOrderPublicId?: string | null;
             salesOrderNumber?: string | null;
+            canReopenPack?: boolean;
+        };
+        PickBatchJoinOrderRequest: {
+            /** Format: uuid */
+            targetBatchPublicId?: string | null;
+            reopenPack?: boolean | null;
+            reason?: string | null;
+            note?: string | null;
         };
         PickBatchLineDto: {
             /** Format: int32 */
@@ -53464,6 +54722,10 @@ export interface components {
             /** Format: int32 */
             take?: number;
             items?: components["schemas"]["PickBatchDto"][] | null;
+        };
+        PickBatchReopenRequest: {
+            reason?: string | null;
+            rowVersion?: string | null;
         };
         PickBatchSummaryDto: {
             /** Format: uuid */
@@ -57205,6 +58467,174 @@ export interface components {
             chainPublicId?: string | null;
             chainName?: string | null;
         };
+        SalesChangeBatchDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            stage?: string | null;
+            reason?: string | null;
+            packNumber?: string | null;
+            /** Format: uuid */
+            groupPublicId?: string | null;
+            groupNumber?: string | null;
+            /** Format: uuid */
+            shipmentPublicId?: string | null;
+            shipmentNumber?: string | null;
+        };
+        SalesChangeDiffDto: {
+            added?: components["schemas"]["SalesChangeDiffLineDto"][] | null;
+            removed?: components["schemas"]["SalesChangeDiffLineDto"][] | null;
+            changed?: components["schemas"]["SalesChangeDiffLineDto"][] | null;
+            terms?: components["schemas"]["SalesChangeFieldDiffDto"][] | null;
+            /** Format: double */
+            totalBefore?: number;
+            /** Format: double */
+            totalAfter?: number;
+            /** Format: double */
+            delta?: number;
+        };
+        SalesChangeDiffLineDto: {
+            /** Format: int32 */
+            lineId?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            sku?: string | null;
+            name?: string | null;
+            change?: string | null;
+            fields?: components["schemas"]["SalesChangeFieldDiffDto"][] | null;
+        };
+        SalesChangeEffectiveSettingsDto: {
+            approvalMode?: string | null;
+            /** Format: double */
+            approvalAmount?: number | null;
+            attachmentRequired?: boolean;
+            approvalFromClient?: boolean;
+            attachmentFromClient?: boolean;
+        };
+        SalesChangeEffectsDto: {
+            reversedBatches?: string[] | null;
+            reopenedPacks?: string[] | null;
+            warehouseImpact?: string | null;
+        };
+        SalesChangeFieldDiffDto: {
+            field?: string | null;
+            before?: string | null;
+            after?: string | null;
+        };
+        SalesChangeLinePositionDto: {
+            /** Format: int32 */
+            lineId?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            minQuantity?: number;
+            /** Format: double */
+            minQuantityWithReopen?: number;
+            /** Format: double */
+            inCollected?: number;
+            /** Format: double */
+            inPacked?: number;
+            /** Format: double */
+            out?: number;
+            /** Format: double */
+            invoiced?: number;
+            isRemoved?: boolean;
+            lockedReason?: string | null;
+            priceLockedReason?: string | null;
+            /** Format: double */
+            unitPrice?: number;
+            /** Format: double */
+            taxRatePct?: number;
+            hasTaxOverride?: boolean;
+            isKit?: boolean;
+        };
+        SalesChangePendingPageDto: {
+            items?: components["schemas"]["SalesOrderChangeListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+        };
+        SalesChangePermissionsDto: {
+            modify?: boolean;
+            price?: boolean;
+            tax?: boolean;
+            reopenPack?: boolean;
+            approve?: boolean;
+            creditOverride?: boolean;
+        };
+        SalesChangeSettingsDto: {
+            approvalMode?: string | null;
+            /** Format: double */
+            approvalAmount?: number | null;
+            attachmentRequired?: boolean;
+        };
+        SalesChangeSettingsRequest: {
+            approvalMode?: string | null;
+            /** Format: double */
+            approvalAmount?: number | null;
+            attachmentRequired?: boolean | null;
+        };
+        SalesChangeSnapshotDto: {
+            lines?: components["schemas"]["SalesChangeSnapshotLineDto"][] | null;
+            terms?: components["schemas"]["SalesChangeSnapshotTermsDto"];
+            /** Format: double */
+            subtotal?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            shippingCharge?: number;
+            /** Format: double */
+            shippingTaxAmount?: number;
+            /** Format: double */
+            total?: number;
+        };
+        SalesChangeSnapshotLineDto: {
+            /** Format: int32 */
+            lineId?: number;
+            /** Format: int32 */
+            lineNo?: number;
+            sku?: string | null;
+            name?: string | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyShipped?: number;
+            /** Format: double */
+            qtyInvoiced?: number;
+            /** Format: double */
+            unitPrice?: number;
+            /** Format: double */
+            resolvedUnitPrice?: number | null;
+            priceSource?: string | null;
+            /** Format: double */
+            taxRatePct?: number;
+            /** Format: double */
+            taxAmount?: number;
+            taxReason?: string | null;
+            /** Format: double */
+            taxComputedRatePct?: number | null;
+            /** Format: double */
+            taxComputedAmount?: number | null;
+            isRemoved?: boolean;
+        };
+        SalesChangeSnapshotTermsDto: {
+            paymentMethod?: string | null;
+            paymentTerm?: string | null;
+            deliveryMode?: string | null;
+            consigneeName?: string | null;
+            isConsignment?: boolean;
+            notes?: string | null;
+        };
         SalesChartSeriesDto: {
             key?: string | null;
             label?: string | null;
@@ -57221,6 +58651,21 @@ export interface components {
             coverage?: components["schemas"]["SalesCoveragePointDto"][] | null;
             quotaBy?: string | null;
             routeVsQuota?: components["schemas"]["SalesRouteQuotaPointDto"][] | null;
+        };
+        SalesClientChangeSettingsDto: {
+            /** Format: uuid */
+            clientPublicId?: string;
+            approvalMode?: string | null;
+            /** Format: double */
+            approvalAmount?: number | null;
+            attachmentRequired?: boolean | null;
+            effective?: components["schemas"]["SalesChangeEffectiveSettingsDto"];
+        };
+        SalesClientChangeSettingsRequest: {
+            approvalMode?: string | null;
+            /** Format: double */
+            approvalAmount?: number | null;
+            attachmentRequired?: boolean | null;
         };
         SalesClientRepBulkRequest: {
             clientIds?: number[] | null;
@@ -57523,8 +58968,173 @@ export interface components {
             /** Format: double */
             productAmount?: number;
         };
+        SalesOrderAdditionRefDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            /** Format: double */
+            total?: number;
+        };
+        SalesOrderAdditionRequest: {
+            lines?: components["schemas"]["SalesOrderLineRequest"][] | null;
+            notes?: string | null;
+            authorizedByName?: string | null;
+            authorizedByTitle?: string | null;
+            /** Format: int32 */
+            authorizedByContactId?: number | null;
+            authorizationChannel?: string | null;
+            /** Format: date-time */
+            authorizedAtUtc?: string | null;
+            reason?: string | null;
+            /** Format: uuid */
+            attachmentFilePublicId?: string | null;
+            allowBackorder?: boolean | null;
+            overrideCredit?: boolean | null;
+        };
         SalesOrderCancelRequest: {
             comment?: string | null;
+        };
+        SalesOrderChangeDecisionRequest: {
+            note?: string | null;
+            overrideCredit?: boolean | null;
+        };
+        SalesOrderChangeDto: {
+            item?: components["schemas"]["SalesOrderChangeListItemDto"];
+            /** Format: int32 */
+            authorizedByContactId?: number | null;
+            /** Format: date-time */
+            authorizedAtUtc?: string;
+            /** Format: uuid */
+            attachmentFilePublicId?: string | null;
+            attachmentFileName?: string | null;
+            /** Format: int32 */
+            linesAdded?: number;
+            /** Format: int32 */
+            linesRemoved?: number;
+            /** Format: int32 */
+            linesChanged?: number;
+            /** Format: int32 */
+            reversedBatchCount?: number;
+            hasPriceChange?: boolean;
+            hasTaxOverride?: boolean;
+            hasTermsChange?: boolean;
+            reopenedPack?: boolean;
+            creditOverride?: boolean;
+            /** Format: int32 */
+            decidedBy?: number | null;
+            decisionNote?: string | null;
+            /** Format: date-time */
+            appliedAtUtc?: string | null;
+            before?: components["schemas"]["SalesChangeSnapshotDto"];
+            after?: components["schemas"]["SalesChangeSnapshotDto"];
+            diff?: components["schemas"]["SalesChangeDiffDto"];
+            effects?: components["schemas"]["SalesChangeEffectsDto"];
+        };
+        SalesOrderChangeLineOp: {
+            kind?: string | null;
+            /** Format: int32 */
+            lineId?: number | null;
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: double */
+            unitPrice?: number | null;
+            /** Format: double */
+            taxPct?: number | null;
+            note?: string | null;
+        };
+        SalesOrderChangeListItemDto: {
+            /** Format: uuid */
+            publicId?: string;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            clientName?: string | null;
+            /** Format: int32 */
+            changeNo?: number;
+            kind?: string | null;
+            status?: string | null;
+            statusLabel?: string | null;
+            statusColor?: string | null;
+            isPending?: boolean;
+            /** Format: int32 */
+            registeredBy?: number;
+            registeredByName?: string | null;
+            /** Format: date-time */
+            registeredAtUtc?: string;
+            authorizedByName?: string | null;
+            authorizedByTitle?: string | null;
+            channel?: string | null;
+            channelLabel?: string | null;
+            reason?: string | null;
+            summary?: string | null;
+            /** Format: double */
+            totalBefore?: number;
+            /** Format: double */
+            totalAfter?: number;
+            /** Format: double */
+            totalDelta?: number;
+            requiresApproval?: boolean;
+            approvalRule?: string | null;
+            decidedByName?: string | null;
+            /** Format: date-time */
+            decidedAtUtc?: string | null;
+            /** Format: uuid */
+            additionPublicId?: string | null;
+            additionNumber?: string | null;
+        };
+        SalesOrderChangePreviewDto: {
+            before?: components["schemas"]["SalesChangeSnapshotDto"];
+            after?: components["schemas"]["SalesChangeSnapshotDto"];
+            diff?: components["schemas"]["SalesChangeDiffDto"];
+            summary?: string | null;
+            effects?: components["schemas"]["SalesChangeEffectsDto"];
+            credit?: components["schemas"]["SalesCreditDto"];
+            creditChecked?: boolean;
+            creditExceeded?: boolean;
+            requiresApproval?: boolean;
+            approvalRule?: string | null;
+            attachmentRequired?: boolean;
+            needsReopen?: boolean;
+            blockers?: string[] | null;
+            /** Format: double */
+            totalBefore?: number;
+            /** Format: double */
+            totalAfter?: number;
+            /** Format: double */
+            totalDelta?: number;
+        };
+        SalesOrderChangeRequest: {
+            ops?: components["schemas"]["SalesOrderChangeLineOp"][] | null;
+            authorizedByName?: string | null;
+            authorizedByTitle?: string | null;
+            /** Format: int32 */
+            authorizedByContactId?: number | null;
+            authorizationChannel?: string | null;
+            /** Format: date-time */
+            authorizedAtUtc?: string | null;
+            reason?: string | null;
+            /** Format: uuid */
+            attachmentFilePublicId?: string | null;
+            terms?: components["schemas"]["SalesOrderChangeTermsRequest"];
+            notes?: string | null;
+            reopenPack?: boolean | null;
+            reopenReason?: string | null;
+            allowBackorder?: boolean | null;
+            overrideCredit?: boolean | null;
+            rowVersion?: string | null;
+        };
+        SalesOrderChangeTermsRequest: {
+            paymentMethod?: string | null;
+            paymentTerm?: string | null;
+            deliveryMode?: string | null;
+            /** Format: uuid */
+            consigneePublicId?: string | null;
+            clearConsignee?: boolean | null;
+            isConsignment?: boolean | null;
         };
         SalesOrderDto: {
             /** Format: uuid */
@@ -57575,6 +59185,55 @@ export interface components {
             sellerProposed?: boolean;
             /** Format: date-time */
             salesCopyAtUtc?: string | null;
+            /** Format: uuid */
+            parentPublicId?: string | null;
+            parentNumber?: string | null;
+            additions?: components["schemas"]["SalesOrderAdditionRefDto"][] | null;
+            /** Format: uuid */
+            pendingChangePublicId?: string | null;
+            /** Format: int32 */
+            pendingChangeNo?: number | null;
+            /** Format: int32 */
+            changeCount?: number;
+            rowVersion?: string | null;
+        };
+        SalesOrderEditOptionsDto: {
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            status?: string | null;
+            orderBlocker?: string | null;
+            mustUseAddition?: boolean;
+            canAddition?: boolean;
+            lines?: components["schemas"]["SalesChangeLinePositionDto"][] | null;
+            batches?: components["schemas"]["SalesChangeBatchDto"][] | null;
+            invoices?: components["schemas"]["SalesOrderInvoiceRefDto"][] | null;
+            settings?: components["schemas"]["SalesChangeEffectiveSettingsDto"];
+            pending?: components["schemas"]["SalesOrderChangeListItemDto"];
+            permissions?: components["schemas"]["SalesChangePermissionsDto"];
+            billingTrigger?: string | null;
+            /** Format: double */
+            total?: number;
+            rowVersion?: string | null;
+            isAddition?: boolean;
+            /** Format: uuid */
+            rootPublicId?: string | null;
+            rootNumber?: string | null;
+        };
+        SalesOrderInvoiceRefDto: {
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            status?: string | null;
+            quickBooksState?: string | null;
+            /** Format: date */
+            issueDate?: string | null;
+            /** Format: double */
+            total?: number;
+            /** Format: uuid */
+            orderPublicId?: string;
+            orderNumber?: string | null;
+            isAddition?: boolean;
         };
         SalesOrderLineComponentDto: {
             /** Format: uuid */
@@ -57640,6 +59299,13 @@ export interface components {
             /** Format: double */
             resolvedUnitPrice?: number | null;
             isManualPrice?: boolean;
+            isRemoved?: boolean;
+            taxReason?: string | null;
+            taxOverrideNote?: string | null;
+            /** Format: double */
+            taxComputedRatePct?: number | null;
+            /** Format: double */
+            taxComputedAmount?: number | null;
         };
         SalesOrderLineModifyRequest: {
             /** Format: double */
@@ -57647,6 +59313,12 @@ export interface components {
             /** Format: double */
             unitPrice?: number | null;
             allowBackorder?: boolean | null;
+            authorizedByName?: string | null;
+            authorizedByTitle?: string | null;
+            authorizationChannel?: string | null;
+            /** Format: date-time */
+            authorizedAtUtc?: string | null;
+            reason?: string | null;
         };
         SalesOrderLineRequest: {
             /** Format: uuid */
@@ -57703,6 +59375,8 @@ export interface components {
             chainName?: string | null;
             /** Format: uuid */
             chainPublicId?: string | null;
+            isAddition?: boolean;
+            hasPendingChange?: boolean;
         };
         SalesOrderListItemDtoPagedResult: {
             items?: components["schemas"]["SalesOrderListItemDto"][] | null;
@@ -58391,6 +60065,16 @@ export interface components {
             code?: string | null;
             name?: string | null;
             isMain?: boolean;
+        };
+        SalesTaxNoticeDto: {
+            level?: string | null;
+            message?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            /** Format: int32 */
+            days?: number | null;
+            certificateNumber?: string | null;
+            documentTypeLabel?: string | null;
         };
         SalesTeamPersonDto: {
             /** Format: int32 */
@@ -59746,6 +61430,7 @@ export interface components {
             taxRatePct?: number;
             exemptionCertificate?: string | null;
             components?: components["schemas"]["TaxCalcComponentDto"][] | null;
+            exemptionPeriod?: string | null;
         };
         TaxCalcLineRequest: {
             key?: string | null;
@@ -59796,6 +61481,15 @@ export interface components {
             status?: string | null;
             scope?: string | null;
             componentCodes?: string[] | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            /** Format: uuid */
+            documentPublicId?: string | null;
+            documentType?: string | null;
+            documentTypeLabel?: string | null;
+            /** Format: uuid */
+            filePublicId?: string | null;
+            missingDocument?: boolean;
         };
         TaxExemptionPatchRequest: {
             exemptionType?: string | null;
@@ -59808,6 +61502,60 @@ export interface components {
             notes?: string | null;
             scope?: string | null;
             componentCodes?: string[] | null;
+            /** Format: uuid */
+            clientDocumentPublicId?: string | null;
+        };
+        TaxExemptionPeriodCategoryDto: {
+            /** Format: int32 */
+            categoryId?: number;
+            name?: string | null;
+        };
+        TaxExemptionPeriodDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            reason?: string | null;
+            /** Format: date */
+            validFrom?: string;
+            /** Format: date */
+            validTo?: string;
+            scope?: string | null;
+            isActive?: boolean;
+            state?: string | null;
+            products?: components["schemas"]["TaxExemptionPeriodProductDto"][] | null;
+            categories?: components["schemas"]["TaxExemptionPeriodCategoryDto"][] | null;
+            rowVersion?: string | null;
+        };
+        TaxExemptionPeriodPatchRequest: {
+            name?: string | null;
+            reason?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            scope?: string | null;
+            productPublicIds?: string[] | null;
+            categoryIds?: number[] | null;
+            rowVersion?: string | null;
+        };
+        TaxExemptionPeriodProductDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            /** Format: int32 */
+            productId?: number;
+            sku?: string | null;
+            name?: string | null;
+        };
+        TaxExemptionPeriodRequest: {
+            name?: string | null;
+            reason?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            scope?: string | null;
+            productPublicIds?: string[] | null;
+            categoryIds?: number[] | null;
         };
         TaxExemptionRequest: {
             /** Format: int32 */
@@ -59821,6 +61569,8 @@ export interface components {
             notes?: string | null;
             scope?: string | null;
             componentCodes?: string[] | null;
+            /** Format: uuid */
+            clientDocumentPublicId?: string | null;
         };
         TaxRateCloseRequest: {
             /** Format: date */
@@ -60156,6 +61906,9 @@ export interface components {
             subdomain?: string | null;
             usesAssembledKits?: boolean;
             productPhotosEnabled?: boolean;
+            docExpiryThresholdDays?: number[] | null;
+            docExpiryDailyAfterExpiry?: boolean;
+            docExpiryNotifyClient?: boolean;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -60221,6 +61974,9 @@ export interface components {
             postalSameAsAddress?: boolean | null;
             usesAssembledKits?: boolean | null;
             productPhotosEnabled?: boolean | null;
+            docExpiryThresholdDays?: number[] | null;
+            docExpiryDailyAfterExpiry?: boolean | null;
+            docExpiryNotifyClient?: boolean | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

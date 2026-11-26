@@ -89,6 +89,7 @@ public static class MenuPermissions
         [PermissionCatalog.WarehouseReceive] = new[] { "receipts.view", "notices.view" },
         [PermissionCatalog.WarehousePick] = new[] { "pickbatches.view" },
         [PermissionCatalog.WarehouseIssue] = new[] { "pickbatches.view" },
+        [PermissionCatalog.WarehouseReopenPack] = new[] { "pickbatches.view" },   // Lote 249: reabrir un empaque vive en Recolecciones
         [PermissionCatalog.InventoryAdjust] = new[] { "adjustments.view", "kardex.view" },
         [PermissionCatalog.InventoryAdjustMulti] = new[] { "adjustments.view" },
         [PermissionCatalog.WarehouseTransfer] = new[] { "adjustments.view" },
@@ -100,6 +101,9 @@ public static class MenuPermissions
         [PermissionCatalog.SalesCreate] = new[] { PermissionCatalog.SalesView },
         [PermissionCatalog.SalesPricelist] = new[] { PermissionCatalog.SalesView },   // Lote 221
         [PermissionCatalog.SalesChain] = new[] { PermissionCatalog.ClientsRead },   // Lote 245: quien administra las cadenas ve los clientes
+        [PermissionCatalog.SalesModify] = new[] { PermissionCatalog.SalesView },          // Lote 249: modificar, cambiar el IVU y aprobar viven en Órdenes de venta
+        [PermissionCatalog.SalesTax] = new[] { PermissionCatalog.SalesView },
+        [PermissionCatalog.SalesModifyApprove] = new[] { PermissionCatalog.SalesView },
         [PermissionCatalog.SalesQuickBooksMark] = new[] { PermissionCatalog.SalesView },     // Lote 225: la pestaña QuickBooks vive en Órdenes de venta (la lista la ven view, mark y export)
         [PermissionCatalog.SalesQuickBooksExport] = new[] { PermissionCatalog.SalesView },   // Lote 225
         [PermissionCatalog.SalesQuickBooksView] = new[] { PermissionCatalog.SalesView },     // Lote 225

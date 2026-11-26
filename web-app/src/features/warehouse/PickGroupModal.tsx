@@ -11,6 +11,7 @@ import { Chip, ConfirmDialog, EmptyState, Modal, Spinner, toast } from '../../ke
 import { useDeletePickGroup, usePickGroup, warehouseKeys } from './api'
 import { formatDateTime } from './lineRules'
 import { PackModal } from './PackModal'
+import { ReopenPackDialog } from './ReopenPackDialog'
 import { movementsByDocument } from './pickGroupView'
 
 export function PickGroupModal({ publicId, onClose }: { publicId: string | null; onClose: () => void }) {
@@ -22,7 +23,9 @@ export function PickGroupModal({ publicId, onClose }: { publicId: string | null;
   const del = useDeletePickGroup()
   const [packing, setPacking] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const busy = packing || deleting
+  // Lote 249: reabrir el empaque de la maestra (todas sus recolecciones vuelven a «Recolectada»)
+  const [reopening, setReopening] = useState(false)
+  const busy = packing || deleting || reopening
   const notFound = error instanceof ApiError && error.code === 'not_found'
 
   const title = g ? (
@@ -50,6 +53,13 @@ export function PickGroupModal({ publicId, onClose }: { publicId: string | null;
               <Can perm="warehouse.pick">
                 <button type="button" className="btn" onClick={() => setDeleting(true)}>
                   {t('warehouse.pickBatches.detail.delete')}
+                </button>
+              </Can>
+            )}
+            {g && g.statusCode === 'PACKED' && g.orderPublicId && (
+              <Can perm="warehouse.reopen-pack">
+                <button type="button" className="btn" onClick={() => setReopening(true)}>
+                  {t('warehouse.reopenPack.button')}
                 </button>
               </Can>
             )}
@@ -147,6 +157,7 @@ export function PickGroupModal({ publicId, onClose }: { publicId: string | null;
           </>
         )}
       </Modal>
+      {reopening && g && <ReopenPackDialog group publicId={g.publicId ?? ''} number={g.orderNumber ?? g.number ?? ''} rowVersion={g.rowVersion} onClose={() => setReopening(false)} />}
       {packing && g && <PackModal group batch={{ publicId: g.publicId, number: g.number, clientName: g.clientName, rowVersion: g.rowVersion }} onClose={() => setPacking(false)} />}
       <ConfirmDialog
         open={deleting}

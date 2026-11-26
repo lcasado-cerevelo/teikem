@@ -68,7 +68,10 @@ public sealed partial class SalesOrderService
         return await GetAsync(publicId, ct);
     }
 
-    /// <summary>Surte todas las líneas con backorder que se puedan, de la más antigua a la más reciente (cada una en su transacción: lo que una toma ya no lo ve la siguiente).</summary>
+    /// <summary>
+    /// Surte todas las líneas con backorder que se puedan, de la más antigua a la más reciente (cada una en su transacción: lo que una toma ya no lo ve la siguiente).
+    /// Lote 249: cada transacción toma primero la cabecera de su orden (una a la vez, así que nunca dos cabeceras a la vez).
+    /// </summary>
     public async Task<SalesFulfillResultDto> FulfillAllAsync(CancellationToken ct)
     {
         var list = await BackordersAsync(null, ct);
@@ -92,6 +95,7 @@ public sealed partial class SalesOrderService
                 decimal reserved = 0m;
                 await db.RunInTransactionAsync(async ct2 =>
                 {
+                    await LockOrderAsync(publicId, ct2);   // Lote 249: cabecera → líneas
                     var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
                     var code = (await StatusMapAsync(ct2))[order.StatusCodeId].Code;
                     if (code is not (SalesOrderStatuses.Requested or SalesOrderStatuses.Partial)) throw new StatusRuleException(SalesRules.OnlyRequestedModifiable);
@@ -131,6 +135,7 @@ public sealed partial class SalesOrderService
     {
         await db.RunInTransactionAsync(async ct2 =>
         {
+            await LockOrderAsync(publicId, ct2);   // Lote 249: cabecera → líneas
             var order = await db.Set<SalesOrder>().AsTracking().Include(o => o.Lines).FirstOrDefaultAsync(o => o.PublicId == publicId, ct2) ?? throw NotFound();
             var code = (await StatusMapAsync(ct2))[order.StatusCodeId].Code;
             if (code is not (SalesOrderStatuses.Requested or SalesOrderStatuses.Partial)) throw new StatusRuleException(SalesRules.OnlyRequestedModifiable);
