@@ -13460,7 +13460,7 @@ No: exemptions from before the batch stay valid as before. The mark warns that t
 Look at the document that backs it: if its «Until» has passed, the exemption expired (the calculation warns «El cliente tiene una exención vencida (certificado …, venció el …): se cobró el impuesto.»). Upload the renewed certificate with «Renew». Also check the scope: an exemption of components only (for example the municipal one) still charges the rest.
 
 **A line came out without IVU and the client has no exemption.**
-A seasonal exemption period is in effect covering the product or its category. The line's reason is `EXEMPT_PRODUCT_PERIOD` and it carries the period's name (Accounting → Taxes → «Seasonal exemption»). In the Simulator the chip may show the reason's code.
+A seasonal exemption period is in effect covering the product or its category. The line's reason is `EXEMPT_PRODUCT_PERIOD` and it carries the period's name (Accounting → Taxes → «Seasonal exemption»).
 
 **I did not receive the expiry notice.**
 Check: a **rule** for «Client document about to expire» in Notification rules; that the client has a **sales route or preferred seller** with an active user (otherwise the Notice log records it «Skipped»); that the document has an «Until» and is not **renewed**; and the Notice log. A notice recorded before the rule was created is not repeated.
