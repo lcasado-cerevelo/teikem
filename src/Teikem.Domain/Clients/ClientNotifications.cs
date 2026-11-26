@@ -32,6 +32,16 @@ public static class ClientNotificationKinds
     public static readonly string[] DailyKinds = { PickedUp, OutForDelivery, Delivered, WhReceived, WhDispatched };
     public static bool IsDaily(string? k) => k is not null && DailyKinds.Contains(k.Trim().ToUpperInvariant());
     public static bool IsKnown(string? k) => k is not null && All.Contains(k.Trim().ToUpperInvariant());
+
+    /// <summary>
+    /// Lote 248 — aviso de documentos del cliente por vencer. Lo manda el trabajo DOCUMENT_EXPIRY_SCAN (no es un resumen ni entra en <see cref="All"/>, así que las preferencias
+    /// del portal no lo ven); solo sale por correo. Excepción a «sin fila = apagado»: sin fila sigue el interruptor de la compañía (Tenant.DocExpiryNotifyClient); la fila con
+    /// el correo apagado lo apaga para ese cliente.
+    /// </summary>
+    public const string DocumentExpiring = "DOCUMENT_EXPIRING";
+    /// <summary>Los avisos que la compañía configura por cliente (Ficha del cliente → Avisos al cliente): <see cref="All"/> más <see cref="DocumentExpiring"/>.</summary>
+    public static readonly string[] Configurable = All.Append(DocumentExpiring).ToArray();
+    public static bool IsConfigurable(string? k) => k is not null && Configurable.Contains(k.Trim().ToUpperInvariant());
 }
 
 /// <summary>Canales de un aviso al cliente: correo, la bandeja del portal (APP) y SMS (se guarda la preferencia; no sale hasta contratar el proveedor).</summary>
@@ -145,6 +155,8 @@ public static class ClientNotificationRules
     public static string InvalidPhone(string v) => $"El teléfono '{v}' no es válido.";
     public const string DuplicateKind = "Cada aviso solo puede venir una vez.";
     public const string Concurrency = "La configuración de avisos cambió mientras se guardaba. Revise y vuelva a intentar.";
+    /// <summary>Lote 248 (400) — el aviso DOCUMENT_EXPIRING con la bandeja del portal o SMS encendidos.</summary>
+    public const string DocumentExpiringEmailOnly = "El aviso de documentos por vencer solo sale por correo.";
 
     private static readonly char[] Separators = { ',', ';', '\n', '\r' };
 

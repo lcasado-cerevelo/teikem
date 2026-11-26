@@ -54,11 +54,15 @@ export function useClientDocuments(publicId: string, enabled = true) {
 export function useUploadClientDocument(publicId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ file, documentType, notes }: { file: File; documentType: string; notes: string }): Promise<ClientDocumentDto> => {
+    // Lote 248: número y vigencia del documento (AAAA-MM-DD); «hasta» obligatorio si el tipo lleva vigencia
+    mutationFn: ({ file, documentType, notes, documentNumber, validFrom, validTo }: { file: File; documentType: string; notes: string; documentNumber?: string; validFrom?: string; validTo?: string }): Promise<ClientDocumentDto> => {
       const form = new FormData()
       form.append('file', file)
       form.append('documentType', documentType)
       if (notes.trim()) form.append('notes', notes.trim())
+      if (documentNumber?.trim()) form.append('documentNumber', documentNumber.trim())
+      if (validFrom) form.append('validFrom', validFrom)
+      if (validTo) form.append('validTo', validTo)
       return unwrap(api.POST('/api/v1/clients/{publicId}/documents', { params: { path: { publicId } }, body: {}, bodySerializer: () => form }))
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: clientDocKeys.list(publicId) }),

@@ -2,8 +2,12 @@ using Teikem.Domain.Tax;
 
 namespace Teikem.Infrastructure.Tax;
 
-/// <summary>Tratamiento de una línea, ya decidido por el servicio (categoría del producto, regla del cargo, exención del cliente).</summary>
-public enum TaxTreatment { Taxable, ZeroRate, ExemptProduct, ExemptClient, NotTaxableCharge }
+/// <summary>
+/// Tratamiento de una línea, ya decidido por el servicio (categoría del producto, regla del cargo, exención del cliente).
+/// Lote 248 — ExemptProductPeriod: el producto está dentro de un período de exención por temporada (sin impuesto, motivo EXEMPT_PRODUCT_PERIOD; la exención
+/// parcial del cliente no lo toca).
+/// </summary>
+public enum TaxTreatment { Taxable, ZeroRate, ExemptProduct, ExemptClient, NotTaxableCharge, ExemptProductPeriod }
 
 public sealed record TaxLineInput(string Key, decimal Amount, TaxTreatment Treatment);
 
@@ -80,7 +84,7 @@ public static class TaxRules
                 : Array.Empty<TaxComponentAmount>();
             var reason = treatment == TaxTreatment.Taxable && partial ? TaxReasons.ExemptClientPartial : ReasonOf(treatment);
             results.Add(new TaxLineResult(l.Key, l.Amount, net, tax, total, reason,
-                treatment is TaxTreatment.ExemptProduct or TaxTreatment.ExemptClient,
+                IsTaxExempt(treatment),
                 treatment == TaxTreatment.Taxable ? rate?.TaxRateId : null, linePct, comps));
         }
 
@@ -210,8 +214,12 @@ public static class TaxRules
         TaxTreatment.ZeroRate => TaxReasons.ZeroRate,
         TaxTreatment.ExemptProduct => TaxReasons.ExemptProduct,
         TaxTreatment.ExemptClient => TaxReasons.ExemptClient,
+        TaxTreatment.ExemptProductPeriod => TaxReasons.ExemptProductPeriod,
         _ => TaxReasons.NotTaxableCharge,
     };
+
+    /// <summary>La línea sale marcada «exenta» (IsTaxExempt): producto exento, cliente exento o producto en un período de exención por temporada (Lote 248).</summary>
+    public static bool IsTaxExempt(TaxTreatment t) => t is TaxTreatment.ExemptProduct or TaxTreatment.ExemptClient or TaxTreatment.ExemptProductPeriod;
 
     // ---------------------------------------------------------------- validaciones de datos (mensajes exactos del manual)
 

@@ -9,6 +9,7 @@ namespace Teikem.Tests;
 // Lote 247 (P2, pedido del dueño, DECISIÓN 20): el precio especial es un precio ANTES del IVU. Las exenciones del cliente (certificado estatal, municipal, los dos,
 // o la exención total) se aplican DESPUÉS sobre el precio que ganó, sin cambiar el cálculo. Cliente de cadena con precio especial 8.00 (general 10); IVU
 // estatal 10.5 % + municipal 1 %. En todos los casos la línea cobra 8.00.
+// Lote 248: las exenciones parciales nacen de su documento; la total se siembra como exención vieja (TaxTestData).
 public sealed class SpecialPriceTaxExemptionTests
 {
     private sealed record Case(string Name, decimal ExpectedTax, Func<TaxService, int, Task> Exemptions, string? Reason = null, bool ExpectsExpiredWarning = false);
@@ -28,9 +29,12 @@ public sealed class SpecialPriceTaxExemptionTests
         await x.ChainListAsync("Precio especial — Walgreens", x.Today.AddDays(-30), null, walgreens, special: true, (strips, 8m));
 
         var from = x.Today.AddDays(-60);
-        Task City(TaxService t, int c, string cert = "MUN-1") => t.CreateExemptionAsync(new TaxExemptionRequest(c, "Municipal", cert, from, null, Scope: "COMPONENTS", ComponentCodes: new[] { "CITY" }), default);
-        Task State(TaxService t, int c) => t.CreateExemptionAsync(new TaxExemptionRequest(c, "Estatal", "EST-1", from, null, Scope: "COMPONENTS", ComponentCodes: new[] { "STATE" }), default);
-        Task Full(TaxService t, int c, DateOnly? to = null) => t.CreateExemptionAsync(new TaxExemptionRequest(c, "Total", "TOTAL-1", from, to), default);
+        var until = x.Today.AddDays(300);
+        // Lote 248: las parciales nacen de su certificado (documento del cliente) por el servicio; la total es una exención vieja sin documento sembrada directo
+        // (así el caso «total vencida» puede nacer con el «hasta» ya pasado, como las que hay en producción)
+        Task City(TaxService t, int c, string cert = "MUN-1") => TaxTestData.SeedDocumentExemptionAsync(t, x.F.Db, WmsFixture.TenantId, c, cert, from, until, "COMPONENTS", "CITY");
+        Task State(TaxService t, int c) => TaxTestData.SeedDocumentExemptionAsync(t, x.F.Db, WmsFixture.TenantId, c, "EST-1", from, until, "COMPONENTS", "STATE");
+        Task Full(TaxService t, int c, DateOnly? to = null) => TaxTestData.SeedLegacyExemptionAsync(x.F.Db, WmsFixture.TenantId, c, "Total", "TOTAL-1", from, to);
         var cases = new[]
         {
             new Case("sin exención", 0.92m, (_, _) => Task.CompletedTask, "TAXABLE"),

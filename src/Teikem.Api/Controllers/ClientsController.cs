@@ -90,16 +90,27 @@ public sealed class ClientsController(ClientService clients) : ControllerBase
     public Task<ClientRejectResultDto> Reject(Guid publicId, [FromBody] ClientRejectRequest? req, [FromServices] ClientProspectService prospects, CancellationToken ct)
         => prospects.RejectAsync(publicId, req, ct);
 
-    /// <summary>Documentos del cliente (registro de comerciante, certificado de revendedor, otro). El archivo se ve por GET /files/{filePublicId}.</summary>
+    /// <summary>
+    /// Documentos del cliente (registro de comerciante, certificado de revendedor, certificados de exención de IVU, otro). El archivo se ve por GET /files/{filePublicId}.
+    /// Lote 248: cada documento trae número, vigencia, días para vencer, estado (VALID, EXPIRING, EXPIRED, RENEWED, NO_EXPIRY, MISSING_VALID_TO), las marcas del tipo,
+    /// si respalda una exención de IVU y el rowVersion para editar.
+    /// </summary>
     [HttpGet("{publicId:guid}/documents"), RequirePermission(PermissionCatalog.ClientsRead)]
     public Task<IReadOnlyList<ClientDocumentDto>> Documents(Guid publicId, [FromServices] ClientDocumentService documents, CancellationToken ct) => documents.ListAsync(publicId, ct);
 
-    /// <summary>Sube un documento (JPG, PNG, WEBP, GIF o PDF). documentType: MERCHANT_REGISTRATION, RESELLER_CERTIFICATE u OTHER. Exige clients.update (o clients.create_basic si es prospecto).</summary>
+    /// <summary>
+    /// Sube un documento (JPG, PNG, WEBP, GIF o PDF). documentType: un código activo del catálogo ClientDocumentType (MERCHANT_REGISTRATION, RESELLER_CERTIFICATE,
+    /// IVU_EXEMPTION_STATE, IVU_EXEMPTION_CITY, IVU_EXEMPTION_TOTAL, OTHER…). Lote 248: documentNumber (hasta 60), validFrom y validTo (AAAA-MM-DD); validTo es obligatorio
+    /// si el tipo lleva vigencia. Exige clients.update (o clients.create_basic si es prospecto). suggestExemption = preguntar «¿Aplicar la exención de IVU?».
+    /// </summary>
     [HttpPost("{publicId:guid}/documents"), Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.ClientsUpdate + "|" + PermissionCatalog.ClientsCreateBasic)]
     [RequestSizeLimit(32 * 1024 * 1024)]
     public async Task<ClientDocumentDto> UploadDocument(Guid publicId, IFormFile? file, [FromForm] string? documentType, [FromForm] string? notes,
-        [FromServices] ClientDocumentService documents, CancellationToken ct)
+        [FromServices] ClientDocumentService documents, CancellationToken ct,
+        [FromForm] string? documentNumber = null, [FromForm] string? validFrom = null, [FromForm] string? validTo = null)
     {
+        var from = ClientDocumentService.ParseFormDate(validFrom, "validFrom");
+        var to = ClientDocumentService.ParseFormDate(validTo, "validTo");
         byte[] bytes = Array.Empty<byte>();
         if (file is not null && file.Length > 0)
         {
@@ -107,10 +118,19 @@ public sealed class ClientsController(ClientService clients) : ControllerBase
             await file.CopyToAsync(ms, ct);
             bytes = ms.ToArray();
         }
-        return await documents.UploadAsync(publicId, documentType, notes, file?.FileName, file?.ContentType, bytes, ct);
+        return await documents.UploadAsync(publicId, documentType, notes, file?.FileName, file?.ContentType, bytes, ct, documentNumber, from, to);
     }
 
-    /// <summary>Quita el documento (en lógico).</summary>
+    /// <summary>
+    /// Lote 248 — edita número, vigencia y nota del documento (el tipo no se edita), con rowVersion (409 si cambió). Exige clients.update (o clients.create_basic si es
+    /// prospecto) y, si el documento respalda una exención de IVU, además tax.manage para cambiar número o fechas (403).
+    /// </summary>
+    [HttpPatch("{publicId:guid}/documents/{documentPublicId:guid}"), RequirePermission(PermissionCatalog.ClientsUpdate + "|" + PermissionCatalog.ClientsCreateBasic)]
+    public Task<ClientDocumentDto> UpdateDocument(Guid publicId, Guid documentPublicId, [FromBody] ClientDocumentPatchRequest req, [FromServices] ClientDocumentService documents,
+        CancellationToken ct)
+        => documents.UpdateAsync(publicId, documentPublicId, req, ct);
+
+    /// <summary>Quita el documento (en lógico). Lote 248: 409 si respalda una exención de IVU vigente (primero se da de baja la exención en Impuestos).</summary>
     [HttpDelete("{publicId:guid}/documents/{documentPublicId:guid}"), RequirePermission(PermissionCatalog.ClientsUpdate + "|" + PermissionCatalog.ClientsCreateBasic)]
     public async Task<IActionResult> RemoveDocument(Guid publicId, Guid documentPublicId, [FromServices] ClientDocumentService documents, CancellationToken ct)
     {

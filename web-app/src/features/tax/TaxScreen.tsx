@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useT } from '../../kernel/i18n'
 import { Tabs } from '../../kernel/ui'
+import { ExemptionPeriodsTab } from './ExemptionPeriodsTab'
 import { ExemptionsTab } from './ExemptionsTab'
 import { ProductsTab } from './ProductsTab'
 import { RatesTab } from './RatesTab'
@@ -10,7 +11,7 @@ import { RulesTab } from './RulesTab'
 import { SimulatorTab } from './SimulatorTab'
 import './tax.css'
 
-type TabKey = 'rates' | 'rules' | 'products' | 'exemptions' | 'simulator'
+type TabKey = 'rates' | 'rules' | 'products' | 'exemptions' | 'periods' | 'simulator'
 
 export default function TaxScreen() {
   const t = useT()
@@ -32,6 +33,7 @@ export default function TaxScreen() {
           { key: 'rules', label: t('tax.tabs.rules') },
           { key: 'products', label: t('tax.tabs.products') },
           { key: 'exemptions', label: t('tax.tabs.exemptions') },
+          { key: 'periods', label: t('tax.tabs.periods') },
           { key: 'simulator', label: t('tax.tabs.simulator') },
         ]}
       />
@@ -39,6 +41,7 @@ export default function TaxScreen() {
       {tab === 'rules' && <RulesTab />}
       {tab === 'products' && <ProductsTab />}
       {tab === 'exemptions' && <ExemptionsTab />}
+      {tab === 'periods' && <ExemptionPeriodsTab />}
       {tab === 'simulator' && <SimulatorTab />}
     </div>
   )

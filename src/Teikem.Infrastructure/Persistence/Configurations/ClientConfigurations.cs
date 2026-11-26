@@ -274,8 +274,16 @@ public sealed class ClientDocumentConfiguration : IEntityTypeConfiguration<Clien
         b.HasKey(d => d.ClientDocumentId);
         b.Property(d => d.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
         b.Property(d => d.Notes).HasMaxLength(300);
+        // Lote 248: número, vigencia y RowVersion. El CHECK CK_ClientDocument_Dates y el UNIQUE UQ_ClientDocument_IdTenantClient (destino de la FK compuesta de
+        // ClientTaxExemption) viven en el SQL.
+        b.Property(d => d.DocumentNumber).HasMaxLength(ClientDocumentRules.MaxNumberLength);
+        b.Property(d => d.ValidFrom).HasColumnType("date");
+        b.Property(d => d.ValidTo).HasColumnType("date");
+        b.Property(d => d.RowVersion).IsRowVersion();
         b.HasIndex(d => d.PublicId).IsUnique().HasDatabaseName("UX_ClientDocument_PublicId");
         b.HasIndex(d => new { d.TenantId, d.ClientId }).HasDatabaseName("IX_ClientDocument_Client");
+        b.HasIndex(d => new { d.TenantId, d.ValidTo }).HasFilter("[IsActive] = 1 AND [ValidTo] IS NOT NULL").HasDatabaseName("IX_ClientDocument_ValidTo")
+            .IncludeProperties(d => new { d.ClientId, d.DocumentTypeLookupId });
         b.HasOne<Client>().WithMany().HasForeignKey(d => d.ClientId);
         b.HasOne<Teikem.Domain.Files.StoredFile>().WithMany().HasForeignKey(d => d.StoredFileId);
         b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(d => d.DocumentTypeLookupId);

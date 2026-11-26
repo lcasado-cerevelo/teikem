@@ -1,66 +1,57 @@
 // Impuestos → Exenciones (Lote 56): certificados de exención de clientes. Con una exención vigente nada se le cobra de impuesto y la línea
 // queda con el certificado anotado; con la exención vencida se cobra y se avisa. Nunca se borran: se dan de baja y se pueden reactivar.
+// Lote 248: toda exención se respalda con un documento del cliente (número y vigencia son los del documento): «Nueva exención» es la captura única (certificado + exención);
+// las exenciones viejas sin documento siguen valiendo igual y se marcan «Falta el documento» hasta que se les vincule uno.
 // Lote 237: «Aplica a» — todo el impuesto (como siempre) o solo algunos componentes de la tasa (p. ej. la exención municipal del IVU: se deja de
 // cobrar el municipal y el estatal se cobra). Las casillas son los componentes de la tasa por omisión vigente.
 import { useId, useMemo, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
-import { Chip, type ChipTone, ClientPicker, type DataColumn, DataTable, DateField, Modal, Panel, Spinner, toast } from '../../kernel/ui'
+import { Chip, type ChipTone, type DataColumn, DataTable, Modal, Panel, Spinner, toast } from '../../kernel/ui'
 import { IconCheckCircle, IconEdit, IconPower } from '../../kernel/ui/actionIcons'
+import { useClientDocuments } from '../clients/clientSalesApi'
+import { ExemptionCaptureModal } from './ExemptionCaptureModal'
+import { useComponentOptions } from './useComponentOptions'
 import { IconDoc } from '../../kernel/ui/screenIcons'
-import { componentNames, componentOptions, exemptionError, scopeBody, scopeOf, type ComponentOption, type ExemptionDraft, type ExemptionScope } from './taxRules'
-import { useTaxExemptions, useTaxMutations, useTaxRates, useTaxSettings, type TaxExemptionDto } from './taxApi'
+import { componentNames, scopeBody, scopeOf, type ExemptionDraft, type ExemptionScope } from './taxRules'
+import { useTaxExemptions, useTaxMutations, type TaxExemptionDto } from './taxApi'
 
 const STATUS_TONE: Record<string, ChipTone> = { VALID: 'deliv', SCHEDULED: 'warn', EXPIRED: 'fail', INACTIVE: 'neutral' }
 const NO_ROWS: TaxExemptionDto[] = []
 const NO_CODES: string[] = []
 const SCOPES: ExemptionScope[] = ['ALL', 'COMPONENTS']
 
-/** Los componentes de la tasa por omisión vigente (las casillas del formulario y los nombres de la lista). */
-function useComponentOptions(selected: readonly string[] = NO_CODES): ComponentOption[] {
-  const rates = useTaxRates()
-  const settings = useTaxSettings()
-  return useMemo(() => componentOptions(rates.data, settings.data?.defaultRateCode, selected), [rates.data, settings.data?.defaultRateCode, selected])
-}
-
-function ExemptionModal({ exemption, onClose }: { exemption: TaxExemptionDto | null; onClose: () => void }) {
+/** Editar una exención con documento: el número y la vigencia son los del documento (solo lectura); se editan el tipo, el alcance y las notas. */
+function ExemptionModal({ exemption, onClose }: { exemption: TaxExemptionDto; onClose: () => void }) {
   const t = useT()
   const f = useFormat()
   const scopeName = useId()
-  const { createExemption, updateExemption } = useTaxMutations()
-  const editing = exemption !== null
-  const options = useComponentOptions(exemption?.componentCodes ?? NO_CODES)
-  const [clientPublicId, setClientPublicId] = useState<string | null>(null)
+  const { updateExemption } = useTaxMutations()
+  const options = useComponentOptions(exemption.componentCodes ?? NO_CODES)
   const [draft, setDraft] = useState<ExemptionDraft>({
-    clientId: exemption?.clientId ?? null,
-    type: exemption?.exemptionType ?? '',
-    certificate: exemption?.certificateNumber ?? '',
-    from: exemption?.validFrom ?? '',
-    to: exemption?.validTo ?? '',
-    notes: exemption?.notes ?? '',
-    scope: scopeOf(exemption?.scope),
-    components: [...(exemption?.componentCodes ?? [])],
+    clientId: exemption.clientId ?? null,
+    type: exemption.exemptionType ?? '',
+    certificate: exemption.certificateNumber ?? '',
+    from: exemption.validFrom ?? '',
+    to: exemption.validTo ?? '',
+    notes: exemption.notes ?? '',
+    scope: scopeOf(exemption.scope),
+    components: [...(exemption.componentCodes ?? [])],
   })
   const toggleComponent = (code: string, on: boolean) => setDraft((d) => ({ ...d, components: on ? [...d.components.filter((c) => c !== code), code] : d.components.filter((c) => c !== code) }))
   const [error, setError] = useState<string | null>(null)
   const set = (patch: Partial<ExemptionDraft>) => setDraft((d) => ({ ...d, ...patch }))
-  const busy = createExemption.isPending || updateExemption.isPending
+  const busy = updateExemption.isPending
 
   const save = async () => {
     setError(null)
-    const problem = exemptionError(draft)
-    if (problem) return setError(t(`tax.exemptions.errors.${problem}`))
+    if (!draft.type.trim()) return setError(t('tax.exemptions.errors.type'))
+    if (draft.scope === 'COMPONENTS' && draft.components.length === 0) return setError(t('tax.exemptions.errors.components'))
     try {
-      if (editing) {
-        await updateExemption.mutateAsync({
-          id: exemption.id!,
-          body: { exemptionType: draft.type, certificateNumber: draft.certificate, validFrom: draft.from, validTo: draft.to || undefined, clearValidTo: draft.to ? undefined : true, notes: draft.notes, ...scopeBody(draft) },
-        })
-      } else {
-        await createExemption.mutateAsync({ clientId: draft.clientId, exemptionType: draft.type, certificateNumber: draft.certificate, validFrom: draft.from, validTo: draft.to || undefined, notes: draft.notes || undefined, ...scopeBody(draft) })
-      }
-      toast.success(t(editing ? 'tax.exemptions.updated' : 'tax.exemptions.created'))
+      // Lote 248: con documento, número y fechas son los del documento; mandarlos da 400
+      await updateExemption.mutateAsync({ id: exemption.id!, body: { exemptionType: draft.type, notes: draft.notes, ...scopeBody(draft) } })
+      toast.success(t('tax.exemptions.updated'))
       onClose()
     } catch (e) {
       setError(applyProblemDetails(e).title)
@@ -71,7 +62,7 @@ function ExemptionModal({ exemption, onClose }: { exemption: TaxExemptionDto | n
     <Modal
       open
       size="md"
-      title={t(editing ? 'tax.exemptions.edit' : 'tax.exemptions.new')}
+      title={t('tax.exemptions.edit')}
       onClose={onClose}
       dismissible={!busy}
       footer={
@@ -84,32 +75,16 @@ function ExemptionModal({ exemption, onClose }: { exemption: TaxExemptionDto | n
       <div className="pb tax-form">
         <div className="f">
           <label htmlFor="tx-client">{t('tax.exemptions.client')}</label>
-          {editing ? (
-            <input id="tx-client" value={exemption.clientName ?? ''} readOnly />
-          ) : (
-            <ClientPicker id="tx-client" value={clientPublicId} onChange={(publicId, client) => (setClientPublicId(publicId), set({ clientId: client?.id ?? null }))} />
-          )}
+          <input id="tx-client" value={exemption.clientName ?? ''} readOnly />
         </div>
-        <div className="r2">
-          <div className="f">
-            <label htmlFor="tx-etype">{t('tax.exemptions.type')}</label>
-            <input id="tx-etype" value={draft.type} maxLength={60} autoComplete="off" onChange={(e) => set({ type: e.target.value })} />
-          </div>
-          <div className="f">
-            <label htmlFor="tx-cert">{t('tax.exemptions.certificate')}</label>
-            <input id="tx-cert" value={draft.certificate} maxLength={60} autoComplete="off" onChange={(e) => set({ certificate: e.target.value })} />
-          </div>
+        <div className="f">
+          <label htmlFor="tx-etype">{t('tax.exemptions.type')}</label>
+          <input id="tx-etype" value={draft.type} maxLength={60} autoComplete="off" onChange={(e) => set({ type: e.target.value })} />
         </div>
-        <div className="r2">
-          <div className="f">
-            <label htmlFor="tx-efrom">{t('tax.exemptions.from')}</label>
-            <DateField id="tx-efrom" value={draft.from} onChange={(v) => set({ from: v })} />
-          </div>
-          <div className="f">
-            <label htmlFor="tx-eto">{t('tax.exemptions.to')}</label>
-            <DateField id="tx-eto" value={draft.to} onChange={(v) => set({ to: v })} />
-            <p className="help">{t('tax.exemptions.toHelp')}</p>
-          </div>
+        <div className="txc-doc" role="group" aria-label={t('tax.capture.document')}>
+          <b>{exemption.documentTypeLabel ?? exemption.documentType}</b>
+          <span>{[exemption.certificateNumber, exemption.validFrom ? f.date(exemption.validFrom) : null, exemption.validTo ? f.date(exemption.validTo) : t('tax.rates.open')].filter(Boolean).join(' · ')}</span>
+          <span className="help">{t('tax.capture.documentHelp')}</span>
         </div>
         <fieldset className="tax-comps tax-scope">
           <legend>{t('tax.exemptions.scope')}</legend>
@@ -147,12 +122,77 @@ function ExemptionModal({ exemption, onClose }: { exemption: TaxExemptionDto | n
   )
 }
 
+/** Vincular a una exención vieja («falta el documento») un documento ya subido del mismo cliente y de un tipo de impuestos. */
+function LinkDocumentModal({ exemption, onClose }: { exemption: TaxExemptionDto; onClose: () => void }) {
+  const t = useT()
+  const f = useFormat()
+  const { updateExemption } = useTaxMutations()
+  const docs = useClientDocuments(exemption.clientPublicId ?? '', !!exemption.clientPublicId)
+  const [selected, setSelected] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const candidates = (docs.data ?? []).filter((d) => d.isTax)
+  const busy = updateExemption.isPending
+
+  const save = async () => {
+    setError(null)
+    if (!selected) return setError(t('tax.link.errors.pick'))
+    try {
+      await updateExemption.mutateAsync({ id: exemption.id!, body: { clientDocumentPublicId: selected } })
+      toast.success(t('tax.link.done'))
+      onClose()
+    } catch (e) {
+      setError(applyProblemDetails(e).title)
+    }
+  }
+
+  return (
+    <Modal
+      open
+      size="md"
+      title={t('tax.link.title')}
+      onClose={onClose}
+      dismissible={!busy}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose} disabled={busy}>{t('common.cancel')}</button>
+          <button type="button" className="btn flow" onClick={() => void save()} disabled={busy || docs.isPending}>{busy ? t('common.loading') : t('tax.link.save')}</button>
+        </>
+      }
+    >
+      <div className="pb tax-form">
+        <p>{t('tax.link.intro', { client: exemption.clientName ?? '' })}</p>
+        {docs.isError ? (
+          <p className="ferr" role="alert">{applyProblemDetails(docs.error).title}</p>
+        ) : docs.isPending ? (
+          <Spinner block />
+        ) : candidates.length === 0 ? (
+          <p className="help" role="status">{t('tax.link.none')}</p>
+        ) : (
+          <div className="f">
+            <label htmlFor="tx-link-doc">{t('tax.link.document')}</label>
+            <select id="tx-link-doc" value={selected} onChange={(e) => setSelected(e.target.value)}>
+              <option value="">{t('tax.link.placeholder')}</option>
+              {candidates.map((d) => (
+                <option key={d.publicId} value={d.publicId}>
+                  {[d.documentTypeLabel ?? d.documentType, d.documentNumber, d.validTo ? t('tax.capture.until', { date: f.date(d.validTo) }) : null].filter(Boolean).join(' · ')}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {error && <p className="ferr" role="alert">{error}</p>}
+      </div>
+    </Modal>
+  )
+}
+
 export function ExemptionsTab() {
   const t = useT()
   const f = useFormat()
   const list = useTaxExemptions()
   const { setExemptionActive } = useTaxMutations()
   const [modal, setModal] = useState<TaxExemptionDto | 'new' | null>(null)
+  const [linking, setLinking] = useState<TaxExemptionDto | null>(null)
   const options = useComponentOptions()
   const scopeText = (e: TaxExemptionDto) =>
     scopeOf(e.scope) === 'COMPONENTS' ? t('tax.exemptions.scopeOnly', { names: componentNames(e.componentCodes, options) }) : t('tax.exemptions.scopes.ALL')
@@ -169,8 +209,15 @@ export function ExemptionsTab() {
   const columns = useMemo<DataColumn<TaxExemptionDto>[]>(
     () => [
       { id: 'client', header: t('tax.exemptions.client'), cell: (e) => <b>{e.clientName}</b>, exportValue: (e) => e.clientName ?? '', sortValue: (e) => e.clientName ?? '', card: 'title' },
-      { id: 'type', header: t('tax.exemptions.type'), cell: (e) => e.exemptionType, sortValue: (e) => e.exemptionType ?? '' },
+      { id: 'type', header: t('tax.exemptions.type'), cell: (e) => e.documentTypeLabel ?? e.exemptionType, sortValue: (e) => e.documentTypeLabel ?? e.exemptionType ?? '' },
       { id: 'cert', header: t('tax.exemptions.certificate'), cell: (e) => e.certificateNumber, sortValue: (e) => e.certificateNumber ?? '' },
+      {
+        id: 'document',
+        header: t('tax.exemptions.document'),
+        cell: (e) => (e.missingDocument ? <Chip tone="warn" title={t('tax.exemptions.missingDocumentHelp')}>{t('tax.exemptions.missingDocument')}</Chip> : (e.documentTypeLabel ?? e.documentType ?? '—')),
+        exportValue: (e) => (e.missingDocument ? t('tax.exemptions.missingDocument') : (e.documentTypeLabel ?? e.documentType ?? '')),
+        sortValue: (e) => (e.missingDocument ? '' : (e.documentTypeLabel ?? e.documentType ?? '')),
+      },
       { id: 'scope', header: t('tax.exemptions.scope'), cell: scopeText, exportValue: scopeText, sortValue: scopeText },
       { id: 'from', header: t('tax.exemptions.from'), cell: (e) => f.date(e.validFrom), exportValue: (e) => e.validFrom ?? '', sortValue: (e) => e.validFrom ?? '' },
       { id: 'to', header: t('tax.exemptions.to'), cell: (e) => (e.validTo ? f.date(e.validTo) : t('tax.rates.open')), exportValue: (e) => e.validTo ?? '', sortValue: (e) => e.validTo ?? '9999-12-31' },
@@ -202,7 +249,8 @@ export function ExemptionsTab() {
             defaultSort={{ id: 'from', desc: true }}
             empty={t('tax.exemptions.empty')}
             rowActions={[
-              { key: 'edit', label: t('tax.exemptions.edit'), icon: <IconEdit />, onClick: (e) => setModal(e) },
+              { key: 'link', label: t('tax.exemptions.link'), icon: <IconDoc />, onClick: (e) => setLinking(e), visible: (e) => !!e.missingDocument },
+              { key: 'edit', label: t('tax.exemptions.edit'), icon: <IconEdit />, onClick: (e) => setModal(e), visible: (e) => !e.missingDocument },
               { key: 'deactivate', label: t('tax.exemptions.deactivate'), icon: <IconPower />, onClick: (e) => void toggle(e), visible: (e) => !!e.isActive },
               { key: 'reactivate', label: t('tax.exemptions.reactivate'), icon: <IconCheckCircle />, onClick: (e) => void toggle(e), visible: (e) => !e.isActive },
             ]}
@@ -210,7 +258,9 @@ export function ExemptionsTab() {
         )}
         <p className="help">{t('tax.exemptions.help')}</p>
       </div>
-      {modal && <ExemptionModal key={modal === 'new' ? 'new' : modal.id} exemption={modal === 'new' ? null : modal} onClose={() => setModal(null)} />}
+      {modal === 'new' && <ExemptionCaptureModal onClose={() => setModal(null)} />}
+      {modal && modal !== 'new' && <ExemptionModal key={modal.id} exemption={modal} onClose={() => setModal(null)} />}
+      {linking && <LinkDocumentModal key={linking.id} exemption={linking} onClose={() => setLinking(null)} />}
     </Panel>
   )
 }

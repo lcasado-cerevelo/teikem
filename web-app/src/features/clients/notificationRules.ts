@@ -1,5 +1,7 @@
 // Reglas puras de «Avisos al cliente» (Lote 98): el orden de los avisos, comparar lo editado con lo guardado y revisar los correos y teléfonos antes de enviar. El servidor repite todas las validaciones.
-export const NOTIFICATION_KINDS = ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'WH_RECEIVED', 'WH_DISPATCHED', 'COD_PROCESSED', 'INVOICE_ISSUED'] as const
+export const NOTIFICATION_KINDS = ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'WH_RECEIVED', 'WH_DISPATCHED', 'COD_PROCESSED', 'INVOICE_ISSUED', 'DOCUMENT_EXPIRING'] as const
+/** Lote 248: aviso de documentos por vencer. Solo sale por correo y sin fila sigue a la compañía (correo encendido por omisión; el cliente lo puede apagar). */
+export const DOCUMENT_EXPIRING_KIND = 'DOCUMENT_EXPIRING'
 /** Hora local por omisión del resumen del día (la misma que usa el servidor). */
 export const DEFAULT_DIGEST_HOUR = 18
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number]
@@ -18,7 +20,7 @@ export interface NotificationRow {
 export function rowsFrom(settings: readonly { kind?: string; emailEnabled?: boolean; appEnabled?: boolean; smsEnabled?: boolean; extraEmails?: string | null; extraPhones?: string | null }[] | undefined): NotificationRow[] {
   return NOTIFICATION_KINDS.map((kind) => {
     const s = settings?.find((x) => x.kind === kind)
-    return { kind, emailEnabled: s?.emailEnabled ?? false, appEnabled: s?.appEnabled ?? false, smsEnabled: s?.smsEnabled ?? false, extraEmails: s?.extraEmails ?? '', extraPhones: s?.extraPhones ?? '' }
+    return { kind, emailEnabled: s?.emailEnabled ?? kind === DOCUMENT_EXPIRING_KIND, appEnabled: s?.appEnabled ?? false, smsEnabled: s?.smsEnabled ?? false, extraEmails: s?.extraEmails ?? '', extraPhones: s?.extraPhones ?? '' }
   })
 }
 
@@ -51,7 +53,7 @@ export function rowError(r: NotificationRow): { error: RowError; value?: string 
   return null
 }
 
-/** Cuántos avisos tienen algún canal encendido. */
+/** Cuántos avisos tienen algún canal encendido (el de documentos por vencer no cuenta: viene encendido y depende de la compañía). */
 export function enabledCount(rows: readonly NotificationRow[]): number {
-  return rows.filter((r) => r.emailEnabled || r.appEnabled || r.smsEnabled).length
+  return rows.filter((r) => r.kind !== DOCUMENT_EXPIRING_KIND && (r.emailEnabled || r.appEnabled || r.smsEnabled)).length
 }

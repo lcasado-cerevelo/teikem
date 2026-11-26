@@ -2,7 +2,7 @@
 // cabecera (nombre, código, pipeline de estatus, baja/reactivación), direcciones, perfil fiscal, teléfonos y correos, personas de contacto,
 // numeración, campos personalizados, contratos (pestañas: Contrato, Tarifas, SLA, Servicios especiales), portal, consignatarios
 // (tabla de 10 filas con Exportar / Importar / Nuevo) e historial de estatus.
-import { Can, useCan } from '../../kernel/access'
+import { Can, ModuleKeys, useCan, useModule } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { StatusHistory, StatusPipeline } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
@@ -13,6 +13,7 @@ import { useClient, useSetClientActive, useTransitionClient } from './api'
 import { ClientAddressesPanel } from './ClientAddressesPanel'
 import { ClientApprovalActions } from './ClientApprovalActions'
 import { ClientDocumentsPanel } from './ClientDocumentsPanel'
+import { ClientTaxPanel } from './ClientTaxPanel'
 import { ClientConsigneesPanel } from './ClientConsigneesPanel'
 import { ClientContactPointsPanel } from './ClientContactPointsPanel'
 import { ClientContractsSection } from './ClientContractsSection'
@@ -109,6 +110,7 @@ function ClientHeaderPanel({ client }: { client: ClientDetail }) {
 export function ClientDetailPanel({ publicId }: { publicId: string }) {
   const t = useT()
   const { data: client, isPending, error } = useClient(publicId)
+  const taxOn = useModule(ModuleKeys.Tax)
 
   if (isPending) {
     return (
@@ -136,6 +138,11 @@ export function ClientDetailPanel({ publicId }: { publicId: string }) {
       <Can perm="clients.read">
         <ClientDocumentsPanel key={`docs-${client.publicId}`} client={client} />
       </Can>
+      {taxOn && (
+        <Can perm="tax.manage">
+          <ClientTaxPanel key={`tax-${client.publicId}`} client={client} />
+        </Can>
+      )}
       <ClientPrintingPanel client={client} />
       <ClientContactPointsPanel client={client} />
       <ClientPeoplePanel client={client} />

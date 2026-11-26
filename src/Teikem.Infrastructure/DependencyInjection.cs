@@ -139,6 +139,11 @@ public static class DependencyInjection
         services.AddScoped<ClientChainAnalysisService>();   // Lote 245: análisis de ventas por cadena
         services.AddScoped<ClientProspectService>();   // Lote 222: alta mínima, aprobar y rechazar el cliente prospecto
         services.AddScoped<ClientDocumentService>();   // Lote 222: documentos del cliente
+        services.AddScoped<ClientDocumentExpiryService>();   // Lote 248: lista «Documentos por vencer»
+        services.AddScoped<IExpiryNoticeSource, ClientDocumentExpirySource>();   // Lote 248: documentos del cliente con «hasta» (escaneo diario)
+        services.AddScoped<IExpiryNoticeSource, SpecialPriceExpirySource>();   // Lote 248: precios especiales por vencer (solo con SALES_ORDERS)
+        services.AddScoped<DocumentExpiryScanService>();   // Lote 248: la revisión diaria de vencimientos
+        services.AddSingleton<IScheduledJob, DocumentExpiryScanJob>();   // Lote 248: DOCUMENT_EXPIRY_SCAN
         services.AddScoped<LocationService>();
         services.AddScoped<ContractService>();
         services.AddScoped<RateService>();
@@ -393,6 +398,10 @@ public static class DependencyInjection
         services.AddSingleton<INotificationEventProvider, ExitNoticeEventProvider>();   // Lote 143
         services.AddSingleton<INotificationEventProvider, AsnEventProvider>();   // Lote 157: avisos de llegada
         services.AddSingleton<INotificationEventProvider, TenantLinkEventProvider>();   // Lote 227: compañías enlazadas
+        services.AddSingleton<INotificationEventProvider, ClientDocumentEventProvider>();   // Lote 248: documento del cliente por vencer / vencido
+        services.AddScoped<INotificationContentProvider, ClientDocumentNoticeContent>();   // Lote 248: contenido y destinatarios de esos avisos
+        services.AddSingleton<INotificationEventProvider, SpecialPriceEventProvider>();   // Lote 248: precio especial por vencer
+        services.AddScoped<INotificationContentProvider, SpecialPriceNoticeContent>();   // Lote 248
         services.AddSingleton<NotificationEventCatalog>();
         services.AddScoped<INotificationPublisher, NotificationPublisher>();
         services.AddScoped<INotificationChannelSender, EmailChannelSender>();
@@ -428,6 +437,9 @@ public static class DependencyInjection
         services.AddScoped<MessageSuggestionService>();   // Lote 212: sugeridos de «Hablar sobre esta orden»
         services.AddScoped<AnnouncementService>();   // Lote 54
         services.AddScoped<TaxService>();   // Lote 55
+        services.AddScoped<ClientTaxExemptionCaptureService>();   // Lote 248: certificado + exención en un paso desde la ficha del cliente
+        services.AddScoped<TaxExemptionPeriodService>();   // Lote 248: exención de producto por temporada
+        services.AddScoped<SalesTaxNoticeService>();   // Lote 248: aviso de exención vencida / por vencer al vender
         services.AddScoped<SalesOrderService>();   // Lote 57
         services.AddScoped<ISalesDispatchReversal>(sp => sp.GetRequiredService<SalesOrderService>());   // Lote 62: deshacer una recolección de venta
         services.AddScoped<SalesDeliveryService>();   // Lote 62: entrega de una orden de venta
@@ -455,6 +467,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, ClientDataSource>();
         services.AddScoped<IDataSource, ClientChainDataSource>();   // Lote 245
         services.AddScoped<IDataSource, SpecialPriceDataSource>();   // Lote 247: precios especiales (listas dedicadas de cliente o cadena)
+        services.AddScoped<IDataSource, ClientDocumentDataSource>();   // Lote 248: documentos del cliente con su vigencia (estado actual, sin DateField)
         services.AddScoped<IDataSource, ContractDataSource>();
         services.AddScoped<IDataSource, LocationDataSource>();
         services.AddScoped<IOwnedEntityResolver, ClientOwnedEntityResolver>();

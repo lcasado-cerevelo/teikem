@@ -309,7 +309,7 @@ public sealed class SalesOrderServiceTests
         await tax.CreateRateAsync(new TaxRateRequest("IVU", "IVU", new DateOnly(2020, 1, 1), null,
             new[] { new TaxComponentDto("STATE", "Estatal", 10.5m), new TaxComponentDto("CITY", "Municipal", 1m) }), default);
         await tax.UpdateSettingsAsync(new TaxSettingsRequest(DefaultRateCode: "IVU"), default);
-        await tax.CreateExemptionAsync(new TaxExemptionRequest(exempt.ClientId, "Sin fines de lucro", "CERT-1", new DateOnly(2020, 1, 1)), default);
+        await TaxTestData.SeedDocumentExemptionAsync(tax, f.Db, WmsFixture.TenantId, exempt.ClientId, "CERT-1", new DateOnly(2020, 1, 1), TenantClock.Default.Today.AddYears(1));   // Lote 248: nace de su certificado
         var svc = f.Get<SalesOrderService>();
 
         var o = await svc.CreateAsync(Order(taxed, w, L(p, 2m)), default);

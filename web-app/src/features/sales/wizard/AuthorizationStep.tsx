@@ -6,6 +6,7 @@ import { useT } from '../../../kernel/i18n'
 import { Modal, SignaturePad, type SignatureStroke } from '../../../kernel/ui'
 import { PasswordBox } from '../../../kernel/ui/PasswordBox'
 import type { SalesOrderDto } from '../salesApi'
+import { TaxNoticeBanner } from './TaxNoticeBanner'
 import { AUTHORIZED_BY_MAX, orderSummary, type WizardState } from './wizardRules'
 
 export interface AuthorizationStepProps {
@@ -51,6 +52,7 @@ export function AuthorizationStep({ state, onChange, strokes, onStrokes, require
         <div><dt>{t('salesWizard.auth.lines')}</dt><dd>{state.cart.length}</dd></div>
         <div><dt>{t('salesWizard.summary.total')}</dt><dd className="mono">{f.money(summary.total)}</dd></div>
       </dl>
+      <TaxNoticeBanner clientPublicId={state.clientPublicId} />
       <p className="help">{t('salesWizard.auth.sendHelp')}</p>
     </section>
   )

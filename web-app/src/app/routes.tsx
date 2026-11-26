@@ -402,9 +402,10 @@ export const appRoutes: readonly AppRoute[] = [
   // ===== Catálogo (F2, F4) =====
   { path: '/catalog/clients', element: lazy(() => import('../features/clients/ClientListScreen')), perm: 'clients.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'clients', order: 10 } },
   { path: '/catalog/chains', element: lazy(() => import('../features/chains/ChainsScreen')), perm: 'sales.chain|clients.read', module: ModuleKeys.SalesOrders, nav: { group: 'catalog', key: 'chains', order: 20 } },
-  { path: '/catalog/consignees', element: lazy(() => import('../features/consignees/ConsigneeListScreen')), perm: 'locations.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'consignees', order: 30 } },
-  { path: '/catalog/drivers', element: lazy(() => import('../features/drivers/DriverListScreen')), perm: 'drivers.view', module: ModuleKeys.LtlGround, nav: { group: 'catalog', key: 'drivers', order: 40 } },
-  { path: '/catalog/fleet', element: lazy(() => import('../features/fleet/FleetScreen')), perm: 'fleet.view', module: ModuleKeys.LtlGround, nav: { group: 'catalog', key: 'fleet', order: 50 } },
+  { path: '/catalog/expiring-documents', element: lazy(() => import('../features/clients/ExpiringDocumentsScreen')), perm: 'clients.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'expiringDocuments', order: 30 } },   // Lote 248
+  { path: '/catalog/consignees', element: lazy(() => import('../features/consignees/ConsigneeListScreen')), perm: 'locations.read', module: ModuleKeys.Catalog, nav: { group: 'catalog', key: 'consignees', order: 40 } },
+  { path: '/catalog/drivers', element: lazy(() => import('../features/drivers/DriverListScreen')), perm: 'drivers.view', module: ModuleKeys.LtlGround, nav: { group: 'catalog', key: 'drivers', order: 50 } },
+  { path: '/catalog/fleet', element: lazy(() => import('../features/fleet/FleetScreen')), perm: 'fleet.view', module: ModuleKeys.LtlGround, nav: { group: 'catalog', key: 'fleet', order: 60 } },
 
   // ===== Análisis (F8b; Indicadores y Gráficos: F8a P3) =====
   { path: '/analytics/reports', element: lazy(() => import('../features/analytics/ReportsScreen')), perm: 'reports.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'reports', order: 10 } },

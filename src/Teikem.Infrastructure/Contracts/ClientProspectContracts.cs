@@ -25,9 +25,29 @@ public sealed record ClientRejectRequest(string? Comment = null);
 /// <summary>El cliente como quedó y las órdenes que se cancelaron al rechazarlo (sus números).</summary>
 public sealed record ClientRejectResultDto(ClientDetailDto Client, IReadOnlyList<string> CancelledOrders);
 
-/// <summary>Un documento del cliente: tipo (MERCHANT_REGISTRATION, RESELLER_CERTIFICATE, OTHER) y su archivo (se ve por GET /files/{filePublicId}).</summary>
+/// <summary>
+/// Un documento del cliente: tipo (código del catálogo ClientDocumentType: MERCHANT_REGISTRATION, RESELLER_CERTIFICATE, OTHER, IVU_EXEMPTION_STATE…) y su archivo (se ve
+/// por GET /files/{filePublicId}).
+/// <para>
+/// Lote 248 — número y vigencia del documento: DocumentNumber, ValidFrom y ValidTo («hasta»; bordes incluidos); DaysToExpiry (0 = vence hoy; negativo = ya venció; null sin
+/// «hasta»); ExpiryState derivado de la fecha (NO_EXPIRY, VALID, EXPIRING, EXPIRED, RENEWED, MISSING_VALID_TO; «por vencer» usa el mayor umbral positivo de la compañía);
+/// las marcas del tipo (IsTax «es de impuestos», RequiresValidTo «lleva vigencia»); BacksExemption = respalda una exención de IVU activa (el detalle es de tax.manage);
+/// RowVersion para editar (PATCH). SuggestExemption solo viene en la respuesta de subir: el tipo es de impuestos, quien sube tiene tax.manage y el módulo TAX está
+/// encendido (la pantalla pregunta «¿Aplicar la exención de IVU?»).
+/// </para>
+/// </summary>
 public sealed record ClientDocumentDto(Guid PublicId, string DocumentType, string DocumentTypeLabel, Guid FilePublicId, string FileName, string ContentType, long SizeBytes,
-    string? Notes, DateTime CreatedAtUtc, string? CreatedByName);
+    string? Notes, DateTime CreatedAtUtc, string? CreatedByName,
+    string? DocumentNumber = null, DateOnly? ValidFrom = null, DateOnly? ValidTo = null, int? DaysToExpiry = null, string ExpiryState = "NO_EXPIRY",
+    bool IsTax = false, bool RequiresValidTo = false, bool BacksExemption = false, string? RowVersion = null, bool SuggestExemption = false);
+
+/// <summary>
+/// Lote 248 — PATCH /clients/{id}/documents/{documentId}: cambio parcial de número, vigencia y nota (el tipo y el archivo no se editan). null = sin cambio;
+/// DocumentNumber o Notes "" = quitarlos; ClearValidFrom / ClearValidTo = quitar la fecha. RowVersion = el de la lista (409 si el documento cambió). Se valida el estado
+/// FINAL: un tipo con vigencia no puede quedar sin «hasta». Si el documento respalda una exención de IVU activa, cambiar número o fechas exige además tax.manage.
+/// </summary>
+public sealed record ClientDocumentPatchRequest(string? DocumentNumber = null, DateOnly? ValidFrom = null, DateOnly? ValidTo = null, bool ClearValidFrom = false,
+    bool ClearValidTo = false, string? Notes = null, string? RowVersion = null);
 
 /// <summary>Lote 222: Ajustes → Operación → Ventas. Charge null = sin cargo de envío; FreeFrom null = sin mínimo (siempre se cobra); el mínimo se mide después del IVU (fijo).</summary>
 public sealed record SalesShippingSettingsDto(decimal? Charge, decimal? FreeFrom, bool Taxable, bool MeasuredAfterTax = true);

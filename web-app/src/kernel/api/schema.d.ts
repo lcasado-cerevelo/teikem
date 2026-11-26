@@ -5863,6 +5863,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/client-documents/expiring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    withinDays?: number;
+                    includeExpired?: boolean;
+                    includeMissing?: boolean;
+                    client?: string;
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ExpiringClientDocumentsDto"];
+                        "application/json": components["schemas"]["ExpiringClientDocumentsDto"];
+                        "text/json": components["schemas"]["ExpiringClientDocumentsDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/client-messages/conversations": {
         parameters: {
             query?: never;
@@ -6996,6 +7061,9 @@ export interface paths {
                         file?: string;
                         documentType?: string;
                         notes?: string;
+                        documentNumber?: string;
+                        validFrom?: string;
+                        validTo?: string;
                     };
                 };
             };
@@ -7050,6 +7118,117 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    documentPublicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ClientDocumentPatchRequest"];
+                    "text/json": components["schemas"]["ClientDocumentPatchRequest"];
+                    "application/*+json": components["schemas"]["ClientDocumentPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientDocumentDto"];
+                        "application/json": components["schemas"]["ClientDocumentDto"];
+                        "text/json": components["schemas"]["ClientDocumentDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/clients/{publicId}/tax-exemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionDto"][];
+                        "application/json": components["schemas"]["TaxExemptionDto"][];
+                        "text/json": components["schemas"]["TaxExemptionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                        /** Format: uuid */
+                        clientDocumentPublicId?: string;
+                        documentType?: string;
+                        documentNumber?: string;
+                        /** Format: date */
+                        validFrom?: string;
+                        /** Format: date */
+                        validTo?: string;
+                        scope?: string;
+                        componentCodes?: string[];
+                        notes?: string;
+                        exemptionType?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ClientTaxExemptionCaptureDto"];
+                        "application/json": components["schemas"]["ClientTaxExemptionCaptureDto"];
+                        "text/json": components["schemas"]["ClientTaxExemptionCaptureDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -38150,6 +38329,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sales-orders/tax-notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    client?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SalesTaxNoticeDto"];
+                        "application/json": components["schemas"]["SalesTaxNoticeDto"];
+                        "text/json": components["schemas"]["SalesTaxNoticeDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scan/options": {
         parameters: {
             query?: never;
@@ -40810,6 +41050,218 @@ export interface paths {
                         "text/plain": components["schemas"]["TaxCalcDto"];
                         "application/json": components["schemas"]["TaxCalcDto"];
                         "text/json": components["schemas"]["TaxCalcDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemption-periods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"][];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"][];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxExemptionPeriodRequest"];
+                    "text/json": components["schemas"]["TaxExemptionPeriodRequest"];
+                    "application/*+json": components["schemas"]["TaxExemptionPeriodRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemption-periods/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaxExemptionPeriodPatchRequest"];
+                    "text/json": components["schemas"]["TaxExemptionPeriodPatchRequest"];
+                    "application/*+json": components["schemas"]["TaxExemptionPeriodPatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/tax/exemption-periods/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tax/exemption-periods/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TaxExemptionPeriodDto"];
+                        "application/json": components["schemas"]["TaxExemptionPeriodDto"];
+                        "text/json": components["schemas"]["TaxExemptionPeriodDto"];
                     };
                 };
             };
@@ -47303,6 +47755,30 @@ export interface components {
             /** Format: date-time */
             createdAtUtc?: string;
             createdByName?: string | null;
+            documentNumber?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            /** Format: int32 */
+            daysToExpiry?: number | null;
+            expiryState?: string | null;
+            isTax?: boolean;
+            requiresValidTo?: boolean;
+            backsExemption?: boolean;
+            rowVersion?: string | null;
+            suggestExemption?: boolean;
+        };
+        ClientDocumentPatchRequest: {
+            documentNumber?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            clearValidFrom?: boolean;
+            clearValidTo?: boolean;
+            notes?: string | null;
+            rowVersion?: string | null;
         };
         ClientInitialContractRequest: {
             /** Format: date */
@@ -47492,6 +47968,13 @@ export interface components {
         };
         ClientServiceTeamRequest: {
             userIds?: number[] | null;
+        };
+        ClientTaxExemptionCaptureDto: {
+            exemption?: components["schemas"]["TaxExemptionDto"];
+            /** Format: uuid */
+            documentPublicId?: string;
+            /** Format: uuid */
+            filePublicId?: string;
         };
         CodCollectionDto: {
             /** Format: int64 */
@@ -50427,6 +50910,42 @@ export interface components {
             requiredDate?: string | null;
             notes?: string | null;
             lines?: components["schemas"]["ExitNoticeLineRequest"][] | null;
+        };
+        ExpiringClientDocumentDto: {
+            rowKind?: string | null;
+            /** Format: uuid */
+            documentPublicId?: string | null;
+            /** Format: uuid */
+            exemptionPublicId?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientCode?: string | null;
+            clientName?: string | null;
+            documentType?: string | null;
+            documentTypeLabel?: string | null;
+            documentNumber?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            /** Format: int32 */
+            daysToExpiry?: number | null;
+            expiryState?: string | null;
+            isTax?: boolean;
+            requiresValidTo?: boolean;
+            backsExemption?: boolean;
+            /** Format: uuid */
+            filePublicId?: string | null;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        ExpiringClientDocumentsDto: {
+            /** Format: int32 */
+            warnDays?: number;
+            /** Format: int32 */
+            withinDays?: number;
+            truncated?: boolean;
+            items?: components["schemas"]["ExpiringClientDocumentDto"][] | null;
         };
         ExpiringDocumentDto: {
             rowKey?: string | null;
@@ -58392,6 +58911,16 @@ export interface components {
             name?: string | null;
             isMain?: boolean;
         };
+        SalesTaxNoticeDto: {
+            level?: string | null;
+            message?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            /** Format: int32 */
+            days?: number | null;
+            certificateNumber?: string | null;
+            documentTypeLabel?: string | null;
+        };
         SalesTeamPersonDto: {
             /** Format: int32 */
             userId?: number;
@@ -59746,6 +60275,7 @@ export interface components {
             taxRatePct?: number;
             exemptionCertificate?: string | null;
             components?: components["schemas"]["TaxCalcComponentDto"][] | null;
+            exemptionPeriod?: string | null;
         };
         TaxCalcLineRequest: {
             key?: string | null;
@@ -59796,6 +60326,15 @@ export interface components {
             status?: string | null;
             scope?: string | null;
             componentCodes?: string[] | null;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            /** Format: uuid */
+            documentPublicId?: string | null;
+            documentType?: string | null;
+            documentTypeLabel?: string | null;
+            /** Format: uuid */
+            filePublicId?: string | null;
+            missingDocument?: boolean;
         };
         TaxExemptionPatchRequest: {
             exemptionType?: string | null;
@@ -59808,6 +60347,60 @@ export interface components {
             notes?: string | null;
             scope?: string | null;
             componentCodes?: string[] | null;
+            /** Format: uuid */
+            clientDocumentPublicId?: string | null;
+        };
+        TaxExemptionPeriodCategoryDto: {
+            /** Format: int32 */
+            categoryId?: number;
+            name?: string | null;
+        };
+        TaxExemptionPeriodDto: {
+            /** Format: uuid */
+            publicId?: string;
+            name?: string | null;
+            reason?: string | null;
+            /** Format: date */
+            validFrom?: string;
+            /** Format: date */
+            validTo?: string;
+            scope?: string | null;
+            isActive?: boolean;
+            state?: string | null;
+            products?: components["schemas"]["TaxExemptionPeriodProductDto"][] | null;
+            categories?: components["schemas"]["TaxExemptionPeriodCategoryDto"][] | null;
+            rowVersion?: string | null;
+        };
+        TaxExemptionPeriodPatchRequest: {
+            name?: string | null;
+            reason?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            scope?: string | null;
+            productPublicIds?: string[] | null;
+            categoryIds?: number[] | null;
+            rowVersion?: string | null;
+        };
+        TaxExemptionPeriodProductDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            /** Format: int32 */
+            productId?: number;
+            sku?: string | null;
+            name?: string | null;
+        };
+        TaxExemptionPeriodRequest: {
+            name?: string | null;
+            reason?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            scope?: string | null;
+            productPublicIds?: string[] | null;
+            categoryIds?: number[] | null;
         };
         TaxExemptionRequest: {
             /** Format: int32 */
@@ -59821,6 +60414,8 @@ export interface components {
             notes?: string | null;
             scope?: string | null;
             componentCodes?: string[] | null;
+            /** Format: uuid */
+            clientDocumentPublicId?: string | null;
         };
         TaxRateCloseRequest: {
             /** Format: date */
@@ -60156,6 +60751,9 @@ export interface components {
             subdomain?: string | null;
             usesAssembledKits?: boolean;
             productPhotosEnabled?: boolean;
+            docExpiryThresholdDays?: number[] | null;
+            docExpiryDailyAfterExpiry?: boolean;
+            docExpiryNotifyClient?: boolean;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -60221,6 +60819,9 @@ export interface components {
             postalSameAsAddress?: boolean | null;
             usesAssembledKits?: boolean | null;
             productPhotosEnabled?: boolean | null;
+            docExpiryThresholdDays?: number[] | null;
+            docExpiryDailyAfterExpiry?: boolean | null;
+            docExpiryNotifyClient?: boolean | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

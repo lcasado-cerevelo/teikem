@@ -64,4 +64,6 @@ public static class JobKeys
     public const string SalesQuickBooksPending = "SALES_QUICKBOOKS_PENDING";
     /// <summary>Lote 227: manda a la compañía enlazada las entregas pendientes y trae de vuelta su estatus.</summary>
     public const string IntercompanySync = "INTERCOMPANY_SYNC";
+    /// <summary>Lote 248: avisa los documentos del cliente (y los precios especiales) por vencer o vencidos según los umbrales de la compañía.</summary>
+    public const string DocumentExpiryScan = "DOCUMENT_EXPIRY_SCAN";
 }

@@ -1054,6 +1054,10 @@ public static class PermissionCatalog
 
         [Sales.SpecialPriceCodes.DataSourceKey] = SalesView,
 
+        // Lote 248: documentos del cliente con su vigencia con clients.read (como la lista «Documentos por vencer»)
+
+        [Clients.ClientDocumentCodes.EntityType] = ClientsRead,
+
     };
 
 

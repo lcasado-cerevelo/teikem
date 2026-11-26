@@ -1,4 +1,4 @@
-// Menú completo de la maqueta (Lote F8a P0): 7 grupos, 41 ítems con permiso y módulo, ítems pendientes y `perm: 'a|b'`; Lote F17 suma Rentas (42); Lote 50 suma Trabajos programados (43); Lote 52 suma Reglas de aviso (44); Lote 54 suma Enviar avisos (45); Lote 56 suma Impuestos (46); Lote 60 suma Órdenes de venta (47); Lote 241 suma Análisis de ventas (en Análisis, después de Gráficos).
+// Menú completo de la maqueta (Lote F8a P0): 7 grupos, 41 ítems con permiso y módulo, ítems pendientes y `perm: 'a|b'`; Lote F17 suma Rentas (42); Lote 50 suma Trabajos programados (43); Lote 52 suma Reglas de aviso (44); Lote 54 suma Enviar avisos (45); Lote 56 suma Impuestos (46); Lote 60 suma Órdenes de venta (47); Lote 241 suma Análisis de ventas (en Análisis, después de Gráficos); Lote 248 suma Documentos por vencer (en Catálogo, después de Cadenas).
 import { describe, expect, it } from 'vitest'
 import { permAllowed } from '../kernel/access/accessContext'
 import { ModuleKeys } from '../kernel/access/modules'
@@ -41,7 +41,7 @@ describe('menú completo (routes.tsx)', () => {
       ['ops', 5],
       ['warehouse', 12],
       ['money', 9],
-      ['catalog', 5],
+      ['catalog', 6],
       ['analytics', 5],
       ['system', 10],
     ])
@@ -74,6 +74,7 @@ describe('menú completo (routes.tsx)', () => {
       'Impuestos',
       'Clientes y contratos',
       'Cadenas',
+      'Documentos por vencer',
       'Consignatarios',
       'Choferes y tarifas',
       'Flota y mantenimiento',
@@ -96,7 +97,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(47)
+    expect(navRoutes).toHaveLength(48)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))
@@ -125,6 +126,7 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/catalog/drivers').pending).toBeUndefined()
     expect(byPath('/catalog/consignees').pending).toBeUndefined()
     expect(byPath('/catalog/clients').pending).toBeUndefined()
+    expect(byPath('/catalog/expiring-documents')).toMatchObject({ perm: 'clients.read', module: 'CATALOG', nav: { group: 'catalog', key: 'expiringDocuments', order: 30 } }) // Lote 248
     expect(byPath('/money/purchases').pending).toBeUndefined() // Lote 181
     expect(byPath('/money/purchases')).toMatchObject({ perm: 'purchaseaccounting.view', module: 'PURCHASING', nav: { group: 'money', key: 'purchaseAccounting', order: 20 } })
     expect(byPath('/money/dispatch').pending).toBeUndefined() // Lote 181

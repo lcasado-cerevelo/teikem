@@ -8689,3 +8689,180 @@ WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
 GO
+
+/* ----------------------------------------------------------------------------
+   2026-11-27 — Lote 248 (Lote D del plan docs/plan-rutas-cadenas-precios-ivu-modificaciones.md §3.3–3.4): documentos del cliente con vigencia, exención de IVU atada a
+   su documento, exención de producto por temporada y avisos de vencimiento (docs/lote248-decisiones.md).
+   - dbo.ClientDocument: DocumentNumber (60), ValidFrom/ValidTo (vigencia, bordes incluidos), UpdatedAtUtc/UpdatedBy y RowVersion. CK_ClientDocument_Dates («hasta» no
+     antes de «desde»), UQ_ClientDocument_IdTenantClient (ClientDocumentId, TenantId, ClientId: destino de la FK compuesta de la exención) e IX_ClientDocument_ValidTo
+     (filtrado, para la lista «Documentos por vencer» y el escaneo diario). Los documentos que ya existen quedan sin número ni fechas.
+   - dbo.ClientTaxExemption.ClientDocumentId: el documento que respalda la exención, con FK_ClientTaxExemption_Document COMPUESTA (documento, compañía y cliente: no
+     se puede atar el certificado de otro cliente ni de otra compañía) y UX_ClientTaxExemption_Document (un documento respalda a lo más UNA exención activa). Las
+     exenciones que ya existen quedan con NULL («falta el documento») y siguen valiendo EXACTAMENTE igual: no cambia ningún monto (marca informativa
+     L248_EXEMPTIONS_WITHOUT_DOCUMENT).
+   - dbo.Tenant: DocExpiryThresholdDays ('30,15,5'), DocExpiryDailyAfterExpiry (0) y DocExpiryNotifyClient (0), con CK_Tenant_DocExpiryThresholdDays (solo dígitos,
+     comas y el signo menos). Las compañías que ya existen toman los valores por omisión.
+   - LookupCode ClientDocumentType: IVU_EXEMPTION_STATE, IVU_EXEMPTION_CITY e IVU_EXEMPTION_TOTAL con las marcas {"requiresValidTo":true,"isTax":true};
+     RESELLER_CERTIFICATE gana {"requiresValidTo":false,"isTax":true} solo si su ExtraJson está vacío (nunca pisa un valor editado).
+   - EntityType TAX_EXEMPTION_PERIOD (bitácora del período de exención por temporada, orden 200).
+   - Tablas nuevas dbo.TaxExemptionPeriod (nombre, motivo, vigencia, alcance ALL/SELECTED, RowVersion), dbo.TaxExemptionPeriodProduct y
+     dbo.TaxExemptionPeriodCategory, con FK COMPUESTAS por compañía al período, al producto (UQ_Product_IdTenant) y a la categoría (UQ_ProductCategory_IdTenant) y
+     UX filtrados por IsActive = 1. Quitar un destino = IsActive 0, nunca DELETE.
+   - CK_ClientNotificationSetting_Kind se amplía con DOCUMENT_EXPIRING y, de paso, con WH_RECEIVED y WH_DISPATCHED (los avisos de almacén del 2026-10-25, que el
+     CHECK del Lote 98 nunca admitió). Las filas que ya existen cumplen el CHECK nuevo.
+   - Sin permisos nuevos (clients.read/update/create_basic, tax.manage, sales.create/view, admin.tenant): nada que propagar a los roles ya clonados. Sin reglas de
+     aviso sembradas ni filas de ScheduledJob (el ejecutor crea DOCUMENT_EXPIRY_SCAN por compañía con su horario por omisión).
+   Solo AGREGA (y amplía un CHECK). Idempotente.
+   ---------------------------------------------------------------------------- */
+-- documentos del cliente: número y vigencia
+IF COL_LENGTH(N'dbo.ClientDocument', N'DocumentNumber') IS NULL
+    ALTER TABLE dbo.ClientDocument ADD DocumentNumber NVARCHAR(60) NULL;
+GO
+IF COL_LENGTH(N'dbo.ClientDocument', N'ValidFrom') IS NULL
+    ALTER TABLE dbo.ClientDocument ADD ValidFrom DATE NULL;
+GO
+IF COL_LENGTH(N'dbo.ClientDocument', N'ValidTo') IS NULL
+    ALTER TABLE dbo.ClientDocument ADD ValidTo DATE NULL;
+GO
+IF COL_LENGTH(N'dbo.ClientDocument', N'UpdatedAtUtc') IS NULL
+    ALTER TABLE dbo.ClientDocument ADD UpdatedAtUtc DATETIME2 NULL;
+GO
+IF COL_LENGTH(N'dbo.ClientDocument', N'UpdatedBy') IS NULL
+    ALTER TABLE dbo.ClientDocument ADD UpdatedBy INT NULL;
+GO
+IF COL_LENGTH(N'dbo.ClientDocument', N'RowVersion') IS NULL
+    ALTER TABLE dbo.ClientDocument ADD RowVersion ROWVERSION NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_ClientDocument_Dates' AND parent_object_id = OBJECT_ID('dbo.ClientDocument'))
+    EXEC(N'ALTER TABLE dbo.ClientDocument ADD CONSTRAINT CK_ClientDocument_Dates CHECK (ValidTo IS NULL OR ValidFrom IS NULL OR ValidTo >= ValidFrom);');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'UQ_ClientDocument_IdTenantClient' AND parent_object_id = OBJECT_ID('dbo.ClientDocument'))
+    ALTER TABLE dbo.ClientDocument ADD CONSTRAINT UQ_ClientDocument_IdTenantClient UNIQUE (ClientDocumentId, TenantId, ClientId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ClientDocument_ValidTo' AND object_id = OBJECT_ID('dbo.ClientDocument'))
+    EXEC(N'CREATE INDEX IX_ClientDocument_ValidTo ON dbo.ClientDocument(TenantId, ValidTo) INCLUDE (ClientId, DocumentTypeLookupId) WHERE IsActive = 1 AND ValidTo IS NOT NULL;');
+GO
+-- exención de IVU atada a su documento (NULL = exención vieja «falta el documento»: la FK no se verifica con NULL y sigue valiendo)
+IF COL_LENGTH(N'dbo.ClientTaxExemption', N'ClientDocumentId') IS NULL
+    ALTER TABLE dbo.ClientTaxExemption ADD ClientDocumentId INT NULL;
+GO
+IF OBJECT_ID(N'dbo.FK_ClientTaxExemption_Document', N'F') IS NULL
+    EXEC(N'ALTER TABLE dbo.ClientTaxExemption ADD CONSTRAINT FK_ClientTaxExemption_Document FOREIGN KEY (ClientDocumentId, TenantId, ClientId) REFERENCES dbo.ClientDocument(ClientDocumentId, TenantId, ClientId);');
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ClientTaxExemption_Document' AND object_id = OBJECT_ID('dbo.ClientTaxExemption'))
+    EXEC(N'CREATE UNIQUE INDEX UX_ClientTaxExemption_Document ON dbo.ClientTaxExemption(ClientDocumentId) WHERE ClientDocumentId IS NOT NULL AND IsActive = 1;');
+GO
+-- ajustes de los avisos de vencimiento de la compañía (mismo patrón que FleetDocWarnDays, Lote 168)
+IF COL_LENGTH(N'dbo.Tenant', N'DocExpiryThresholdDays') IS NULL
+    ALTER TABLE dbo.Tenant ADD DocExpiryThresholdDays NVARCHAR(60) NOT NULL CONSTRAINT DF_Tenant_DocExpiryThresholdDays DEFAULT N'30,15,5';
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'DocExpiryDailyAfterExpiry') IS NULL
+    ALTER TABLE dbo.Tenant ADD DocExpiryDailyAfterExpiry BIT NOT NULL CONSTRAINT DF_Tenant_DocExpiryDailyAfterExpiry DEFAULT 0;
+GO
+IF COL_LENGTH(N'dbo.Tenant', N'DocExpiryNotifyClient') IS NULL
+    ALTER TABLE dbo.Tenant ADD DocExpiryNotifyClient BIT NOT NULL CONSTRAINT DF_Tenant_DocExpiryNotifyClient DEFAULT 0;
+GO
+IF OBJECT_ID(N'dbo.CK_Tenant_DocExpiryThresholdDays', N'C') IS NULL
+    EXEC(N'ALTER TABLE dbo.Tenant ADD CONSTRAINT CK_Tenant_DocExpiryThresholdDays CHECK (DocExpiryThresholdDays NOT LIKE N''%[^0-9,-]%'');');
+GO
+-- tipos de documento del cliente: los certificados de exención de IVU y las marcas «lleva vigencia» / «es de impuestos»
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'IVU_EXEMPTION_STATE',  N'{"es":"Certificado de exención de IVU estatal","en":"IVU exemption certificate (state)"}',                                  3, N'{"requiresValidTo":true,"isTax":true}'),
+    (N'IVU_EXEMPTION_CITY',   N'{"es":"Certificado de exención de IVU municipal","en":"IVU exemption certificate (municipal)"}',                              4, N'{"requiresValidTo":true,"isTax":true}'),
+    (N'IVU_EXEMPTION_TOTAL',  N'{"es":"Certificado de exención de IVU total (estatal y municipal)","en":"IVU exemption certificate (total: state and municipal)"}', 5, N'{"requiresValidTo":true,"isTax":true}'),
+    (N'RESELLER_CERTIFICATE', N'{"es":"Certificado de revendedor","en":"Reseller certificate"}',                                                            2, N'{"requiresValidTo":false,"isTax":true}')
+) AS s (Code, LabelJson, Srt, Extra)
+ON t.Entity = N'ClientDocumentType' AND t.InternalCode = s.Code
+WHEN MATCHED AND t.ExtraJson IS NULL AND t.InternalCode = N'RESELLER_CERTIFICATE' THEN
+    UPDATE SET ExtraJson = s.Extra, UpdatedAtUtc = SYSUTCDATETIME()
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ExtraJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'ClientDocumentType', s.Code, s.LabelJson, s.Extra, s.Srt, 1, 1);
+GO
+MERGE dbo.LookupCode AS t
+USING (VALUES
+    (N'TAX_EXEMPTION_PERIOD', N'{"es":"Período de exención de impuesto","en":"Tax exemption period"}', 200)
+) AS s (Code, LabelJson, Srt)
+ON t.Entity = N'EntityType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
+    VALUES (N'EntityType', s.Code, s.LabelJson, s.Srt, 1, 1);
+GO
+-- exención de producto por temporada
+IF OBJECT_ID(N'dbo.TaxExemptionPeriod', N'U') IS NULL CREATE TABLE dbo.TaxExemptionPeriod (
+    TaxExemptionPeriodId INT IDENTITY(1,1) CONSTRAINT PK_TaxExemptionPeriod PRIMARY KEY,
+    PublicId             UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_TaxExemptionPeriod_PublicId DEFAULT NEWID(),
+    TenantId             INT NOT NULL CONSTRAINT FK_TaxExemptionPeriod_Tenant REFERENCES dbo.Tenant(TenantId),
+    Name                 NVARCHAR(100) NOT NULL,
+    Reason               NVARCHAR(300) NOT NULL,
+    ValidFrom            DATE NOT NULL,
+    ValidTo              DATE NOT NULL,
+    Scope                NVARCHAR(20) NOT NULL CONSTRAINT DF_TaxExemptionPeriod_Scope DEFAULT N'ALL',
+    IsActive             BIT NOT NULL CONSTRAINT DF_TaxExemptionPeriod_IsActive DEFAULT 1,
+    CreatedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_TaxExemptionPeriod_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy            INT NULL,
+    UpdatedAtUtc         DATETIME2 NULL,
+    UpdatedBy            INT NULL,
+    RowVersion           ROWVERSION NOT NULL,
+    CONSTRAINT UQ_TaxExemptionPeriod_IdTenant UNIQUE (TaxExemptionPeriodId, TenantId),
+    CONSTRAINT CK_TaxExemptionPeriod_Dates CHECK (ValidTo >= ValidFrom),
+    CONSTRAINT CK_TaxExemptionPeriod_Scope CHECK (Scope IN (N'ALL', N'SELECTED')),
+    CONSTRAINT CK_TaxExemptionPeriod_Name CHECK (LEN(LTRIM(RTRIM(Name))) > 0),
+    CONSTRAINT CK_TaxExemptionPeriod_Reason CHECK (LEN(LTRIM(RTRIM(Reason))) > 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TaxExemptionPeriod_PublicId' AND object_id = OBJECT_ID('dbo.TaxExemptionPeriod'))
+    CREATE UNIQUE INDEX UX_TaxExemptionPeriod_PublicId ON dbo.TaxExemptionPeriod(PublicId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TaxExemptionPeriod_Dates' AND object_id = OBJECT_ID('dbo.TaxExemptionPeriod'))
+    CREATE INDEX IX_TaxExemptionPeriod_Dates ON dbo.TaxExemptionPeriod(TenantId, ValidFrom, ValidTo) WHERE IsActive = 1;
+GO
+IF OBJECT_ID(N'dbo.TaxExemptionPeriodProduct', N'U') IS NULL CREATE TABLE dbo.TaxExemptionPeriodProduct (
+    TaxExemptionPeriodProductId INT IDENTITY(1,1) CONSTRAINT PK_TaxExemptionPeriodProduct PRIMARY KEY,
+    TenantId                    INT NOT NULL CONSTRAINT FK_TaxExemptionPeriodProduct_Tenant REFERENCES dbo.Tenant(TenantId),
+    TaxExemptionPeriodId        INT NOT NULL,
+    ProductId                   INT NOT NULL,
+    IsActive                    BIT NOT NULL CONSTRAINT DF_TaxExemptionPeriodProduct_IsActive DEFAULT 1,
+    CreatedAtUtc                DATETIME2 NOT NULL CONSTRAINT DF_TaxExemptionPeriodProduct_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy                   INT NULL,
+    CONSTRAINT FK_TaxExemptionPeriodProduct_Period FOREIGN KEY (TaxExemptionPeriodId, TenantId) REFERENCES dbo.TaxExemptionPeriod(TaxExemptionPeriodId, TenantId),
+    CONSTRAINT FK_TaxExemptionPeriodProduct_Product FOREIGN KEY (ProductId, TenantId) REFERENCES dbo.Product(ProductId, TenantId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TaxExemptionPeriodProduct' AND object_id = OBJECT_ID('dbo.TaxExemptionPeriodProduct'))
+    CREATE UNIQUE INDEX UX_TaxExemptionPeriodProduct ON dbo.TaxExemptionPeriodProduct(TaxExemptionPeriodId, ProductId) WHERE IsActive = 1;
+GO
+IF OBJECT_ID(N'dbo.TaxExemptionPeriodCategory', N'U') IS NULL CREATE TABLE dbo.TaxExemptionPeriodCategory (
+    TaxExemptionPeriodCategoryId INT IDENTITY(1,1) CONSTRAINT PK_TaxExemptionPeriodCategory PRIMARY KEY,
+    TenantId                     INT NOT NULL CONSTRAINT FK_TaxExemptionPeriodCategory_Tenant REFERENCES dbo.Tenant(TenantId),
+    TaxExemptionPeriodId         INT NOT NULL,
+    ProductCategoryId            INT NOT NULL,
+    IsActive                     BIT NOT NULL CONSTRAINT DF_TaxExemptionPeriodCategory_IsActive DEFAULT 1,
+    CreatedAtUtc                 DATETIME2 NOT NULL CONSTRAINT DF_TaxExemptionPeriodCategory_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+    CreatedBy                    INT NULL,
+    CONSTRAINT FK_TaxExemptionPeriodCategory_Period FOREIGN KEY (TaxExemptionPeriodId, TenantId) REFERENCES dbo.TaxExemptionPeriod(TaxExemptionPeriodId, TenantId),
+    CONSTRAINT FK_TaxExemptionPeriodCategory_Category FOREIGN KEY (ProductCategoryId, TenantId) REFERENCES dbo.ProductCategory(ProductCategoryId, TenantId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_TaxExemptionPeriodCategory' AND object_id = OBJECT_ID('dbo.TaxExemptionPeriodCategory'))
+    CREATE UNIQUE INDEX UX_TaxExemptionPeriodCategory ON dbo.TaxExemptionPeriodCategory(TaxExemptionPeriodId, ProductCategoryId) WHERE IsActive = 1;
+GO
+-- avisos al cliente: el CHECK de la clase admite DOCUMENT_EXPIRING (y los de almacén WH_RECEIVED / WH_DISPATCHED que le faltaban)
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_ClientNotificationSetting_Kind' AND parent_object_id = OBJECT_ID('dbo.ClientNotificationSetting')
+           AND (definition NOT LIKE '%DOCUMENT_EXPIRING%' OR definition NOT LIKE '%WH_RECEIVED%' OR definition NOT LIKE '%WH_DISPATCHED%'))
+    ALTER TABLE dbo.ClientNotificationSetting DROP CONSTRAINT CK_ClientNotificationSetting_Kind;
+GO
+IF OBJECT_ID(N'dbo.ClientNotificationSetting', N'U') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_ClientNotificationSetting_Kind' AND parent_object_id = OBJECT_ID('dbo.ClientNotificationSetting'))
+    ALTER TABLE dbo.ClientNotificationSetting ADD CONSTRAINT CK_ClientNotificationSetting_Kind
+        CHECK (Kind IN ('PICKED_UP','OUT_FOR_DELIVERY','DELIVERED','WH_RECEIVED','WH_DISPATCHED','COD_PROCESSED','INVOICE_ISSUED','DOCUMENT_EXPIRING'));
+GO
+-- marca informativa: cuántas exenciones activas quedan «falta el documento» (no cambia ningún dato ni ningún monto)
+IF NOT EXISTS (SELECT 1 FROM dbo.AppliedMigration WHERE Code = 'L248_EXEMPTIONS_WITHOUT_DOCUMENT')
+BEGIN
+    DECLARE @n INT = (SELECT COUNT(*) FROM dbo.ClientTaxExemption WHERE IsActive = 1 AND ClientDocumentId IS NULL);
+    PRINT CONCAT(N'Lote 248: ', @n, N' exenciones activas quedan marcadas «falta el documento»; siguen valiendo hasta su «hasta» y salen en «Documentos por vencer».');
+    INSERT INTO dbo.AppliedMigration (Code) VALUES ('L248_EXEMPTIONS_WITHOUT_DOCUMENT');
+END
+GO

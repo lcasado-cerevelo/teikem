@@ -255,8 +255,9 @@ public sealed class Lote243WiringTests
         }).Build();
         var services = new ServiceCollection();
         services.AddTeikemInfrastructure(config);
-        var d = Assert.Single(services, x => x.ServiceType == typeof(INotificationContentProvider));
-        Assert.Equal((typeof(SalesOrderEmailContent), ServiceLifetime.Scoped), (d.ImplementationType, d.Lifetime));
+        // Lote 248: ya no es el único proveedor de contenido (también los avisos de documentos y de precios especiales por vencer)
+        var d = Assert.Single(services, x => x.ServiceType == typeof(INotificationContentProvider) && x.ImplementationType == typeof(SalesOrderEmailContent));
+        Assert.Equal(ServiceLifetime.Scoped, d.Lifetime);
         Assert.Single(services, x => x.ServiceType == typeof(ITransactionalEmailSender));
         Assert.Contains(services, x => x.ServiceType == typeof(SmtpEmailSender));
         Assert.Contains(services, x => x.ServiceType == typeof(BrevoEmailSender));
@@ -267,8 +268,9 @@ public sealed class Lote243WiringTests
     {
         using var provider = Container("Production", null);
         using var scope = provider.CreateScope();
-        var content = Assert.Single(scope.ServiceProvider.GetServices<INotificationContentProvider>());
-        Assert.Contains(SalesEventCodes.OrderRequested, content.EventCodes);
+        // Lote 248: un solo proveedor de contenido atiende el evento de la orden solicitada (hay otros para otros eventos)
+        var content = Assert.Single(scope.ServiceProvider.GetServices<INotificationContentProvider>(), p => p.EventCodes.Contains(SalesEventCodes.OrderRequested));
+        Assert.IsType<SalesOrderEmailContent>(content);
         var def = scope.ServiceProvider.GetRequiredService<NotificationEventCatalog>().Find(SalesEventCodes.OrderRequested)!;
         Assert.Contains(def.Variables, v => v.Name == "orderDetail" && v.IsBlock);
         Assert.NotNull(def.ContextRecipient(SalesContextRecipients.Seller));

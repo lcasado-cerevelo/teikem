@@ -13267,3 +13267,209 @@ It is by design: an «Include» offer is not left with nobody (409, message abov
 
 **Why do the notice or the dedicated list's name show in Spanish, or with a date different from the screen's?**
 On the staff web they now come out in the interface language and with the company's dates (the price notice, the dedicated list's name and an offer's validity). If you see them in Spanish and as day/month/year, a piece of data is missing in the response (the web then shows the server's text) or they are somewhere else: the notices in the offer window, the error messages, the `SPECIAL_PRICE` source or a screen that is not the staff web. The data is the same.
+
+## Batch 248 — Documents with validity, IVU exemption tied to its certificate and expiry notices
+<!-- kemi:staff -->
+
+> **The API returns its messages in Spanish only**, so each question quotes the exact Spanish message. Chapter: [56 — Documents with validity, IVU exemption tied to its certificate and expiry notices](56-documentos-vigencia-ivu.md). Screens: [L248](../frontend/l248-documentos-ivu.md) (Spanish edition). Rule behind it all: **the IVU exemption is worth what its document says** (the certificate); exemptions from before stay valid as before and show as «Document missing».
+
+### Uploading and editing client documents
+
+**What does «El tipo de documento no existe o está apagado en Catálogos de valores.» mean? (HTTP 400)**
+The `documentType` code is not an active type of «Client document types», or the company turned it off. Choose another type, or turn it on in System → Catalogs. There is no longer a fixed list of three types: the company can add its own.
+
+**What does «El número del documento no puede pasar de 60 caracteres.» mean? (HTTP 400)**
+The number typed is over 60 characters. Type only the certificate or permit number.
+
+**What does «Este tipo de documento lleva vigencia: escriba la fecha «hasta».» mean? (HTTP 400)**
+The type has the «Has a validity period» mark and the «Until» date is missing. Enter it. It also appears when **editing** an old document of a type that became «has a validity period», even if you only change the note: the «Until» date must be entered. If the type should not have a validity period, turn its mark off in Catalogs.
+
+**What does «La fecha «hasta» no puede ser anterior a la fecha «desde».» mean? (HTTP 400)**
+The «Until» date falls before the «From» date. Fix the dates. An «Until» already in the past is accepted on a plain document (it is a historical record); only the exemption cannot be born expired.
+
+**What does «La fecha debe tener el formato AAAA-MM-DD.» mean? (HTTP 400)**
+Through the API, `validFrom` or `validTo` of the upload form do not have the format `2026-12-31`. It does not appear on screen: the date picker already sends it correctly.
+
+**What does «La nota del documento no puede pasar de 300 caracteres.» mean? (HTTP 400)**
+Shorten the note.
+
+**What does «rowVersion inválido: se espera el valor base64 devuelto por la ficha.» mean? (HTTP 400)**
+Through the API, the `PATCH`'s `rowVersion` is not the value the document list returned. Read the document again and send the value as is.
+
+**What does «El documento cambió mientras lo editaba. Vuelva a abrirlo.» mean? (HTTP 409)**
+Someone else (or the system, when synchronizing the exemption) changed the document after you opened it. Close it, open it again and repeat the change.
+
+**What does «Subir documentos de este cliente exige el permiso de editar clientes (clients.update).» mean? (HTTP 403)**
+Uploading, editing or removing documents requires `clients.update`; with `clients.create_basic` only while the client is a **prospect**. Ask the administrator for the permission.
+
+**What does «Documento '…' no encontrado.» mean? (HTTP 404)**
+The document does not exist, was already removed, or belongs to another client or another company. Reload the page.
+
+### Documents that back an IVU exemption
+
+**What does «Este documento respalda una exención de IVU vigente: dé de baja la exención en Impuestos antes de quitarlo.» mean? (HTTP 409)**
+You want to remove the certificate of an exemption that is still valid; if it were removed, IVU would start being charged without warning. Accounting → Taxes → Exemptions → deactivate the exemption and then remove the document. If what you want is to change the certificate, use «Renew»: it uploads the new one and the exemption moves to it. With the exemption already expired, the document can be removed.
+
+**What does «Este documento respalda una exención de IVU: cambiar su número o su vigencia exige el permiso de impuestos (tax.manage).» mean? (HTTP 403)**
+Changing this document's «Until» (or number) changes until when IVU is exempt, and that is money. Whoever has `tax.manage` besides `clients.update` can do it. Changing only the note does not require it.
+
+**What does «Este documento respalda una exención de IVU: no se le puede quitar la fecha «hasta».» mean? (HTTP 400)**
+You tried to leave the «Until» empty on a document that backs an exemption: the exemption would have no end. Enter a date, or deactivate the exemption.
+
+### Applying the IVU exemption (one-step capture, link, renew)
+
+**What does «La exención necesita el documento que la respalda.» mean? (HTTP 400)**
+Since this batch, every new exemption is backed by a client document. Upload the certificate (one-step capture) or choose one already uploaded. It also appears when **editing or reactivating** an exemption from before this batch («Document missing»): first link its certificate with «Link document».
+
+**What does «Mande el archivo del certificado o escoja un documento ya subido, no las dos cosas.» mean? (HTTP 400)**
+Through the API, the one-step capture carries `file` and `clientDocumentPublicId` at the same time. Send only one.
+
+**What does «Adjunte el archivo del certificado.» mean? (HTTP 400)**
+The certificate file is empty or was not attached. Attach the PDF or the photo.
+
+**What does «Ese tipo de documento no es de impuestos: no puede respaldar una exención.» mean? (HTTP 400)**
+The chosen type does not have the «Is a tax document» mark. Choose an IVU exemption certificate (state, municipal or total) or a reseller one, or turn the mark on in Catalogs.
+
+**What does «Escriba el número del certificado.» mean? (HTTP 400)**
+The capture with a new file needs the certificate number (`documentNumber`).
+
+**What does «Escriba desde cuándo vale el certificado.» mean? (HTTP 400)**
+The «From» date is missing in the capture with a new file.
+
+**What does «Escriba hasta cuándo vale el certificado.» mean? (HTTP 400)**
+The «Until» date is missing in the capture with a new file. The exemption needs to know when it ends.
+
+**What does «La fecha «hasta» ya pasó: la exención nacería vencida.» mean? (HTTP 400)**
+The certificate you are uploading has already expired. Upload the valid certificate. (A plain document with a past «Until» can be saved as a record, but it does not back an exemption.)
+
+**What does «El tipo de exención no puede pasar de 60 caracteres.» mean? (HTTP 400)**
+If you do not type the type, the document type's name is used, trimmed to 60. If you typed it, shorten it.
+
+**What does «Las notas no pueden pasar de 300 caracteres.» mean? (HTTP 400)**
+Shorten the exemption's notes.
+
+**What does «El documento que respaldaba la exención se quitó: suba el certificado vigente.» mean? (HTTP 400)**
+The document was removed (or the exemption points to a removed one). Upload the valid certificate with «Renew» or «New exemption». Meanwhile the exemption exempts nothing (status `DOCUMENT_REMOVED`).
+
+**What does «El documento no tiene número: escríbalo en el documento antes de aplicar la exención.» mean? (HTTP 400)**
+Edit the document (Client documents → Edit) and enter the certificate number; then apply the exemption.
+
+**What does «El documento no tiene fecha «hasta»: la exención necesita la vigencia del documento.» mean? (HTTP 400)**
+Edit the document and enter the «Until» date. It also appears when reactivating an exemption whose document lost its «Until».
+
+**What does «El documento ya venció: suba el certificado vigente.» mean? (HTTP 400)**
+The document's «Until» has passed. Upload the renewed certificate; an exemption cannot be applied or reactivated with an expired document.
+
+**What does «La vigencia y el número de la exención son los del documento: corríjalos en Documentos del cliente.» mean? (HTTP 400)**
+Through the API, you tried to change `validFrom`, `validTo` or `certificateNumber` of an already linked exemption. Those data are the document's: edit them on the client's page → Client documents (with `tax.manage`).
+
+**What does «Ese documento ya respalda otra exención activa.» mean? (HTTP 409)**
+A document backs at most one active exemption. Deactivate the other one, or upload a separate certificate. It also appears if two people apply the exemption with the same document at once: the second one gets this message.
+
+**What does «Documento no encontrado.» mean? (HTTP 404)**
+The chosen document does not exist, or belongs to another client or another company (it does not say which). Choose a document of the same client.
+
+**What does «Exención no encontrada.» mean? (HTTP 404)**
+The exemption does not exist or belongs to another company. Reload the screen.
+
+### Seasonal exemption
+
+**What does «Escriba el nombre del período de exención.» mean? (HTTP 400)**
+The name is missing. For example «School supplies August 2026».
+
+**What does «El nombre del período no puede pasar de 100 caracteres.» mean? (HTTP 400)**
+Shorten the name.
+
+**What does «Escriba el motivo de la exención (por ejemplo, la orden administrativa que la decreta).» mean? (HTTP 400)**
+The reason is required: note which order or decree backs it.
+
+**What does «El motivo no puede pasar de 300 caracteres.» mean? (HTTP 400)**
+Shorten the reason.
+
+**What does «Escriba desde qué fecha rige la exención.» mean? (HTTP 400)**
+The period's start date is missing.
+
+**What does «Escriba hasta qué fecha rige la exención.» mean? (HTTP 400)**
+The period's end date is missing.
+
+**What does «La fecha final no puede ser anterior a la inicial.» mean? (HTTP 400)**
+The end date falls before the start date. Fix them.
+
+**What does «La fecha final no puede quedar antes de hoy.» mean? (HTTP 400)**
+A period that already ended is not created or scheduled, and the end date of a period in effect cannot be moved into the past. To end it today, put today as the end date; to cancel it, deactivate the period.
+
+**What does «El alcance debe ser ALL (todos los productos) o SELECTED (categorías o productos escogidos).» mean? (HTTP 400)**
+Through the API, `scope` carries another value. Use `ALL` or `SELECTED`.
+
+**What does «Escoja al menos una categoría o un producto.» mean? (HTTP 400)**
+A «chosen» period needs at least one category or product. To exempt everything, use the «All products» scope.
+
+**What does «Un período puede escoger hasta 2000 productos y 200 categorías.» mean? (HTTP 400)**
+You chose more than 2000 products or 200 categories. Use categories (they include their subcategories) instead of single products.
+
+**What does «El período ya empezó: solo se le puede cambiar la fecha final o darlo de baja.» mean? (HTTP 409)**
+A period in effect (or ended) does not change its name, reason, start date, scope or selection. Move the end date, deactivate the period, or shorten it and create another with the new selection.
+
+**What does «El registro fue modificado por otro usuario; recargue e intente de nuevo.» mean? (HTTP 409)**
+Someone else changed the period (or the setting) while you were editing it. Reload and repeat the change.
+
+**What does «Período de exención no encontrado.» mean? (HTTP 404)**
+The period does not exist or belongs to another company.
+
+**What does «Categoría no encontrada.» mean? (HTTP 404)**
+One of the chosen categories does not exist in the company. Choose it from the list.
+
+### Notice when selling, «Expiring documents» and settings
+
+**What does «Indique el cliente.» mean? (HTTP 400)**
+Through the API, the exemption notice (`GET /sales-orders/tax-notice`) was requested without `client`. Send the client's identifier.
+
+**What does «Los días deben ser un número entero entre 1 y 365.» mean? (HTTP 400)**
+The «Expires within» filter (`withinDays`) of «Expiring documents» is outside 1 to 365. Remove it to use the company's first notice.
+
+**What does «Cada umbral es un número entero de días entre -365 y 365 (positivo = antes de vencer, 0 = el día, negativo = después).» mean? (HTTP 400)**
+In Settings → Operation → «Expiry notices» you typed something that is not a whole number from -365 to 365. Positive notifies before expiry, 0 on the day it expires and negative afterwards.
+
+**What does «Hay un umbral repetido.» mean? (HTTP 400)**
+Two thresholds have the same number. Remove one.
+
+**What does «Se pueden poner hasta 10 umbrales.» mean? (HTTP 400)**
+Remove thresholds until 10 or fewer remain.
+
+**What does «El aviso de documentos por vencer solo sale por correo.» mean? (HTTP 400)**
+Client's page → «Client notifications»: «Expiring documents» does not accept the portal inbox or SMS. Turn those channels off.
+
+**What does «El aviso no existe.» mean? (HTTP 400)**
+Through the API, the notice code in the client's configuration is not one of the known ones (the usual ones plus `DOCUMENT_EXPIRING`).
+
+**What does «Falta el permiso 'tax.manage'.» mean? (HTTP 403)**
+Exemptions, periods and the one-step capture require `tax.manage`. Ask the administrator for the permission. With another code (`clients.read`, `admin.tenant`, `jobs.manage`…), it is the permission of that screen.
+
+**What does «El módulo 'TAX' no está habilitado para esta compañía.» mean? (HTTP 403)**
+The taxes module is off. Whoever administers the company turns it on. With `CATALOG` or `SALES_ORDERS` off the same happens with documents and with the notice when selling.
+
+### Frequent cases
+
+**I uploaded the certificate and the exemption was not applied.**
+Uploading the document does not create the exemption. Answer «Yes, apply» to «Apply the IVU exemption?» or use «New exemption». The question only appears with a tax type, `tax.manage` and the `TAX` module.
+
+**An exemption says «Document missing». Did it stop being valid?**
+No: exemptions from before the batch stay valid as before. The mark warns that they have no certificate in the system. Use «Link document».
+
+**IVU was charged to a client with an exemption.**
+Look at the document that backs it: if its «Until» has passed, the exemption expired (the calculation warns «El cliente tiene una exención vencida (certificado …, venció el …): se cobró el impuesto.»). Upload the renewed certificate with «Renew». Also check the scope: an exemption of components only (for example the municipal one) still charges the rest.
+
+**A line came out without IVU and the client has no exemption.**
+A seasonal exemption period is in effect covering the product or its category. The line's reason is `EXEMPT_PRODUCT_PERIOD` and it carries the period's name (Accounting → Taxes → «Seasonal exemption»). In the Simulator the chip may show the reason's code.
+
+**I did not receive the expiry notice.**
+Check: a **rule** for «Client document about to expire» in Notification rules; that the client has a **sales route or preferred seller** with an active user (otherwise the Notice log records it «Skipped»); that the document has an «Until» and is not **renewed**; and the Notice log. A notice recorded before the rule was created is not repeated.
+
+**The client does not receive the notice.**
+«Notify the client» must be on (Settings → Operation → «Expiry notices»), the client must not have turned it off on its page and it must have a main email, a contact marked «Receives email notices» or an extra email.
+
+**The client notice summaries reach more people than before.**
+Since this batch, the «Receives email notices» mark applies to all client notices: the summaries also reach the main email and the marked contacts. Remove the mark from the contact who should not receive them.
+
+**A document no longer shows in «Expiring documents».**
+It is renewed (another active document of the same client and type with a later «Until»), it was removed, or the client is deactivated.

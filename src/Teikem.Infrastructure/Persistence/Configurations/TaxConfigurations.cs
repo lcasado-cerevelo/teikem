@@ -76,5 +76,57 @@ public sealed class ClientTaxExemptionConfiguration : IEntityTypeConfiguration<C
         b.Property(e => e.ComponentCodes).HasMaxLength(310);
         b.HasIndex(e => e.PublicId).IsUnique().HasDatabaseName("UQ_ClientTaxExemption_PublicId");
         b.HasIndex(e => new { e.TenantId, e.ClientId, e.ValidFrom }).HasDatabaseName("IX_ClientTaxExemption_Client");
+        // Lote 248: el documento que la respalda. EF mapea la FK simple; la compuesta FK_ClientTaxExemption_Document (ClientDocumentId, TenantId, ClientId) vive en el SQL.
+        // Un documento respalda a lo más UNA exención activa (índice único filtrado: la segunda que lo intente recibe 409).
+        b.HasOne<Teikem.Domain.Clients.ClientDocument>().WithMany().HasForeignKey(e => e.ClientDocumentId).IsRequired(false);
+        b.HasIndex(e => e.ClientDocumentId).IsUnique().HasFilter("[ClientDocumentId] IS NOT NULL AND [IsActive] = 1").HasDatabaseName("UX_ClientTaxExemption_Document");
+    }
+}
+
+// Lote 248 — exención de producto por temporada. Mapeo 1:1 con la sección del Lote 248 de Diseño/logistica-db-update.sql. Los CHECK (fechas, alcance, nombre y motivo no
+// vacíos), el UNIQUE (Id, TenantId) y las FK compuestas con la compañía (período, producto y categoría) viven en el SQL; EF mapea las FK simples.
+
+public sealed class TaxExemptionPeriodConfiguration : IEntityTypeConfiguration<TaxExemptionPeriod>
+{
+    public const int NameMaxLength = 100;
+    public const int ReasonMaxLength = 300;
+
+    public void Configure(EntityTypeBuilder<TaxExemptionPeriod> b)
+    {
+        b.ToTable("TaxExemptionPeriod");
+        b.HasKey(p => p.TaxExemptionPeriodId);
+        b.Property(p => p.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(p => p.Name).HasMaxLength(NameMaxLength).IsRequired();
+        b.Property(p => p.Reason).HasMaxLength(ReasonMaxLength).IsRequired();
+        b.Property(p => p.ValidFrom).HasColumnType("date");
+        b.Property(p => p.ValidTo).HasColumnType("date");
+        b.Property(p => p.Scope).HasMaxLength(20).IsRequired();
+        b.Property(p => p.RowVersion).IsRowVersion();
+        b.HasMany(p => p.Products).WithOne().HasForeignKey(x => x.TaxExemptionPeriodId);
+        b.HasMany(p => p.Categories).WithOne().HasForeignKey(x => x.TaxExemptionPeriodId);
+        b.HasIndex(p => p.PublicId).IsUnique().HasDatabaseName("UX_TaxExemptionPeriod_PublicId");
+        b.HasIndex(p => new { p.TenantId, p.ValidFrom, p.ValidTo }).HasFilter("[IsActive] = 1").HasDatabaseName("IX_TaxExemptionPeriod_Dates");
+    }
+}
+
+public sealed class TaxExemptionPeriodProductConfiguration : IEntityTypeConfiguration<TaxExemptionPeriodProduct>
+{
+    public void Configure(EntityTypeBuilder<TaxExemptionPeriodProduct> b)
+    {
+        b.ToTable("TaxExemptionPeriodProduct");
+        b.HasKey(x => x.TaxExemptionPeriodProductId);
+        b.HasOne<Teikem.Domain.Wms.Product>().WithMany().HasForeignKey(x => x.ProductId);
+        b.HasIndex(x => new { x.TaxExemptionPeriodId, x.ProductId }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_TaxExemptionPeriodProduct");
+    }
+}
+
+public sealed class TaxExemptionPeriodCategoryConfiguration : IEntityTypeConfiguration<TaxExemptionPeriodCategory>
+{
+    public void Configure(EntityTypeBuilder<TaxExemptionPeriodCategory> b)
+    {
+        b.ToTable("TaxExemptionPeriodCategory");
+        b.HasKey(x => x.TaxExemptionPeriodCategoryId);
+        b.HasOne<Teikem.Domain.Wms.ProductCategory>().WithMany().HasForeignKey(x => x.ProductCategoryId);
+        b.HasIndex(x => new { x.TaxExemptionPeriodId, x.ProductCategoryId }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UX_TaxExemptionPeriodCategory");
     }
 }

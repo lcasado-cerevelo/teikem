@@ -29,3 +29,13 @@
 .tax-filters .cpick { min-width: 200px; flex: 1 1 200px; }
 .tax-filters .cpick input { width: 100%; min-height: 34px; padding: 4px 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: inherit; font: inherit; }
 .tax-filters .cpick input:focus-visible { outline: 2px solid var(--brand, #1f6feb); outline-offset: 1px; }
+
+/* Lote 248: captura única de la exención, documento que la respalda y exención por temporada (prefijos txc- y txp-) */
+.txc-doc { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel-2, transparent); min-width: 0; overflow-wrap: anywhere; }
+.txc-form input[type='file'] { max-width: 100%; }
+.txp-lock { margin: 0; padding: 8px 10px; border-left: 3px solid var(--warn); background: var(--warnbg); color: var(--text); border-radius: 6px; font-weight: 600; }
+.txp-picked { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.txp-picked li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.txp-picked li > span { min-width: 0; overflow-wrap: anywhere; flex: 1 1 140px; }
+.txp-reason { display: inline-block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.txp-inactive { margin: 8px 0; }

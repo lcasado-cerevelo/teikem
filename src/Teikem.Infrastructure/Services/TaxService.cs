@@ -4,7 +4,9 @@ using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Tax;
 using Teikem.Domain.Wms;
+using Teikem.Domain.Files;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
@@ -18,6 +20,8 @@ namespace Teikem.Infrastructure.Services;
 /// - Reglas: precios con impuesto incluido o no, redondeo por línea o por documento, tasa por omisión y qué tipos de cargo pagan impuesto.
 /// - Exenciones de clientes (certificado con vigencia). Categoría de impuesto del producto (gravable, exento, tasa cero).
 /// - Cálculo (<see cref="CalculateAsync"/>): lo usan, o lo usarán, las órdenes de venta y la facturación; también sirve de simulador.
+/// - Lote 248: la exención del cliente queda atada al documento que la respalda (su vigencia y su número son los del documento) y hay exención de producto por
+///   temporada (TaxExemptionPeriod, motivo EXEMPT_PRODUCT_PERIOD), que gana a la exención del cliente en su línea. El constructor no cambia.
 /// </summary>
 public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenantClock clock, ILookupCache lookups)
 {
@@ -171,14 +175,15 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
     }
 
     // ---------------------------------------------------------------- exenciones de clientes
+    // Lote 248 — la exención nueva siempre nace de un documento del cliente «de impuestos» (ClientDocumentId): su vigencia y su número son los del documento
+    // (ClientExemptionBacking.Effective). Las viejas sin documento siguen valiendo igual («falta el documento»), pero editarlas o reactivarlas exige vincular uno.
 
     public async Task<IReadOnlyList<TaxExemptionDto>> ListExemptionsAsync(int? clientId, CancellationToken ct)
     {
-        var q = db.Set<ClientTaxExemption>().AsQueryable();
+        var q = db.Set<ClientTaxExemption>().AsNoTracking();
         if (clientId is int c) q = q.Where(e => e.ClientId == c);
         var rows = await q.OrderByDescending(e => e.ValidFrom).ThenByDescending(e => e.ClientTaxExemptionId).ToListAsync(ct);
-        var names = await ClientNamesAsync(rows.Select(r => r.ClientId).Distinct().ToList(), ct);
-        return rows.Select(e => ToDto(e, names.GetValueOrDefault(e.ClientId, string.Empty))).ToList();
+        return await ToDtosAsync(rows, ct);
     }
 
     public async Task<TaxExemptionDto> CreateExemptionAsync(TaxExemptionRequest req, CancellationToken ct)
@@ -187,16 +192,22 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
         var tenantId = T.RequireTenantId();
         if (req.ClientId is not int clientId || !await db.Set<Client>().AnyAsync(c => c.ClientId == clientId, ct))
             throw new NotFoundException("Cliente");
-        var (type, cert, notes) = NormalizeExemption(req.ExemptionType, req.CertificateNumber, req.Notes);
-        if (req.ValidFrom is not DateOnly from) throw new ValidationException("validFrom", "Escriba desde qué fecha vale la exención.");
-        if (req.ValidTo is DateOnly to && to < from) throw new ValidationException("validTo", TaxRules.DatesOrder);
+        if (req.ClientDocumentPublicId is not Guid documentPublicId)
+            throw new ValidationException("clientDocumentPublicId", ClientExemptionRules.DocumentRequired);
+        var (doc, type) = await ResolveBackingDocumentAsync(clientId, documentPublicId, exceptExemptionId: null, ct);
+        var label = type is null ? null : MultilingualText.Resolve(type.LabelJson, T.Lang);
+        var (exType, cert, notes) = NormalizeExemption(ClientExemptionRules.DefaultExemptionType(req.ExemptionType, label), doc.DocumentNumber, req.Notes);
         var (scope, codes) = await NormalizeScopeAsync(req.Scope, req.ComponentCodes, ct);
 
-        var e = new ClientTaxExemption { TenantId = tenantId, ClientId = clientId, ExemptionType = type, CertificateNumber = cert, ValidFrom = from, ValidTo = req.ValidTo, Notes = notes, IsActive = true,
-            Scope = scope, ComponentCodes = codes };
+        // el número y las fechas son los del documento (lo que traiga el cuerpo se ignora); sin «desde» en el documento, la exención rige desde hoy
+        var e = new ClientTaxExemption
+        {
+            PublicId = Guid.NewGuid(), TenantId = tenantId, ClientId = clientId, ExemptionType = exType, CertificateNumber = cert, ValidFrom = doc.ValidFrom ?? Today,
+            ValidTo = doc.ValidTo, Notes = notes, IsActive = true, Scope = scope, ComponentCodes = codes, ClientDocumentId = doc.ClientDocumentId,
+        };
         db.Set<ClientTaxExemption>().Add(e);
-        await db.SaveGuardedAsync("La exención cambió al mismo tiempo. Vuelva a intentarlo.", ct);
-        return ToDto(e, (await ClientNamesAsync(new[] { clientId }, ct)).GetValueOrDefault(clientId, string.Empty));
+        await db.SaveGuardedAsync(ClientExemptionRules.DocumentAlreadyBacks, ct);   // UX_ClientTaxExemption_Document: dos a la vez con el mismo documento → 409
+        return (await ToDtosAsync(new[] { e }, ct))[0];
     }
 
     public async Task<TaxExemptionDto> UpdateExemptionAsync(int id, TaxExemptionPatchRequest req, CancellationToken ct)
@@ -204,27 +215,89 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         var e = await db.Set<ClientTaxExemption>().AsTracking().FirstOrDefaultAsync(x => x.ClientTaxExemptionId == id, ct)
             ?? throw new NotFoundException("Exención", feminine: true);
-        var (type, cert, notes) = NormalizeExemption(req.ExemptionType ?? e.ExemptionType, req.CertificateNumber ?? e.CertificateNumber, req.Notes ?? e.Notes);
-        var from = req.ValidFrom ?? e.ValidFrom;
-        var to = req.ClearValidTo == true ? null : req.ValidTo ?? e.ValidTo;
-        if (to is DateOnly t && t < from) throw new ValidationException("validTo", TaxRules.DatesOrder);
+        // una exención vieja «falta el documento» solo se edita vinculándole su documento
+        if (e.ClientDocumentId is null && req.ClientDocumentPublicId is null)
+            throw new ValidationException("clientDocumentPublicId", ClientExemptionRules.DocumentRequired);
+        var datesField = req.ValidFrom is not null ? "validFrom" : req.ValidTo is not null || req.ClearValidTo == true ? "validTo" : req.CertificateNumber is not null ? "certificateNumber" : null;
+        if (datesField is not null) throw new ValidationException(datesField, ClientExemptionRules.DatesFollowDocument);
+
+        ClientDocument? doc = null;
+        if (req.ClientDocumentPublicId is Guid documentPublicId)
+        {
+            var current = e.ClientDocumentId is int cur
+                ? await db.Set<ClientDocument>().AsNoTracking().FirstOrDefaultAsync(d => d.ClientDocumentId == cur, ct) : null;
+            if (current?.PublicId != documentPublicId)
+            {
+                (doc, _) = await ResolveBackingDocumentAsync(e.ClientId, documentPublicId, e.IsActive ? e.ClientTaxExemptionId : null, ct, checkFree: e.IsActive);
+                e.ClientDocumentId = doc.ClientDocumentId;
+            }
+            else doc = current;
+        }
+        else if (e.ClientDocumentId is int linked)
+            doc = await db.Set<ClientDocument>().AsNoTracking().FirstOrDefaultAsync(d => d.ClientDocumentId == linked, ct);
+
+        // la copia de la exención (para los listados) se sincroniza con el documento activo
+        var cert = e.CertificateNumber;
+        if (doc is { IsActive: true })
+        {
+            cert = ClientDocumentRules.NormalizeNumber(doc.DocumentNumber) ?? e.CertificateNumber;
+            e.ValidFrom = doc.ValidFrom ?? e.ValidFrom;
+            e.ValidTo = doc.ValidTo ?? e.ValidTo;
+        }
+        var (type, certificate, notes) = NormalizeExemption(req.ExemptionType ?? e.ExemptionType, cert, req.Notes ?? e.Notes);
         // Lote 237: el alcance solo se revisa si viene algo de él (lo que no viene no cambia)
         if (req.Scope is not null || req.ComponentCodes is not null)
             (e.Scope, e.ComponentCodes) = await NormalizeScopeAsync(req.Scope ?? e.Scope, req.ComponentCodes ?? TaxRules.SplitComponentCodes(e.ComponentCodes), ct);
-        (e.ExemptionType, e.CertificateNumber, e.Notes, e.ValidFrom, e.ValidTo) = (type, cert, notes, from, to);
-        await db.SaveGuardedAsync("La exención cambió al mismo tiempo. Vuelva a intentarlo.", ct);
-        return ToDto(e, (await ClientNamesAsync(new[] { e.ClientId }, ct)).GetValueOrDefault(e.ClientId, string.Empty));
+        (e.ExemptionType, e.CertificateNumber, e.Notes) = (type, certificate, notes);
+        await db.SaveGuardedAsync(ClientExemptionRules.DocumentAlreadyBacks, ct);
+        return (await ToDtosAsync(new[] { e }, ct))[0];
     }
 
     public Task<TaxExemptionDto> SetExemptionActiveAsync(int id, bool active, CancellationToken ct) => SetActiveCoreAsync(id, active, ct);
 
+    /// <summary>
+    /// Dar de baja siempre se puede. Reactivar (Lote 248) exige el documento vinculado, activo y vigente, y que ninguna otra exención activa use ese documento (409).
+    /// </summary>
     private async Task<TaxExemptionDto> SetActiveCoreAsync(int id, bool active, CancellationToken ct)
     {
         var e = await db.Set<ClientTaxExemption>().AsTracking().FirstOrDefaultAsync(x => x.ClientTaxExemptionId == id, ct)
             ?? throw new NotFoundException("Exención", feminine: true);
+        if (active && !e.IsActive)
+        {
+            if (e.ClientDocumentId is not int documentId) throw new ValidationException("clientDocumentPublicId", ClientExemptionRules.DocumentRequired);
+            var doc = await db.Set<ClientDocument>().AsNoTracking().FirstOrDefaultAsync(d => d.ClientDocumentId == documentId, ct);
+            if (doc is null || !doc.IsActive) throw new ValidationException("clientDocumentPublicId", ClientExemptionRules.DocumentInactive);
+            if (doc.ValidTo is not DateOnly to) throw new ValidationException("clientDocumentPublicId", ClientExemptionRules.DocumentWithoutValidTo);
+            if (to < Today) throw new ValidationException("clientDocumentPublicId", ClientExemptionRules.DocumentExpired);
+            await EnsureDocumentFreeAsync(documentId, e.ClientTaxExemptionId, ct);
+        }
         e.IsActive = active;
-        await db.SaveGuardedAsync("La exención cambió al mismo tiempo. Vuelva a intentarlo.", ct);
-        return ToDto(e, (await ClientNamesAsync(new[] { e.ClientId }, ct)).GetValueOrDefault(e.ClientId, string.Empty));
+        await db.SaveGuardedAsync(active ? ClientExemptionRules.DocumentAlreadyBacks : "La exención cambió al mismo tiempo. Vuelva a intentarlo.", ct);
+        return (await ToDtosAsync(new[] { e }, ct))[0];
+    }
+
+    /// <summary>
+    /// Lote 248 — el documento que va a respaldar una exención: del MISMO cliente (otro cliente u otra compañía = 404 «Documento no encontrado.»), activo, de un tipo
+    /// «de impuestos», con número y con «hasta» de hoy en adelante; y (checkFree) que no respalde ya otra exención activa (409).
+    /// </summary>
+    internal async Task<(ClientDocument Doc, ClientDocumentTypeInfo? Type)> ResolveBackingDocumentAsync(int clientId, Guid documentPublicId, int? exceptExemptionId,
+        CancellationToken ct, bool checkFree = true)
+    {
+        var tenantId = T.RequireTenantId();
+        var doc = await db.Set<ClientDocument>().AsNoTracking().FirstOrDefaultAsync(d => d.PublicId == documentPublicId && d.ClientId == clientId, ct)
+                  ?? throw new NotFoundException("Documento");
+        var type = (await ClientDocumentQueries.TypesByIdAsync(db, tenantId, new[] { doc.DocumentTypeLookupId }, ct)).GetValueOrDefault(doc.DocumentTypeLookupId);
+        var (field, error) = ClientExemptionRules.ValidateBackingDocument(doc.IsActive, type?.Marks.IsTax == true, doc.DocumentNumber, doc.ValidTo, Today);
+        if (error is not null) throw new ValidationException(field ?? "clientDocumentPublicId", error);
+        if (checkFree) await EnsureDocumentFreeAsync(doc.ClientDocumentId, exceptExemptionId, ct);
+        return (doc, type);
+    }
+
+    private async Task EnsureDocumentFreeAsync(int documentId, int? exceptExemptionId, CancellationToken ct)
+    {
+        if (await db.Set<ClientTaxExemption>().AsNoTracking()
+                .AnyAsync(x => x.ClientDocumentId == documentId && x.IsActive && (exceptExemptionId == null || x.ClientTaxExemptionId != exceptExemptionId), ct))
+            throw new ConflictException(ClientExemptionRules.DocumentAlreadyBacks);
     }
 
     private static (string Type, string Cert, string? Notes) NormalizeExemption(string? type, string? cert, string? notes)
@@ -243,8 +316,9 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
     /// <summary>
     /// Lote 237 — alcance de la exención ya validado: (ALL, null) o (COMPONENTS, «CITY,STATE»). Cada código debe ser un componente de alguna tasa de la
     /// compañía (de cualquier vigencia): así un error de dedo no deja una exención que nunca aplica.
+    /// Lote 248 — internal: la captura única (ClientTaxExemptionCaptureService) lo usa para validar TODO antes de guardar el archivo.
     /// </summary>
-    private async Task<(string Scope, string? Codes)> NormalizeScopeAsync(string? scope, IReadOnlyList<string>? componentCodes, CancellationToken ct)
+    internal async Task<(string Scope, string? Codes)> NormalizeScopeAsync(string? scope, IReadOnlyList<string>? componentCodes, CancellationToken ct)
     {
         var error = TaxRules.ValidateExemptionScope(scope, componentCodes, out var normalized, out var codes);
         if (error is not null) throw new ValidationException(error == TaxRules.ExemptionScopeInvalid ? "scope" : "componentCodes", error);
@@ -255,14 +329,55 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
         return (normalized, string.Join(',', codes));
     }
 
-    private async Task<Dictionary<int, string>> ClientNamesAsync(IReadOnlyCollection<int> ids, CancellationToken ct)
-        => await db.Set<Client>().Where(c => ids.Contains(c.ClientId)).ToDictionaryAsync(c => c.ClientId, c => c.Name, ct);
-
-    private TaxExemptionDto ToDto(ClientTaxExemption e, string clientName)
+    /// <summary>Lote 248 — los documentos que respaldan exenciones (por id), con lo que necesita <see cref="ClientExemptionBacking.Effective"/> y la lista.</summary>
+    private sealed record BackingDocRow(int ClientDocumentId, Guid PublicId, bool IsActive, DateOnly? ValidFrom, DateOnly? ValidTo, string? DocumentNumber,
+        int DocumentTypeLookupId, int StoredFileId)
     {
-        var status = !e.IsActive ? "INACTIVE" : e.ValidFrom > Today ? "SCHEDULED" : TaxRules.InEffect(e.ValidFrom, e.ValidTo, Today) ? "VALID" : "EXPIRED";
-        return new TaxExemptionDto(e.ClientTaxExemptionId, e.PublicId, e.ClientId, clientName, e.ExemptionType, e.CertificateNumber, e.ValidFrom, e.ValidTo, e.Notes, e.IsActive, status,
-            e.Scope, TaxRules.SplitComponentCodes(e.ComponentCodes));
+        public ExemptionBackingDocument Backing => new(IsActive, ValidFrom, ValidTo, DocumentNumber);
+    }
+
+    private async Task<Dictionary<int, BackingDocRow>> BackingDocsAsync(IEnumerable<int?> documentIds, CancellationToken ct)
+    {
+        var ids = documentIds.Where(i => i is not null).Select(i => i!.Value).Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<int, BackingDocRow>();
+        var rows = await db.Set<ClientDocument>().AsNoTracking().Where(d => ids.Contains(d.ClientDocumentId))
+            .Select(d => new { d.ClientDocumentId, d.PublicId, d.IsActive, d.ValidFrom, d.ValidTo, d.DocumentNumber, d.DocumentTypeLookupId, d.StoredFileId })
+            .ToListAsync(ct);
+        return rows.ToDictionary(d => d.ClientDocumentId,
+            d => new BackingDocRow(d.ClientDocumentId, d.PublicId, d.IsActive, d.ValidFrom, d.ValidTo, d.DocumentNumber, d.DocumentTypeLookupId, d.StoredFileId));
+    }
+
+    private static ExemptionBackingResult Effective(ClientTaxExemption e, IReadOnlyDictionary<int, BackingDocRow> docs)
+        => ClientExemptionBacking.Effective(e.ClientDocumentId, e.ValidFrom, e.ValidTo, e.CertificateNumber,
+            e.ClientDocumentId is int d && docs.TryGetValue(d, out var doc) ? doc.Backing : null);
+
+    private async Task<IReadOnlyList<TaxExemptionDto>> ToDtosAsync(IReadOnlyList<ClientTaxExemption> rows, CancellationToken ct)
+    {
+        if (rows.Count == 0) return Array.Empty<TaxExemptionDto>();
+        var clientIds = rows.Select(r => r.ClientId).Distinct().ToList();
+        var clients = await db.Set<Client>().AsNoTracking().Where(c => clientIds.Contains(c.ClientId))
+            .Select(c => new { c.ClientId, c.Name, c.PublicId }).ToDictionaryAsync(c => c.ClientId, ct);
+        var docs = await BackingDocsAsync(rows.Select(r => r.ClientDocumentId), ct);
+        var fileIds = docs.Values.Select(d => d.StoredFileId).Distinct().ToList();
+        var files = fileIds.Count == 0 ? new Dictionary<int, Guid>()
+            : await db.Set<StoredFile>().AsNoTracking().Where(f => fileIds.Contains(f.StoredFileId) && f.IsActive).ToDictionaryAsync(f => f.StoredFileId, f => f.PublicId, ct);
+        var types = docs.Count == 0 ? new Dictionary<int, ClientDocumentTypeInfo>()
+            : await ClientDocumentQueries.TypesByIdAsync(db, T.RequireTenantId(), docs.Values.Select(d => d.DocumentTypeLookupId), ct);
+        return rows.Select(e =>
+        {
+            var eff = Effective(e, docs);
+            var doc = e.ClientDocumentId is int d ? docs.GetValueOrDefault(d) : null;
+            var type = doc is null ? null : types.GetValueOrDefault(doc.DocumentTypeLookupId);
+            var client = clients.GetValueOrDefault(e.ClientId);
+            var status = !e.IsActive ? "INACTIVE" : !eff.Applies ? "DOCUMENT_REMOVED"
+                : eff.From > Today ? "SCHEDULED" : TaxRules.InEffect(eff.From, eff.To, Today) ? "VALID" : "EXPIRED";
+            return new TaxExemptionDto(e.ClientTaxExemptionId, e.PublicId, e.ClientId, client?.Name ?? string.Empty, e.ExemptionType, eff.Certificate, eff.From, eff.To,
+                e.Notes, e.IsActive, status, e.Scope, TaxRules.SplitComponentCodes(e.ComponentCodes),
+                ClientPublicId: client?.PublicId, DocumentPublicId: doc?.PublicId, DocumentType: type?.Code,
+                DocumentTypeLabel: type is null ? null : MultilingualText.Resolve(type.LabelJson, T.Lang),
+                FilePublicId: doc is not null && files.TryGetValue(doc.StoredFileId, out var f) ? f : null,
+                MissingDocument: e.ClientDocumentId is null);
+        }).ToList();
     }
 
     // ---------------------------------------------------------------- categoría del producto
@@ -336,9 +451,16 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
         if (req.ClientId is int clientId)
         {
             if (!await db.Set<Client>().AnyAsync(c => c.ClientId == clientId, ct)) throw new NotFoundException("Cliente");
-            var ex = await db.Set<ClientTaxExemption>().Where(e => e.ClientId == clientId && e.IsActive).OrderByDescending(e => e.ValidFrom).ToListAsync(ct);
-            exemptions = TaxRules.ResolveExemptions(
-                ex.Select(e => new TaxExemptionInfo(e.Scope, TaxRules.SplitComponentCodes(e.ComponentCodes), e.CertificateNumber, e.ValidFrom, e.ValidTo)), date);
+            var ex = await db.Set<ClientTaxExemption>().AsNoTracking().Where(e => e.ClientId == clientId && e.IsActive).OrderByDescending(e => e.ValidFrom).ToListAsync(ct);
+            // Lote 248: la vigencia y el certificado efectivos salen del documento que respalda la exención (una vinculada a un documento quitado no exime)
+            var docs = await BackingDocsAsync(ex.Select(e => e.ClientDocumentId), ct);
+            var infos = new List<TaxExemptionInfo>();
+            foreach (var e in ex)
+            {
+                var eff = Effective(e, docs);
+                if (eff.Applies) infos.Add(new TaxExemptionInfo(e.Scope, TaxRules.SplitComponentCodes(e.ComponentCodes), eff.Certificate, eff.From, eff.To));
+            }
+            exemptions = TaxRules.ResolveExemptions(infos, date);
             if (exemptions.Expired is { } expired)
                 warnings.Add($"El cliente tiene una exención vencida (certificado {expired.CertificateNumber}, venció el {expired.ValidTo:dd/MM/yyyy}): se cobró el impuesto.");
         }
@@ -352,6 +474,12 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
         foreach (var id in categoryIds) categoryCodes[id] = (await lookups.GetAsync(id, ct))?.InternalCode ?? TaxCategories.Taxable;
         var chargeTypes = await ChargeTypesAsync(ct);
         var chargeRules = await db.Set<TaxChargeRule>().ToListAsync(ct);
+        // Lote 248: períodos de exención por temporada vigentes en la fecha (se carga UNA vez: períodos, destinos activos y el árbol de categorías)
+        IReadOnlyList<TaxPeriodInfo> periods = productIds.Count == 0 ? Array.Empty<TaxPeriodInfo>() : await PeriodsInEffectAsync(date, productIds, ct);
+        IReadOnlyDictionary<int, int?> parentOf = periods.Any(p => p.CategoryIds.Count > 0)
+            ? await db.Set<ProductCategory>().AsNoTracking().Select(c => new { c.ProductCategoryId, c.ParentId }).ToDictionaryAsync(c => c.ProductCategoryId, c => c.ParentId, ct)
+            : new Dictionary<int, int?>();
+        var periodNames = new List<string?>();
 
         var inputs = new List<TaxLineInput>();
         var n = 0;
@@ -361,11 +489,22 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
             var key = string.IsNullOrWhiteSpace(l.Key) ? n.ToString() : l.Key.Trim();
             if (l.Amount is not decimal amount || amount < 0) throw new ValidationException("lines", TaxRules.AmountInvalid);
             TaxTreatment t;
+            string? periodName = null;
             if (l.ProductId is int pid)
             {
                 if (!products.TryGetValue(pid, out var product)) throw new NotFoundException("Producto");
                 var cat = product.TaxCategoryLookupId is int cid ? categoryCodes[cid] : TaxCategories.Taxable;
                 t = cat switch { TaxCategories.Exempt => TaxTreatment.ExemptProduct, TaxCategories.ZeroRate => TaxTreatment.ZeroRate, _ => TaxTreatment.Taxable };
+                // Lote 248: el producto gravable o de tasa cero que cubre un período de temporada sale exento ANTES de mirar la exención del cliente
+                if ((t is TaxTreatment.Taxable or TaxTreatment.ZeroRate) && periods.Count > 0)
+                {
+                    var covering = TaxExemptionPeriodRules.Covering(periods, pid, product.ProductCategoryId, parentOf);
+                    if (covering.Count > 0)
+                    {
+                        t = TaxTreatment.ExemptProductPeriod;
+                        periodName = TaxExemptionPeriodRules.FirstName(covering);
+                    }
+                }
             }
             else if (!string.IsNullOrWhiteSpace(l.ChargeType))
             {
@@ -378,6 +517,7 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
             // Un cliente con exención vigente no paga impuesto en nada que, de otro modo, lo pagaría.
             if (valid is not null && (t == TaxTreatment.Taxable || t == TaxTreatment.ZeroRate)) t = TaxTreatment.ExemptClient;
             inputs.Add(new TaxLineInput(key, Math.Round(amount, 4), t));
+            periodNames.Add(periodName);
         }
 
         // tasa vigente (solo si alguna línea la necesita)
@@ -406,12 +546,35 @@ public sealed class TaxService(TeikemDbContext db, ITenantContext tenant, ITenan
             ? new TaxCalcComponentDto(c.Code, c.Name, c.Percent, c.Amount, TaxReasons.ExemptClientPartial, partial.GetValueOrDefault(c.Code))
             : new TaxCalcComponentDto(c.Code, c.Name, c.Percent, c.Amount);
         return new TaxCalcDto(date, rate?.Code, rate?.Percent ?? 0m, setting.PricesIncludeTax, setting.RoundingMode,
-            result.Lines.Select(l => new TaxCalcLineDto(l.Key, l.Amount, l.Net, l.TaxAmount, l.Total, l.Reason, l.IsTaxExempt, l.TaxRateId, l.TaxRatePct,
+            result.Lines.Select((l, i) => new TaxCalcLineDto(l.Key, l.Amount, l.Net, l.TaxAmount, l.Total, l.Reason, l.IsTaxExempt, l.TaxRateId, l.TaxRatePct,
                 // exento por una exención total → su certificado; exención parcial (o parciales que suman toda la tasa) → los certificados que aplicaron
                 l.Reason == TaxReasons.ExemptClient ? valid?.CertificateNumber ?? partialCertificates
                     : l.Reason == TaxReasons.ExemptClientPartial ? partialCertificates : null,
-                l.Components.Select(Component).ToList())).ToList(),
+                l.Components.Select(Component).ToList(),
+                l.Reason == TaxReasons.ExemptProductPeriod ? periodNames[i] : null)).ToList(),
             result.Subtotal, result.TaxAmount, result.Total,
             result.Components.Select(Component).ToList(), warnings);
+    }
+
+    /// <summary>
+    /// Lote 248 — los períodos de exención por temporada ACTIVOS y vigentes en la fecha (bordes incluidos) de la compañía, con sus destinos ACTIVOS (solo los
+    /// productos de este cálculo; las categorías completas porque incluyen sus subcategorías).
+    /// </summary>
+    private async Task<IReadOnlyList<TaxPeriodInfo>> PeriodsInEffectAsync(DateOnly date, IReadOnlyCollection<int> productIds, CancellationToken ct)
+    {
+        var rows = await db.Set<TaxExemptionPeriod>().AsNoTracking().Where(p => p.IsActive && p.ValidFrom <= date && p.ValidTo >= date)
+            .Select(p => new { p.TaxExemptionPeriodId, p.Name, p.ValidFrom, p.ValidTo, p.Scope }).ToListAsync(ct);
+        if (rows.Count == 0) return Array.Empty<TaxPeriodInfo>();
+        var ids = rows.Select(r => r.TaxExemptionPeriodId).ToList();
+        var products = await db.Set<TaxExemptionPeriodProduct>().AsNoTracking()
+            .Where(x => x.IsActive && ids.Contains(x.TaxExemptionPeriodId) && productIds.Contains(x.ProductId))
+            .Select(x => new { x.TaxExemptionPeriodId, x.ProductId }).ToListAsync(ct);
+        var categories = await db.Set<TaxExemptionPeriodCategory>().AsNoTracking()
+            .Where(x => x.IsActive && ids.Contains(x.TaxExemptionPeriodId))
+            .Select(x => new { x.TaxExemptionPeriodId, x.ProductCategoryId }).ToListAsync(ct);
+        return rows.Select(r => new TaxPeriodInfo(r.TaxExemptionPeriodId, r.Name, r.ValidFrom, r.ValidTo, r.Scope,
+                products.Where(x => x.TaxExemptionPeriodId == r.TaxExemptionPeriodId).Select(x => x.ProductId).ToHashSet(),
+                categories.Where(x => x.TaxExemptionPeriodId == r.TaxExemptionPeriodId).Select(x => x.ProductCategoryId).ToHashSet()))
+            .ToList();
     }
 }

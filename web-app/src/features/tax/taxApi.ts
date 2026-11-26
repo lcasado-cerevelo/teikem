@@ -15,12 +15,16 @@ export type TaxExemptionPatchRequest = Schemas['TaxExemptionPatchRequest']
 export type TaxCalcRequest = Schemas['TaxCalcRequest']
 export type TaxCalcDto = Schemas['TaxCalcDto']
 export type ProductTaxCategoryDto = Schemas['ProductTaxCategoryDto']
+export type TaxExemptionPeriodDto = Schemas['TaxExemptionPeriodDto']
+export type TaxExemptionPeriodRequest = Schemas['TaxExemptionPeriodRequest']
+export type TaxExemptionPeriodPatchRequest = Schemas['TaxExemptionPeriodPatchRequest']
 
 export const taxKeys = {
   all: ['tax'] as const,
   rates: ['tax', '/api/v1/tax/rates'] as const,
   settings: ['tax', '/api/v1/tax/settings'] as const,
   exemptions: ['tax', '/api/v1/tax/exemptions'] as const,
+  periods: (includeInactive: boolean) => ['tax', '/api/v1/tax/exemption-periods', includeInactive] as const,
   products: (q: string, category: string) => ['tax', '/api/v1/tax/products', q, category] as const,
 }
 
@@ -34,6 +38,14 @@ export function useTaxSettings() {
 
 export function useTaxExemptions() {
   return useQuery({ queryKey: taxKeys.exemptions, queryFn: () => unwrap(api.GET('/api/v1/tax/exemptions')) })
+}
+
+/** Lote 248: exención de productos por temporada (decreto, huracán…). */
+export function useExemptionPeriods(includeInactive: boolean) {
+  return useQuery({
+    queryKey: taxKeys.periods(includeInactive),
+    queryFn: () => unwrap(api.GET('/api/v1/tax/exemption-periods', { params: { query: { includeInactive } } })),
+  })
 }
 
 /** Tope de productos que trae el listado (el API pone 500): se afina con el buscador o con el filtro de categoría. */
@@ -65,6 +77,21 @@ export function useTaxMutations() {
     setExemptionActive: useMutation({
       mutationFn: (v: { id: number; active: boolean }) =>
         unwrap(v.active ? api.POST('/api/v1/tax/exemptions/{id}/reactivate', { params: { path: { id: v.id } } }) : api.POST('/api/v1/tax/exemptions/{id}/deactivate', { params: { path: { id: v.id } } })),
+      onSettled: refresh,
+    }),
+    createPeriod: useMutation({ mutationFn: (body: TaxExemptionPeriodRequest) => unwrap(api.POST('/api/v1/tax/exemption-periods', { body })), onSettled: refresh }),
+    updatePeriod: useMutation({
+      mutationFn: (v: { publicId: string; body: TaxExemptionPeriodPatchRequest }) =>
+        unwrap(api.PATCH('/api/v1/tax/exemption-periods/{publicId}', { params: { path: { publicId: v.publicId } }, body: v.body })),
+      onSettled: refresh,
+    }),
+    setPeriodActive: useMutation({
+      mutationFn: (v: { publicId: string; active: boolean }) =>
+        unwrap(
+          v.active
+            ? api.POST('/api/v1/tax/exemption-periods/{publicId}/reactivate', { params: { path: { publicId: v.publicId } } })
+            : api.POST('/api/v1/tax/exemption-periods/{publicId}/deactivate', { params: { path: { publicId: v.publicId } } }),
+        ),
       onSettled: refresh,
     }),
     setProductCategory: useMutation({

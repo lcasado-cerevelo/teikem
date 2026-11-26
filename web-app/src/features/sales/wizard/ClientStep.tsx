@@ -11,6 +11,7 @@ import type { components } from '../../../kernel/api/schema'
 import { isCreditTerm } from '../salesRules'
 import type { StockWarehouse } from '../stockRules'
 import { NewClientModal } from './NewClientModal'
+import { TaxNoticeBanner } from './TaxNoticeBanner'
 import { useClientSearch, type ClientListItemDto } from './wizardApi'
 import { NOTES_MAX, withPaymentMethod, type WizardState } from './wizardRules'
 
@@ -72,6 +73,7 @@ export function ClientStep({ state, onChange, onPickClient, client, clientLoadin
   return (
     <section className="wz-step" aria-labelledby="wz-step-title">
       <h2 id="wz-step-title">{t('salesWizard.client.title')}</h2>
+      {state.clientPublicId && <TaxNoticeBanner clientPublicId={state.clientPublicId} />}
       {state.clientPublicId ? (
         <div className="wz-picked" role="status">
           <div className="wz-picked-main">

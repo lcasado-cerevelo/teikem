@@ -31,10 +31,11 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
 function json(body: unknown) {
   return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }
-const KINDS = ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'WH_RECEIVED', 'WH_DISPATCHED', 'COD_PROCESSED', 'INVOICE_ISSUED']
+const KINDS = ['PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'WH_RECEIVED', 'WH_DISPATCHED', 'COD_PROCESSED', 'INVOICE_ISSUED', 'DOCUMENT_EXPIRING']
 const SETTINGS = (rows: Record<string, unknown>[] = []) => ({
   clientPublicId: CLIENT, clientName: 'Acme', portalRecipients: 2, emailConfigured: true, smsConfigured: false, digestHour: 18,
-  settings: KINDS.map((k) => ({ kind: k, emailEnabled: false, appEnabled: false, smsEnabled: false, extraEmails: null, extraPhones: null, ...(rows.find((r) => r.kind === k) ?? {}) })),
+  settings: KINDS.map((k) => ({ kind: k, emailEnabled: k === 'DOCUMENT_EXPIRING',   // Lote 248: sin fila, el aviso de documentos por vencer sigue a la compañía (correo encendido)
+     appEnabled: false, smsEnabled: false, extraEmails: null, extraPhones: null, ...(rows.find((r) => r.kind === k) ?? {}) })),
 })
 const LOG = {
   publicId: 'n1', kind: 'DELIVERED', subject: 'Se entregaron sus paquetes — Acme', bodyText: 'Entregado: 8 caja(s) de 2 orden(es) en la ruta RUT-1.', inPortal: true, createdAtUtc: '2026-10-17T15:00:00Z',
@@ -71,8 +72,14 @@ describe('Avisos al cliente (panel)', () => {
     await open(user)
     expect(await screen.findByText(/nunca al consignatario/)).toBeInTheDocument()
     expect(screen.getByText(/usuarios activos del portal de este cliente \(2\)/)).toBeInTheDocument()
-    for (const title of ['Recogido', 'Salió a entrega', 'Entregado', 'Mercancía recibida', 'Mercancía despachada', 'COD procesado', 'Factura emitida']) expect(screen.getAllByText(title).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('checkbox').every((c) => !(c as HTMLInputElement).checked)).toBe(true)
+    for (const title of ['Recogido', 'Salió a entrega', 'Entregado', 'Mercancía recibida', 'Mercancía despachada', 'COD procesado', 'Factura emitida', 'Documentos por vencer']) expect(screen.getAllByText(title).length).toBeGreaterThan(0)
+    // todo apagado salvo el correo de «Documentos por vencer» (sigue a la compañía), que además solo sale por correo: sin bandeja ni SMS
+    expect(screen.getAllByRole('checkbox').filter((c) => (c as HTMLInputElement).checked)).toHaveLength(1)
+    const expiring = screen.getByText('Documentos por vencer', { selector: 'legend' }).closest('fieldset') as HTMLElement
+    expect(within(expiring).getByLabelText('Correo')).toBeChecked()
+    expect(within(expiring).getByLabelText('Bandeja del portal')).toBeDisabled()
+    expect(within(expiring).getByLabelText('SMS')).toBeDisabled()
+    expect(screen.getByTestId('notif-doc-expiring-note')).toBeInTheDocument()
     expect(await screen.findByText('Entregado: 8 caja(s) de 2 orden(es) en la ruta RUT-1.')).toBeInTheDocument()
     expect(screen.getByText('En el portal')).toBeInTheDocument()
     expect(screen.getByText('1 enviado(s)')).toBeInTheDocument()

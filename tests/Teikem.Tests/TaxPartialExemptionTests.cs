@@ -296,6 +296,16 @@ public sealed class TaxPartialExemptionSqlTests(MessagingSqlFixture fx) : IClass
 
     private TaxService Svc() => new(fx.NewDb(new TenantContext { TenantId = A, UserId = 1 }), new TenantContext { TenantId = A, UserId = 1 }, Clock, new DbLookups(fx));
 
+    /// <summary>Lote 248: «sin fecha final» ya no existe en una exención nueva (el certificado lleva «hasta»): se usa una fecha lejana.</summary>
+    private static readonly DateOnly Open = new(2030, 12, 31);
+
+    /// <summary>Lote 248: certificado (documento del cliente) + exención por el servicio.</summary>
+    private async Task<TaxExemptionDto> DocExemptionAsync(int client, string certificate, DateOnly from, DateOnly to, string? scope = null, params string[] codes)
+    {
+        await using var db = fx.NewDb(new TenantContext { TenantId = A });
+        return await TaxTestData.SeedDocumentExemptionAsync(Svc(), db, A, client, certificate, from, to, scope, codes);
+    }
+
     private async Task SetUpRateAsync()
     {
         await Svc().CreateRateAsync(new TaxRateRequest("IVU", "Impuesto de ventas", new DateOnly(2026, 1, 1), null,
@@ -329,8 +339,7 @@ public sealed class TaxPartialExemptionSqlTests(MessagingSqlFixture fx) : IClass
         var client = await ClientAsync();
         var taxable = await ProductAsync("TAXABLE");
         var exempt = await ProductAsync("EXEMPT");
-        var ex = await Svc().CreateExemptionAsync(new TaxExemptionRequest(client, "Municipal", "MUN-001", new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31),
-            Scope: "components", ComponentCodes: new[] { "city" }), default);
+        var ex = await DocExemptionAsync(client, "MUN-001", new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31), "components", "city");
         Assert.Equal(("COMPONENTS", "VALID"), (ex.Scope, ex.Status));
         Assert.Equal(new[] { "CITY" }, ex.ComponentCodes);
         Assert.Equal("CITY", Assert.Single(await Svc().ListExemptionsAsync(client, default)).ComponentCodes!.Single());
@@ -373,22 +382,22 @@ public sealed class TaxPartialExemptionSqlTests(MessagingSqlFixture fx) : IClass
         await Svc().CreateRateAsync(new TaxRateRequest("OLD", "Tasa vieja", new DateOnly(2020, 1, 1), new DateOnly(2020, 12, 31), new[] { new TaxComponentDto("SPECIAL", "Especial", 2m) }), default);
         var client = await ClientAsync();
         var line = new[] { new TaxCalcLineRequest("a", null, "PRODUCT_SALE", 200m) };
-        await Svc().CreateExemptionAsync(new TaxExemptionRequest(client, "Especial", "ESP-7", new DateOnly(2026, 1, 1), null, Scope: "COMPONENTS", ComponentCodes: new[] { "SPECIAL" }), default);
+        await DocExemptionAsync(client, "ESP-7", new DateOnly(2026, 1, 1), Open, "COMPONENTS", "SPECIAL");
         var onlyUnknown = await Svc().CalculateAsync(new TaxCalcRequest(client, null, line), default);
         Assert.Equal((23m, "TAXABLE"), (onlyUnknown.TaxAmount, onlyUnknown.Lines[0].Reason));
         Assert.Equal("La exención del cliente (certificado ESP-7) nombra el componente SPECIAL, que la tasa vigente no tiene: no cambió el impuesto.", Assert.Single(onlyUnknown.Warnings));
 
-        await Svc().CreateExemptionAsync(new TaxExemptionRequest(client, "Municipal", "MUN-1", new DateOnly(2026, 1, 1), null, Scope: "COMPONENTS", ComponentCodes: new[] { "CITY" }), default);
+        await DocExemptionAsync(client, "MUN-1", new DateOnly(2026, 1, 1), Open, "COMPONENTS", "CITY");
         var municipal = await Svc().CalculateAsync(new TaxCalcRequest(client, null, line), default);
         Assert.Equal((21m, 10.5m, "MUN-1"), (municipal.TaxAmount, municipal.Lines[0].TaxRatePct, municipal.Lines[0].ExemptionCertificate));
 
-        var state = await Svc().CreateExemptionAsync(new TaxExemptionRequest(client, "Estatal", "EST-2", new DateOnly(2026, 2, 1), null, Scope: "COMPONENTS", ComponentCodes: new[] { "STATE" }), default);
+        var state = await DocExemptionAsync(client, "EST-2", new DateOnly(2026, 2, 1), Open, "COMPONENTS", "STATE");
         var both = await Svc().CalculateAsync(new TaxCalcRequest(client, null, line), default);
         Assert.Equal((0m, "EXEMPT_CLIENT", true), (both.TaxAmount, both.Lines[0].Reason, both.Lines[0].IsTaxExempt));   // las dos juntas cubren toda la tasa
         Assert.Equal("EST-2, MUN-1", both.Lines[0].ExemptionCertificate);
         await Svc().SetExemptionActiveAsync(state.Id, false, default);   // dada de baja: ya no cuenta
 
-        var full = await Svc().CreateExemptionAsync(new TaxExemptionRequest(client, "Gobierno", "TOTAL-9", new DateOnly(2026, 1, 1), null), default);
+        var full = await DocExemptionAsync(client, "TOTAL-9", new DateOnly(2026, 1, 1), Open);
         Assert.Equal("ALL", full.Scope);
         Assert.Empty(full.ComponentCodes!);
         var total = await Svc().CalculateAsync(new TaxCalcRequest(client, null, line), default);
@@ -402,14 +411,17 @@ public sealed class TaxPartialExemptionSqlTests(MessagingSqlFixture fx) : IClass
         await SetUpRateAsync();
         var client = await ClientAsync();
         var from = new DateOnly(2026, 1, 1);
-        async Task<string> Bad(TaxExemptionRequest req) => (await Assert.ThrowsAsync<ValidationException>(() => Svc().CreateExemptionAsync(req, default))).Message;
+        Guid doc;   // Lote 248: la exención nace de su certificado
+        await using (var seed = fx.NewDb(new TenantContext { TenantId = A }))
+            doc = (await TaxTestData.SeedTaxDocumentAsync(seed, A, client, "MUN-1", from, Open)).PublicId;
+        async Task<string> Bad(TaxExemptionRequest req) => (await Assert.ThrowsAsync<ValidationException>(() => Svc().CreateExemptionAsync(req with { ClientDocumentPublicId = doc }, default))).Message;
         Assert.Equal(TaxRules.ExemptionScopeInvalid, await Bad(new TaxExemptionRequest(client, "X", "Y", from, Scope: "MITAD")));
         Assert.Equal(TaxRules.ExemptionComponentsRequired, await Bad(new TaxExemptionRequest(client, "X", "Y", from, Scope: "COMPONENTS")));
         Assert.Equal(TaxRules.ExemptionComponentsRequired, await Bad(new TaxExemptionRequest(client, "X", "Y", from, Scope: "COMPONENTS", ComponentCodes: Array.Empty<string>())));
         Assert.Equal(TaxRules.ExemptionComponentInvalid, await Bad(new TaxExemptionRequest(client, "X", "Y", from, Scope: "COMPONENTS", ComponentCodes: new[] { "CI TY" })));
         Assert.Equal("Ninguna tasa de la compañía tiene el componente «COUNTY».", await Bad(new TaxExemptionRequest(client, "X", "Y", from, Scope: "COMPONENTS", ComponentCodes: new[] { "CITY", "COUNTY" })));
 
-        var e = await Svc().CreateExemptionAsync(new TaxExemptionRequest(client, "Municipal", "MUN-1", from, Scope: "COMPONENTS", ComponentCodes: new[] { "state", "CITY", "city" }), default);
+        var e = await Svc().CreateExemptionAsync(new TaxExemptionRequest(client, "Municipal", null, from, Scope: "COMPONENTS", ComponentCodes: new[] { "state", "CITY", "city" }, ClientDocumentPublicId: doc), default);
         Assert.Equal(new[] { "CITY", "STATE" }, e.ComponentCodes);
         await using (var db = fx.NewDb(new TenantContext { TenantId = A }))
             Assert.Equal(("COMPONENTS", "CITY,STATE"), await db.Set<ClientTaxExemption>().Where(x => x.ClientTaxExemptionId == e.Id).Select(x => new ValueTuple<string, string?>(x.Scope, x.ComponentCodes)).SingleAsync());
@@ -433,7 +445,7 @@ public sealed class TaxPartialExemptionSqlTests(MessagingSqlFixture fx) : IClass
     {
         await SetUpRateAsync();
         var client = await ClientAsync();
-        await Svc().CreateExemptionAsync(new TaxExemptionRequest(client, "Municipal", "MUN-1", new DateOnly(2026, 1, 1), null, Scope: "COMPONENTS", ComponentCodes: new[] { "CITY" }), default);
+        await DocExemptionAsync(client, "MUN-1", new DateOnly(2026, 1, 1), Open, "COMPONENTS", "CITY");
         var lines = Enumerable.Range(1, 3).Select(i => new TaxCalcLineRequest("l" + i, null, "PRODUCT_SALE", 0.33m)).ToArray();
         Assert.Equal(0.09m, (await Svc().CalculateAsync(new TaxCalcRequest(client, null, lines), default)).TaxAmount);          // por línea: 0.03 × 3
         await Svc().UpdateSettingsAsync(new TaxSettingsRequest(RoundingMode: "DOCUMENT"), default);

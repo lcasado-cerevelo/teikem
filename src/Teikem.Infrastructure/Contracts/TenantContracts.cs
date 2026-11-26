@@ -32,6 +32,18 @@ public sealed record TenantSettingsDto(
 
     /// <summary>Lote 240 (Ajustes → Operación → Fotos): la compañía maneja fotos de productos (true por omisión). Con false no se suben fotos y ninguna pantalla las muestra.</summary>
     public bool ProductPhotosEnabled { get; init; } = true;
+
+    /// <summary>
+    /// Lote 248 (Ajustes → Operación → Avisos de vencimiento): umbrales de los avisos de documentos del cliente y precios especiales por vencer, de mayor a menor
+    /// (positivo = días antes de vencer, 0 = el día, negativo = días después; 30, 15 y 5 por omisión).
+    /// </summary>
+    public IReadOnlyList<int> DocExpiryThresholdDays { get; init; } = new[] { 30, 15, 5 };
+
+    /// <summary>Lote 248: «Avisar a diario después de vencido» (apagado por omisión).</summary>
+    public bool DocExpiryDailyAfterExpiry { get; init; }
+
+    /// <summary>Lote 248: «Avisar al cliente» (apagado por omisión): el aviso de documentos por vencer también va al correo del cliente.</summary>
+    public bool DocExpiryNotifyClient { get; init; }
 }
 
 /// <summary>2026-10-26: una dirección de la compañía (domicilio o postal); Country es el código ISO de 2 letras y CountryLabel su nombre en el idioma de la persona.</summary>
@@ -73,6 +85,18 @@ public sealed record TenantSettingsUpdateRequest(
 
     /// <summary>Lote 240: «La compañía maneja fotos de productos»; null = sin cambio. Apagarlo no borra las fotos ya subidas: se ocultan y reaparecen al encenderlo.</summary>
     public bool? ProductPhotosEnabled { get; init; }
+
+    /// <summary>
+    /// Lote 248: umbrales de los avisos de vencimiento; null = sin cambio; [] = sin umbrales (no se avisa). Cada uno entero de -365 a 365, sin repetir, hasta 10; se
+    /// guardan de mayor a menor (400 en docExpiryThresholdDays con el mensaje exacto).
+    /// </summary>
+    public IReadOnlyList<int>? DocExpiryThresholdDays { get; init; }
+
+    /// <summary>Lote 248: «Avisar a diario después de vencido»; null = sin cambio.</summary>
+    public bool? DocExpiryDailyAfterExpiry { get; init; }
+
+    /// <summary>Lote 248: «Avisar al cliente»; null = sin cambio.</summary>
+    public bool? DocExpiryNotifyClient { get; init; }
 }
 
 /// <summary>Juego de valores de región y formatos (los de una región en <see cref="TenantFormatOptionsDto"/>).</summary>

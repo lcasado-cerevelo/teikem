@@ -36,6 +36,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         b.Property(t => t.QuickBooksShippingItem).HasMaxLength(31);
         b.Property(t => t.QuickBooksTermsJson).HasMaxLength(2000);
         b.Property(t => t.QuickBooksPurchaseOrderAccount).HasMaxLength(159);   // Lote 246
+        b.Property(t => t.DocExpiryThresholdDays).HasMaxLength(60).IsRequired();   // Lote 248 (CHECK CK_Tenant_DocExpiryThresholdDays en el SQL)
         b.HasKey(t => t.TenantId);
         b.Property(t => t.PublicId).HasDefaultValueSql("NEWID()");
         b.Property(t => t.Name).HasMaxLength(200).IsRequired();

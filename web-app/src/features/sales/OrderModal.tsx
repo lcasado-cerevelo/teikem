@@ -19,6 +19,7 @@ import { OrderBadges } from './OrderBadges'
 import { offerKitOptions } from './offerKitOptions'
 import { usePriceNoticeText } from './priceText'
 import { LinePriceOrigin, PriceNoticeList } from './wizard/PriceNotices'
+import { TaxNoticeBanner } from './wizard/TaxNoticeBanner'
 import { priceSourceOf, savedLineOrigin } from './wizard/priceSource'
 import { useSalesCatalog } from './wizard/wizardApi'
 import { AUTHORIZED_BY_MAX, authorizerMissing, DELIVERY_MODES, draftError, draftSubtotal, effectivePrice, EXTRA_DEFAULTS, isCreditTerm, lineAmount, parseNumber, paymentChanged, prefillPayment, toRequest, withMethod, type DeliveryMode, type LineDraft, type OrderDraft } from './salesRules'
@@ -330,6 +331,7 @@ function DraftEditor({ order, onClose }: { order: SalesOrderDto | null; onClose:
           <div className="f">
             <label htmlFor="so-client">{t('sales.client')}</label>
             <ClientPicker id="so-client" value={draft.clientPublicId} onChange={(id) => set({ clientPublicId: id })} />
+            <TaxNoticeBanner clientPublicId={draft.clientPublicId} />
           </div>
           {stock.isPending ? null : stock.data ? (
             showWarehouseField(stock.data) && (

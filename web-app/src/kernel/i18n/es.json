@@ -456,6 +456,10 @@
     "chains": {
       "title": "Cadenas",
       "subtitle": "grupos de clientes como Walgreens o CVS"
+    },
+    "expiringDocuments": {
+      "title": "Documentos por vencer",
+      "subtitle": "certificados y permisos de clientes"
     }
   },
   "clients": {
@@ -492,7 +496,44 @@
       "removeOf": "Quitar {name}",
       "removeTitle": "Quitar documento",
       "removeBody": "¿Quitar «{name}» de los documentos del cliente?",
-      "removed": "Documento quitado."
+      "removed": "Documento quitado.",
+      "number": "Número",
+      "from": "Desde",
+      "to": "Hasta",
+      "toRequired": "Hasta (obligatorio)",
+      "toHelp": "Este tipo de documento lleva vigencia: escriba la fecha «hasta».",
+      "days": "Días",
+      "state": "Estado",
+      "states": {
+        "VALID": "Vigente",
+        "EXPIRING": "Por vencer",
+        "EXPIRED": "Vencido",
+        "RENEWED": "Renovado",
+        "MISSING_VALID_TO": "Falta «hasta»",
+        "NO_EXPIRY": "Sin vigencia"
+      },
+      "today": "Vence hoy",
+      "inDays": "en {n} días",
+      "daysAgo": "hace {n} días",
+      "backs": "Respalda exención",
+      "backsHelp": "Este documento respalda una exención de IVU: no se puede quitar mientras la exención esté vigente y cambiar su número o su vigencia exige el permiso de impuestos.",
+      "edit": "Editar",
+      "editTitle": "Editar {type}",
+      "save": "Guardar",
+      "updated": "Documento actualizado.",
+      "errors": {
+        "type": "Escoja el tipo de documento.",
+        "file": "Escoja el archivo.",
+        "number": "El número del documento no puede pasar de 60 caracteres.",
+        "toRequired": "Este tipo de documento lleva vigencia: escriba la fecha «hasta».",
+        "dates": "La fecha «hasta» no puede ser anterior a la fecha «desde»."
+      },
+      "applyExemption": "Aplicar exención de IVU",
+      "askExemptionTitle": "¿Aplicar la exención de IVU?",
+      "askExemptionBody": "«{type}» es un certificado de impuestos. ¿Quiere aplicar la exención de IVU a este cliente con este documento?",
+      "askExemptionYes": "Sí, aplicar",
+      "validity": "Fechas (desde → hasta)",
+      "openFile": "Abrir archivo"
     },
     "sales": {
       "sectionTitle": "Venta",
@@ -1053,6 +1094,10 @@
         "INVOICE_ISSUED": {
           "title": "Factura emitida",
           "help": "Cuando se le emite una factura: número, total y vencimiento."
+        },
+        "DOCUMENT_EXPIRING": {
+          "title": "Documentos por vencer",
+          "help": "Cuando un certificado o permiso del cliente está por vencerse o ya se venció. Va al correo principal y a las personas marcadas «Recibe avisos por correo»."
         }
       },
       "errors": {
@@ -1072,7 +1117,8 @@
         "skipped": "{n} omitido(s)",
         "failed": "{n} con error",
         "empty": "Todavía no se le ha mandado ningún aviso."
-      }
+      },
+      "documentExpiringNote": "Solo sale por correo y solo si la compañía lo tiene encendido (Ajustes → Operación → Avisos de vencimiento). Apáguelo aquí si este cliente no debe recibirlo."
     },
     "portal": {
       "title": "Usuarios de portal",
@@ -1168,6 +1214,30 @@
       "removed": "El cliente quedó sin cadena.",
       "filter": "Cadena",
       "all": "Todas las cadenas"
+    },
+    "tax": {
+      "title": "Impuestos",
+      "summary": "{n} exención(es) vigente(s)",
+      "new": "Nueva exención",
+      "renew": "Renovar",
+      "help": "Las exenciones de IVU del cliente. Cada una se respalda con un documento (certificado) que trae su número y su vigencia. «Renovar» sube el certificado nuevo y crea la exención con el mismo alcance.",
+      "empty": "El cliente no tiene exenciones de IVU."
+    },
+    "expiring": {
+      "title": "Documentos por vencer",
+      "subtitle": "Certificados, licencias y permisos de los clientes que se vencen pronto, ya vencidos o sin fecha «hasta».",
+      "list": "Documentos",
+      "search": "Buscar cliente, tipo o número…",
+      "within": "Vence dentro de",
+      "withinDays": "{n} días",
+      "withinDefault": "{n} días (el primer aviso)",
+      "includeExpired": "Incluir vencidos",
+      "includeMissing": "Incluir los que faltan el «hasta»",
+      "truncated": "Hay más de 2000 documentos: se muestran los 2000 más cercanos a vencer. Afine con el buscador o con los días.",
+      "noResults": "Ningún documento coincide con la búsqueda.",
+      "empty": "No hay documentos por vencer.",
+      "client": "Cliente",
+      "exemptionRow": "Exención de IVU sin documento"
     }
   },
   "consignees": {
@@ -8415,6 +8485,11 @@
         "billable": "Facturable",
         "roundTrip": "Ida y vuelta (el chofer va a la recogida)",
         "help": "Un pick up recoge y trae al almacén: el envío termina «En almacén» y no sale a ruta. «Facturable» apagado = no se cotiza ni se cobra. «Ida y vuelta»: el chofer va a la recogida; la zona, la parada de la ruta y el mapa salen de la dirección de recogida y no de la de entrega."
+      },
+      "docMarks": {
+        "requiresValidTo": "Lleva vigencia",
+        "isTax": "Es de impuestos",
+        "help": "«Lleva vigencia» exige la fecha «hasta» al subir el documento y lo incluye en los avisos de vencimiento. «Es de impuestos» permite que respalde una exención de IVU."
       }
     },
     "settings": {
@@ -8888,6 +8963,32 @@
         "help": "Por omisión 2; 0 = nunca sugerir. Es solo una sugerencia y una marca: el envío se puede seguir reintentando.",
         "invalid": "Escriba un número de 0 a 20 (0 = sin sugerencia).",
         "saved": "Ajuste de devolución guardado."
+      },
+      "docExpiry": {
+        "title": "Avisos de vencimiento",
+        "subtitle": "Documentos de los clientes (y precios especiales) que se vencen",
+        "thresholds": "Cuándo avisar",
+        "noThresholds": "Sin avisos: no se avisa de ningún vencimiento.",
+        "before": "{n} días antes",
+        "sameDay": "El día que vence",
+        "after": "{n} días después",
+        "removeOf": "Quitar «{name}»",
+        "remove": "Quitar",
+        "addLabel": "Días para avisar",
+        "addPlaceholder": "Días (ej. 30)",
+        "add": "Agregar",
+        "thresholdsHelp": "Días con respecto a la fecha «hasta»: positivo = antes de vencer, 0 = el día, negativo = después. Se avisa una sola vez por cada umbral. Por omisión 30, 15 y 5.",
+        "daily": "Avisar a diario después de vencido",
+        "dailyHelp": "Mientras el documento siga vencido y sin renovar, el aviso se repite cada día.",
+        "client": "Avisar al cliente",
+        "clientHelp": "Además de los vendedores, el aviso de documentos por vencer le llega al correo del cliente y a sus contactos marcados «Recibe avisos por correo». Cada cliente puede apagarlo en su ficha.",
+        "rulesHelp": "A quién y por qué canal llega cada aviso se ajusta en las reglas de aviso:",
+        "rulesLink": "Sistema → Reglas de aviso",
+        "errors": {
+          "format": "Cada umbral es un número entero de días entre -365 y 365 (positivo = antes de vencer, 0 = el día, negativo = después).",
+          "repeated": "Hay un umbral repetido.",
+          "tooMany": "Se pueden poner hasta 10 umbrales."
+        }
       }
     },
     "audit": {
@@ -11164,6 +11265,12 @@
         "cityRequired": "Escoja el pueblo.",
         "postalLineRequired": "Escriba la línea 1 de la dirección postal."
       }
+    },
+    "taxNotice": {
+      "label": "Exención de IVU:",
+      "expired": "El certificado de exención de IVU de este cliente venció el {date}: se cobrará el IVU.",
+      "expiring": "El certificado de exención de IVU de este cliente vence el {date} (en {n} días): después se cobrará el IVU.",
+      "certificate": "(certificado {number})"
     }
   },
   "tax": {
@@ -11175,7 +11282,8 @@
       "rules": "Reglas",
       "products": "Productos",
       "exemptions": "Exenciones",
-      "simulator": "Simulador"
+      "simulator": "Simulador",
+      "periods": "Exención por temporada"
     },
     "categories": {
       "TAXABLE": "Gravable",
@@ -11187,6 +11295,7 @@
       "ZERO_RATE": "Tasa cero",
       "EXEMPT_PRODUCT": "Producto exento",
       "EXEMPT_CLIENT": "Cliente exento",
+      "EXEMPT_PRODUCT_PERIOD": "Período de exención del producto",
       "EXEMPT_CLIENT_PARTIAL": "Cliente exento en parte",
       "NOT_TAXABLE_CHARGE": "Cargo no gravable"
     },
@@ -11294,6 +11403,7 @@
       "notes": "Notas",
       "status": "Estado",
       "statuses": {
+        "DOCUMENT_REMOVED": "Documento retirado",
         "VALID": "Vigente",
         "SCHEDULED": "Programada",
         "EXPIRED": "Vencida",
@@ -11314,7 +11424,11 @@
         "from": "Escriba desde qué fecha vale la exención.",
         "dates": "La fecha final no puede ser anterior a la inicial.",
         "components": "Marque al menos un componente del impuesto que la exención cubre."
-      }
+      },
+      "document": "Documento",
+      "missingDocument": "Falta el documento",
+      "missingDocumentHelp": "Exención anterior sin documento: sigue valiendo igual. Vincule el certificado para que se avise cuando venza.",
+      "link": "Vincular documento"
     },
     "sim": {
       "panel": "Simulador de impuestos",
@@ -11345,6 +11459,88 @@
       "colNet": "Neto",
       "colTax": "Impuesto",
       "colTotal": "Total"
+    },
+    "capture": {
+      "title": "Nueva exención de IVU",
+      "titleRenew": "Renovar exención de IVU",
+      "titleDocument": "Aplicar la exención de IVU",
+      "save": "Aplicar exención",
+      "done": "Exención aplicada.",
+      "document": "Documento que respalda la exención",
+      "noNumber": "sin número",
+      "until": "hasta {date}",
+      "documentHelp": "El número y la vigencia son los del documento: se corrigen en Documentos del cliente.",
+      "to": "Vale hasta (obligatorio)",
+      "scopeHelpAll": "No se cobra ningún componente del impuesto.",
+      "scopeHelpComponents": "Solo se deja de cobrar lo marcado (por ejemplo, el municipal); lo demás se cobra.",
+      "errors": {
+        "client": "Escoja el cliente.",
+        "type": "Escoja el tipo de certificado.",
+        "file": "Adjunte el archivo del certificado.",
+        "number": "Escriba el número del certificado.",
+        "from": "Escriba desde cuándo vale el certificado.",
+        "to": "Escriba hasta cuándo vale el certificado.",
+        "dates": "La fecha «hasta» no puede ser anterior a la fecha «desde».",
+        "components": "Marque al menos un componente del impuesto que la exención cubre."
+      }
+    },
+    "link": {
+      "title": "Vincular documento",
+      "intro": "Escoja el certificado de {client} que respalda esta exención. Desde ese momento, el número y la vigencia son los del documento.",
+      "none": "El cliente no tiene documentos de un tipo de impuestos. Suba el certificado en Documentos del cliente.",
+      "document": "Documento",
+      "placeholder": "Escoja el documento",
+      "save": "Vincular",
+      "done": "Documento vinculado.",
+      "errors": {
+        "pick": "Escoja el documento."
+      }
+    },
+    "periods": {
+      "panel": "Exención por temporada",
+      "help": "Un decreto que exime del IVU a todos los productos, o solo a categorías y productos escogidos, entre dos fechas. Las líneas cubiertas salen con el motivo «Exención de producto por temporada» y la exención del cliente no se les suma.",
+      "new": "Nuevo período",
+      "edit": "Editar período",
+      "save": "Guardar período",
+      "created": "Período creado.",
+      "updated": "Período actualizado.",
+      "deactivated": "Período dado de baja.",
+      "reactivated": "Período reactivado.",
+      "showInactive": "Ver los dados de baja",
+      "empty": "No hay períodos de exención.",
+      "name": "Nombre",
+      "reason": "Motivo",
+      "reasonHelp": "Por ejemplo, la orden administrativa que la decreta.",
+      "scope": "Productos",
+      "scopes": {
+        "ALL": "Todos los productos",
+        "SELECTED": "Categorías o productos escogidos"
+      },
+      "scopeCount": "{categories} categoría(s) · {products} producto(s)",
+      "pick": "Categoría o producto",
+      "selection": "Lo escogido",
+      "categoryChip": "Categoría",
+      "productChip": "Producto",
+      "remove": "Quitar",
+      "removeItem": "Quitar {name}",
+      "selectionEmpty": "Escoja al menos una categoría o un producto.",
+      "categoriesHelp": "Una categoría incluye sus subcategorías.",
+      "lockStarted": "El período ya empezó: solo se le puede cambiar la fecha final o darlo de baja.",
+      "lockEnded": "El período ya terminó o está de baja: solo se puede consultar.",
+      "states": {
+        "SCHEDULED": "Programado",
+        "ACTIVE": "Vigente",
+        "ENDED": "Terminado",
+        "INACTIVE": "De baja"
+      },
+      "errors": {
+        "name": "Escriba el nombre del período de exención.",
+        "reason": "Escriba el motivo de la exención (por ejemplo, la orden administrativa que la decreta).",
+        "from": "Escriba desde qué fecha rige la exención.",
+        "to": "Escriba hasta qué fecha rige la exención.",
+        "dates": "La fecha final no puede ser anterior a la inicial.",
+        "selection": "Escoja al menos una categoría o un producto."
+      }
     }
   },
   "clientMessages": {

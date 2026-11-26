@@ -128,6 +128,15 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
                 : throw new ValidationException("fleetDocWarnDays", FleetAlertRules.DocWarnDaysRange);
         if (req.UsesAssembledKits.HasValue) t.UsesAssembledKits = req.UsesAssembledKits.Value;   // Lote 233
         if (req.ProductPhotosEnabled.HasValue) t.ProductPhotosEnabled = req.ProductPhotosEnabled.Value;   // Lote 240
+        // Lote 248: avisos de vencimiento (umbrales normalizados de mayor a menor; los interruptores)
+        if (req.DocExpiryThresholdDays is not null)
+        {
+            var (thresholds, thresholdsError) = ExpiryNoticeRules.Validate(req.DocExpiryThresholdDays);
+            if (thresholdsError is not null) throw new ValidationException("docExpiryThresholdDays", thresholdsError);
+            t.DocExpiryThresholdDays = ExpiryNoticeRules.Format(thresholds);
+        }
+        if (req.DocExpiryDailyAfterExpiry.HasValue) t.DocExpiryDailyAfterExpiry = req.DocExpiryDailyAfterExpiry.Value;
+        if (req.DocExpiryNotifyClient.HasValue) t.DocExpiryNotifyClient = req.DocExpiryNotifyClient.Value;
         if (req.DefaultProductCategoryId.HasValue) await ApplyDefaultProductCategoryAsync(t, req.DefaultProductCategoryId.Value, ct);
         var formatChanges = FormatChanges(req);
         if (!formatChanges.IsEmpty) ApplyFormat(t, TenantFormatRules.Read(t), formatChanges);
@@ -286,5 +295,9 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         t.FleetDocWarnDays,   // 2026-10-21 Lote 168
         t.DriverSessionMinutes,   // 2026-10-23
         t.PhoneNumber, await TenantAddresses.ReadAsync(db, tenant.Lang, t.CorporateLocationId, ct), await TenantAddresses.ReadAsync(db, tenant.Lang, t.BillingLocationId, ct), t.CustomDomain, t.Subdomain)   // 2026-10-26
-    { UsesAssembledKits = t.UsesAssembledKits, ProductPhotosEnabled = t.ProductPhotosEnabled };   // Lote 233 y 240
+    {
+        UsesAssembledKits = t.UsesAssembledKits, ProductPhotosEnabled = t.ProductPhotosEnabled,   // Lote 233 y 240
+        DocExpiryThresholdDays = ExpiryNoticeRules.ThresholdsOrDefault(t.DocExpiryThresholdDays),   // Lote 248
+        DocExpiryDailyAfterExpiry = t.DocExpiryDailyAfterExpiry, DocExpiryNotifyClient = t.DocExpiryNotifyClient,
+    };
 }

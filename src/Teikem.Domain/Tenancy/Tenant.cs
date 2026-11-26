@@ -109,6 +109,14 @@ public class Tenant : ISoftDeletable
     public int InventoryNoMovementDays { get; set; } = 90;
     /// <summary>2026-10-21 (Lote 168): días de anticipación del aviso de documentos de vehículos y choferes por vencer (1 a 365; 30 por omisión).</summary>
     public int FleetDocWarnDays { get; set; } = 30;
+    /// <summary>
+    /// Lote 248 (Ajustes → Operación → Avisos de vencimiento): umbrales de los avisos de documentos del cliente (y precios especiales) por vencer, en días separados por coma
+    /// («30,15,5» por omisión; positivo = antes de vencer, 0 = el día, negativo = después; reglas en ExpiryNoticeRules). «Avisar a diario después de vencido» y «Avisar al
+    /// cliente» (apagados por omisión). Los audita la compañía (EntityTypes.Tenant).
+    /// </summary>
+    public string DocExpiryThresholdDays { get; set; } = Teikem.Domain.Clients.DocumentExpiryCodes.DefaultThresholds;
+    public bool DocExpiryDailyAfterExpiry { get; set; }
+    public bool DocExpiryNotifyClient { get; set; }
     /// <summary>Lote 72 (P5): base de facturación del producto vendido: 'ON_DISPATCH' (al despachar) | 'ON_DELIVERY' (al entregar).</summary>
     public string SalesBillingTrigger { get; set; } = "ON_DISPATCH";
     /// <summary>Lote 72 (P5): días entre la emisión de una factura y su vencimiento.</summary>

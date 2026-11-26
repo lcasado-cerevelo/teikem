@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Can } from '../../kernel/access/Can'
 import { useT } from '../../kernel/i18n/useT'
+import { CLIENT_DOCUMENT_TYPE_ENTITY, documentTypeMarksJson, parseDocumentTypeMarks } from '../clients/documentRules'
 import { parseServiceTypeMarks, SERVICE_TYPE_ENTITY, serviceTypeMarksJson } from './serviceTypeMarks'
 import {
   CARDS_QUERY,
@@ -220,6 +221,31 @@ function ServiceTypeMarkFields() {
   )
 }
 
+/** Lote 248: las marcas de un tipo de documento del cliente: «lleva vigencia» (la fecha «hasta» es obligatoria) y «es de impuestos» (puede respaldar una exención de IVU). */
+function DocumentTypeMarkFields() {
+  const t = useT()
+  return (
+    <>
+      <div className="r2">
+        <Field name="requiresValidTo" label={t('system.catalogs.docMarks.requiresValidTo')}>
+          <Toggle />
+        </Field>
+        <Field name="isTax" label={t('system.catalogs.docMarks.isTax')}>
+          <Toggle />
+        </Field>
+      </div>
+      <p className="help">{t('system.catalogs.docMarks.help')}</p>
+    </>
+  )
+}
+
+/** El ExtraJson que se guarda según el catálogo: marcas del tipo de servicio, del tipo de documento o nada. */
+function marksJsonOf(entity: string, v: { pickUp: boolean; billable: boolean; roundTrip: boolean; requiresValidTo: boolean; isTax: boolean }): string | null {
+  if (entity === SERVICE_TYPE_ENTITY) return serviceTypeMarksJson({ pickUp: v.pickUp, billable: v.billable, roundTrip: v.roundTrip })   // Lote 114
+  if (entity === CLIENT_DOCUMENT_TYPE_ENTITY) return documentTypeMarksJson({ requiresValidTo: v.requiresValidTo, isTax: v.isTax })   // Lote 248
+  return null
+}
+
 // ---------------- Modal: ajustar valor de sistema (override) ----------------
 
 function AdjustValueModal({ entity, row, onClose }: { entity: string; row: LookupValue; onClose: () => void }) {
@@ -235,12 +261,16 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
         pickUp: z.boolean(),
         billable: z.boolean(),
         roundTrip: z.boolean(),
+        requiresValidTo: z.boolean(),
+        isTax: z.boolean(),
       }),
     [],
   )
   const labels = row.labels ?? {}
   const marks = parseServiceTypeMarks(row.extraJson)
+  const docMarks = parseDocumentTypeMarks(row.extraJson)
   const isServiceType = entity === SERVICE_TYPE_ENTITY
+  const isDocumentType = entity === CLIENT_DOCUMENT_TYPE_ENTITY
   const form = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -251,6 +281,8 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
       pickUp: marks.pickUp,
       billable: marks.billable,
       roundTrip: marks.roundTrip,
+      requiresValidTo: docMarks.requiresValidTo,
+      isTax: docMarks.isTax,
     },
   })
   const formId = 'catalogs-adjust-value'
@@ -284,7 +316,7 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
               labels: v.labelEn.trim() ? { es: v.labelEs, en: v.labelEn } : { es: v.labelEs },
               isEnabled: v.isEnabled,
               sortOverride: v.sortOverride,
-              extraJson: isServiceType ? serviceTypeMarksJson({ pickUp: v.pickUp, billable: v.billable, roundTrip: v.roundTrip }) : null,   // Lote 114: las marcas del tipo de servicio
+              extraJson: marksJsonOf(entity, v),   // Lote 114: las marcas del tipo de servicio; Lote 248: las del tipo de documento
             },
           })
           toast.success(t('system.catalogs.adjusted'))
@@ -306,6 +338,7 @@ function AdjustValueModal({ entity, row, onClose }: { entity: string; row: Looku
           </Field>
         </div>
         {isServiceType && <ServiceTypeMarkFields />}
+        {isDocumentType && <DocumentTypeMarkFields />}
         <p className="help">{t('system.catalogs.adjustHelp')}</p>
       </Form>
     </Modal>
@@ -339,12 +372,16 @@ function ValueFormModal({
         pickUp: z.boolean(),
         billable: z.boolean(),
         roundTrip: z.boolean(),
+        requiresValidTo: z.boolean(),
+        isTax: z.boolean(),
       }),
     [t],
   )
   const labels = row?.labels ?? {}
   const ownMarks = parseServiceTypeMarks(row?.extraJson)
+  const ownDocMarks = parseDocumentTypeMarks(row?.extraJson)
   const isServiceType = entity === SERVICE_TYPE_ENTITY
+  const isDocumentType = entity === CLIENT_DOCUMENT_TYPE_ENTITY
   const form = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -355,6 +392,8 @@ function ValueFormModal({
       pickUp: ownMarks.pickUp,
       billable: ownMarks.billable,
       roundTrip: ownMarks.roundTrip,
+      requiresValidTo: ownDocMarks.requiresValidTo,
+      isTax: ownDocMarks.isTax,
     },
   })
   const formId = 'catalogs-value-form'
@@ -385,7 +424,7 @@ function ValueFormModal({
             code: v.code,
             labels: v.labelEn.trim() ? { es: v.labelEs, en: v.labelEn } : { es: v.labelEs },
             descriptions: null,
-            extraJson: isServiceType ? serviceTypeMarksJson({ pickUp: v.pickUp, billable: v.billable, roundTrip: v.roundTrip }) : null,   // Lote 114
+            extraJson: marksJsonOf(entity, v),   // Lote 114 y 248
             sortOrder: v.sortOrder,
           }
           if (editing && row?.code) {
@@ -413,6 +452,7 @@ function ValueFormModal({
           <NumberInput />
         </Field>
         {isServiceType && <ServiceTypeMarkFields />}
+        {isDocumentType && <DocumentTypeMarkFields />}
       </Form>
     </Modal>
   )

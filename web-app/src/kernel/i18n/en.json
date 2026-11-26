@@ -456,6 +456,10 @@
     "chains": {
       "title": "Chains",
       "subtitle": "client groups such as Walgreens or CVS"
+    },
+    "expiringDocuments": {
+      "title": "Expiring documents",
+      "subtitle": "client certificates and permits"
     }
   },
   "clients": {
@@ -492,7 +496,44 @@
       "removeOf": "Remove {name}",
       "removeTitle": "Remove document",
       "removeBody": "Remove «{name}» from the client's documents?",
-      "removed": "Document removed."
+      "removed": "Document removed.",
+      "number": "Number",
+      "from": "From",
+      "to": "Until",
+      "toRequired": "Until (required)",
+      "toHelp": "This document type has a validity period: enter the «until» date.",
+      "days": "Days",
+      "state": "Status",
+      "states": {
+        "VALID": "Valid",
+        "EXPIRING": "Expiring",
+        "EXPIRED": "Expired",
+        "RENEWED": "Renewed",
+        "MISSING_VALID_TO": "Missing «until»",
+        "NO_EXPIRY": "No validity"
+      },
+      "today": "Expires today",
+      "inDays": "in {n} days",
+      "daysAgo": "{n} days ago",
+      "backs": "Backs exemption",
+      "backsHelp": "This document backs an IVU exemption: it cannot be removed while the exemption is in effect, and changing its number or validity requires the tax permission.",
+      "edit": "Edit",
+      "editTitle": "Edit {type}",
+      "save": "Save",
+      "updated": "Document updated.",
+      "errors": {
+        "type": "Choose the document type.",
+        "file": "Choose the file.",
+        "number": "The document number cannot exceed 60 characters.",
+        "toRequired": "This document type has a validity period: enter the «until» date.",
+        "dates": "The «until» date cannot be before the «from» date."
+      },
+      "applyExemption": "Apply IVU exemption",
+      "askExemptionTitle": "Apply the IVU exemption?",
+      "askExemptionBody": "«{type}» is a tax certificate. Do you want to apply the IVU exemption to this client with this document?",
+      "askExemptionYes": "Yes, apply",
+      "validity": "Dates (from → until)",
+      "openFile": "Open file"
     },
     "sales": {
       "sectionTitle": "Sales",
@@ -1053,6 +1094,10 @@
         "INVOICE_ISSUED": {
           "title": "Invoice issued",
           "help": "When an invoice is issued to them: number, total and due date."
+        },
+        "DOCUMENT_EXPIRING": {
+          "title": "Expiring documents",
+          "help": "When a client certificate or permit is about to expire or has expired. It goes to the main email and to the people marked «Receives email notices»."
         }
       },
       "errors": {
@@ -1072,7 +1117,8 @@
         "skipped": "{n} skipped",
         "failed": "{n} failed",
         "empty": "No notice has been sent to this client yet."
-      }
+      },
+      "documentExpiringNote": "Email only, and only if the company has it turned on (Settings → Operations → Expiry notices). Turn it off here if this client should not receive it."
     },
     "portal": {
       "title": "Portal users",
@@ -1168,6 +1214,30 @@
       "removed": "The client now has no chain.",
       "filter": "Chain",
       "all": "All chains"
+    },
+    "tax": {
+      "title": "Taxes",
+      "summary": "{n} exemption(s) in effect",
+      "new": "New exemption",
+      "renew": "Renew",
+      "help": "The client's IVU exemptions. Each one is backed by a document (certificate) that carries its number and validity. «Renew» uploads the new certificate and creates the exemption with the same scope.",
+      "empty": "The client has no IVU exemptions."
+    },
+    "expiring": {
+      "title": "Expiring documents",
+      "subtitle": "Client certificates, licenses and permits that expire soon, have already expired or have no «until» date.",
+      "list": "Documents",
+      "search": "Search client, type or number…",
+      "within": "Expires within",
+      "withinDays": "{n} days",
+      "withinDefault": "{n} days (first notice)",
+      "includeExpired": "Include expired",
+      "includeMissing": "Include those missing «until»",
+      "truncated": "There are more than 2000 documents: the 2000 closest to expiring are shown. Narrow it with the search box or the days.",
+      "noResults": "No document matches the search.",
+      "empty": "There are no expiring documents.",
+      "client": "Client",
+      "exemptionRow": "IVU exemption without document"
     }
   },
   "consignees": {
@@ -8415,6 +8485,11 @@
         "billable": "Billable",
         "roundTrip": "Round trip (the driver goes to the pickup)",
         "help": "A pick up collects and brings to the warehouse: the shipment ends «In warehouse» and does not go on a route. «Billable» off = not quoted nor charged. Round trip: the driver goes to the pickup; the zone, the route stop and the map come from the pickup address, not the delivery one."
+      },
+      "docMarks": {
+        "requiresValidTo": "Has a validity period",
+        "isTax": "Is a tax document",
+        "help": "«Has a validity period» requires the «until» date when the document is uploaded and includes it in the expiry notices. «Is a tax document» lets it back an IVU exemption."
       }
     },
     "settings": {
@@ -8888,6 +8963,32 @@
         "help": "Defaults to 2; 0 = never suggest. It is only a suggestion and a flag: the shipment can keep being retried.",
         "invalid": "Enter a number from 0 to 20 (0 = no suggestion).",
         "saved": "Return setting saved."
+      },
+      "docExpiry": {
+        "title": "Expiry notices",
+        "subtitle": "Client documents (and special prices) that are about to expire",
+        "thresholds": "When to notify",
+        "noThresholds": "No notices: no expiry is announced.",
+        "before": "{n} days before",
+        "sameDay": "The day it expires",
+        "after": "{n} days after",
+        "removeOf": "Remove «{name}»",
+        "remove": "Remove",
+        "addLabel": "Days to notify",
+        "addPlaceholder": "Days (e.g. 30)",
+        "add": "Add",
+        "thresholdsHelp": "Days relative to the «until» date: positive = before expiry, 0 = the day itself, negative = after. Each threshold notifies only once. Default 30, 15 and 5.",
+        "daily": "Notify daily after expiry",
+        "dailyHelp": "While the document stays expired and unrenewed, the notice repeats every day.",
+        "client": "Notify the client",
+        "clientHelp": "Besides the sellers, the expiring-document notice goes to the client's email and to contacts marked «Receives email notices». Each client can turn it off on its profile.",
+        "rulesHelp": "Who receives each notice and through which channel is set in the notice rules:",
+        "rulesLink": "System → Notice rules",
+        "errors": {
+          "format": "Each threshold is a whole number of days between -365 and 365 (positive = before expiry, 0 = the day, negative = after).",
+          "repeated": "A threshold is repeated.",
+          "tooMany": "Up to 10 thresholds can be set."
+        }
       }
     },
     "audit": {
@@ -11161,6 +11262,12 @@
         "cityRequired": "Choose the town.",
         "postalLineRequired": "Type line 1 of the mailing address."
       }
+    },
+    "taxNotice": {
+      "label": "IVU exemption:",
+      "expired": "This client's IVU exemption certificate expired on {date}: IVU will be charged.",
+      "expiring": "This client's IVU exemption certificate expires on {date} (in {n} days): IVU will be charged afterwards.",
+      "certificate": "(certificate {number})"
     }
   },
   "tax": {
@@ -11172,7 +11279,8 @@
       "rules": "Rules",
       "products": "Products",
       "exemptions": "Exemptions",
-      "simulator": "Simulator"
+      "simulator": "Simulator",
+      "periods": "Seasonal exemption"
     },
     "categories": {
       "TAXABLE": "Taxable",
@@ -11184,6 +11292,7 @@
       "ZERO_RATE": "Zero rate",
       "EXEMPT_PRODUCT": "Exempt product",
       "EXEMPT_CLIENT": "Exempt client",
+      "EXEMPT_PRODUCT_PERIOD": "Product exemption period",
       "EXEMPT_CLIENT_PARTIAL": "Partially exempt client",
       "NOT_TAXABLE_CHARGE": "Non-taxable charge"
     },
@@ -11291,6 +11400,7 @@
       "notes": "Notes",
       "status": "Status",
       "statuses": {
+        "DOCUMENT_REMOVED": "Document removed",
         "VALID": "Valid",
         "SCHEDULED": "Scheduled",
         "EXPIRED": "Expired",
@@ -11311,7 +11421,11 @@
         "from": "Enter the date the exemption takes effect.",
         "dates": "The end date cannot be before the start date.",
         "components": "Check at least one tax component the exemption covers."
-      }
+      },
+      "document": "Document",
+      "missingDocument": "Document missing",
+      "missingDocumentHelp": "Earlier exemption without a document: it is still valid. Link the certificate so you get a notice when it expires.",
+      "link": "Link document"
     },
     "sim": {
       "panel": "Tax simulator",
@@ -11342,6 +11456,88 @@
       "colNet": "Net",
       "colTax": "Tax",
       "colTotal": "Total"
+    },
+    "capture": {
+      "title": "New IVU exemption",
+      "titleRenew": "Renew IVU exemption",
+      "titleDocument": "Apply the IVU exemption",
+      "save": "Apply exemption",
+      "done": "Exemption applied.",
+      "document": "Document backing the exemption",
+      "noNumber": "no number",
+      "until": "until {date}",
+      "documentHelp": "The number and validity are the document's: correct them in Client documents.",
+      "to": "Valid until (required)",
+      "scopeHelpAll": "No component of the tax is charged.",
+      "scopeHelpComponents": "Only what is checked stops being charged (for example, the municipal part); the rest is charged.",
+      "errors": {
+        "client": "Choose the client.",
+        "type": "Choose the certificate type.",
+        "file": "Attach the certificate file.",
+        "number": "Enter the certificate number.",
+        "from": "Enter the date the certificate starts.",
+        "to": "Enter the date the certificate ends.",
+        "dates": "The «until» date cannot be before the «from» date.",
+        "components": "Check at least one tax component the exemption covers."
+      }
+    },
+    "link": {
+      "title": "Link document",
+      "intro": "Choose the certificate of {client} that backs this exemption. From then on, the number and validity are the document's.",
+      "none": "The client has no document of a tax type. Upload the certificate in Client documents.",
+      "document": "Document",
+      "placeholder": "Choose the document",
+      "save": "Link",
+      "done": "Document linked.",
+      "errors": {
+        "pick": "Choose the document."
+      }
+    },
+    "periods": {
+      "panel": "Seasonal exemption",
+      "help": "A decree that exempts all products, or only chosen categories and products, from IVU between two dates. Covered lines carry the reason «Seasonal product exemption» and the client's exemption is not added on top.",
+      "new": "New period",
+      "edit": "Edit period",
+      "save": "Save period",
+      "created": "Period created.",
+      "updated": "Period updated.",
+      "deactivated": "Period deactivated.",
+      "reactivated": "Period reactivated.",
+      "showInactive": "Show deactivated",
+      "empty": "There are no exemption periods.",
+      "name": "Name",
+      "reason": "Reason",
+      "reasonHelp": "For example, the administrative order that decrees it.",
+      "scope": "Products",
+      "scopes": {
+        "ALL": "All products",
+        "SELECTED": "Chosen categories or products"
+      },
+      "scopeCount": "{categories} categor(ies) · {products} product(s)",
+      "pick": "Category or product",
+      "selection": "Chosen items",
+      "categoryChip": "Category",
+      "productChip": "Product",
+      "remove": "Remove",
+      "removeItem": "Remove {name}",
+      "selectionEmpty": "Choose at least one category or product.",
+      "categoriesHelp": "A category includes its subcategories.",
+      "lockStarted": "The period has already started: only its end date can be changed, or it can be deactivated.",
+      "lockEnded": "The period has ended or is deactivated: view only.",
+      "states": {
+        "SCHEDULED": "Scheduled",
+        "ACTIVE": "In effect",
+        "ENDED": "Ended",
+        "INACTIVE": "Deactivated"
+      },
+      "errors": {
+        "name": "Enter the name of the exemption period.",
+        "reason": "Enter the reason for the exemption (for example, the administrative order that decrees it).",
+        "from": "Enter the date the exemption starts.",
+        "to": "Enter the date the exemption ends.",
+        "dates": "The end date cannot be before the start date.",
+        "selection": "Choose at least one category or product."
+      }
     }
   },
   "clientMessages": {

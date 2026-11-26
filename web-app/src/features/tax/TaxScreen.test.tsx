@@ -212,7 +212,9 @@ describe('TaxScreen', () => {
     await user.click(within(dialog).getByRole('checkbox', { name: /Municipal/ }))
     await user.click(within(dialog).getByRole('button', { name: 'Guardar exención' }))
     await waitFor(() => expect(sent('PATCH', '/api/v1/tax/exemptions/3')).toHaveLength(1))
-    expect(sent('PATCH', '/api/v1/tax/exemptions/3')[0].body).toMatchObject({ certificateNumber: 'CERT-1', scope: 'COMPONENTS', componentCodes: ['CITY'] })
+    // Lote 248: con documento, el número y las fechas son los del documento y no se mandan (darían 400)
+    expect(sent('PATCH', '/api/v1/tax/exemptions/3')[0].body).toMatchObject({ scope: 'COMPONENTS', componentCodes: ['CITY'] })
+    expect(sent('PATCH', '/api/v1/tax/exemptions/3')[0].body).not.toHaveProperty('certificateNumber')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     unmount()
 

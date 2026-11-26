@@ -113,8 +113,8 @@ public sealed class ClientNotificationTests
         var x = await NewWorldAsync();
         await using var _ = x.F;
         var dto = await x.Svc.GetSettingsAsync(x.Client.PublicId, default);
-        Assert.Equal(ClientNotificationKinds.All, dto.Settings.Select(s => s.Kind).ToArray());
-        Assert.All(dto.Settings, s => Assert.False(s.EmailEnabled || s.AppEnabled || s.SmsEnabled));
+        Assert.Equal(ClientNotificationKinds.Configurable, dto.Settings.Select(s => s.Kind).ToArray());   // Lote 248: más DOCUMENT_EXPIRING
+        Assert.All(dto.Settings.Where(s => s.Kind != ClientNotificationKinds.DocumentExpiring), s => Assert.False(s.EmailEnabled || s.AppEnabled || s.SmsEnabled));
 
         var saved = await x.Svc.SaveSettingsAsync(x.Client.PublicId, On("delivered", extraEmails: "ana@x.co; luis@x.co", sms: true, extraPhones: "787-555-0100"), default);
         var d = saved.Settings.Single(s => s.Kind == "DELIVERED");
@@ -124,7 +124,7 @@ public sealed class ClientNotificationTests
         var off = await x.Svc.SaveSettingsAsync(x.Client.PublicId, On("DELIVERED", false, false, false), default);
         Assert.False(off.Settings.Single(s => s.Kind == "DELIVERED").EmailEnabled);
         var other = await x.F.AddClientAsync("C2");
-        Assert.All((await x.Svc.GetSettingsAsync(other.PublicId, default)).Settings, s => Assert.False(s.EmailEnabled));
+        Assert.All((await x.Svc.GetSettingsAsync(other.PublicId, default)).Settings.Where(s => s.Kind != ClientNotificationKinds.DocumentExpiring), s => Assert.False(s.EmailEnabled));
         // otra compañía no ve el cliente
         using (x.F.AsTenant(WmsFixture.OtherTenantId))
             await Assert.ThrowsAsync<NotFoundException>(() => x.Svc.GetSettingsAsync(x.Client.PublicId, default));
@@ -491,5 +491,84 @@ public sealed class ClientNotificationTests
         Assert.Equal(("CLIENT_NOTIFICATION_DIGEST", true, 120), (job.Key, job.DefaultEnabled, job.DefaultIntervalSeconds));
         var ctx = new JobRunContext(WmsFixture.TenantId, "test", x.F.Services, x.Clock.Now);
         Assert.Equal("Ningún aviso por mandar.", await job.RunAsync(ctx, default));
+    }
+
+    // ================================================================ Lote 248: aviso de documentos por vencer y correos del cliente en los resúmenes
+
+    [Fact]
+    public async Task Document_expiring_shows_in_the_client_settings_but_not_in_the_portal_preferences_and_follows_the_company_without_a_row()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        Assert.DoesNotContain(ClientNotificationKinds.DocumentExpiring, ClientNotificationKinds.All);   // las preferencias del portal usan All
+        Assert.True(ClientNotificationKinds.IsConfigurable(" document_expiring "));
+        Assert.False(ClientNotificationKinds.IsKnown(ClientNotificationKinds.DocumentExpiring));
+
+        var d = (await x.Svc.GetSettingsAsync(x.Client.PublicId, default)).Settings.Single(s => s.Kind == ClientNotificationKinds.DocumentExpiring);
+        Assert.Equal((true, false, false), (d.EmailEnabled, d.AppEnabled, d.SmsEnabled));   // sin fila sigue a la compañía
+
+        // encendido sin extras = lo de omisión: no hace falta fila
+        await x.Svc.SaveSettingsAsync(x.Client.PublicId, On(ClientNotificationKinds.DocumentExpiring, true, false, false), default);
+        Assert.Empty(await x.F.Db.Set<ClientNotificationSetting>().AsNoTracking().ToListAsync());
+
+        // apagarlo SÍ guarda la fila (la que lo apaga para este cliente)
+        var off = await x.Svc.SaveSettingsAsync(x.Client.PublicId, On("document_expiring", false, false, false), default);
+        Assert.False(off.Settings.Single(s => s.Kind == ClientNotificationKinds.DocumentExpiring).EmailEnabled);
+        var row = await x.F.Db.Set<ClientNotificationSetting>().AsNoTracking().SingleAsync();
+        Assert.Equal((ClientNotificationKinds.DocumentExpiring, false), (row.Kind, row.EmailEnabled));
+
+        // con correos extra
+        var on = await x.Svc.SaveSettingsAsync(x.Client.PublicId, On(ClientNotificationKinds.DocumentExpiring, true, false, false, "compras@cliente.co"), default);
+        Assert.Equal((true, "compras@cliente.co"), (on.Settings.Single(s => s.Kind == ClientNotificationKinds.DocumentExpiring).EmailEnabled, on.Settings.Single(s => s.Kind == ClientNotificationKinds.DocumentExpiring).ExtraEmails));
+    }
+
+    [Fact]
+    public async Task Document_expiring_only_goes_by_email()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        async Task<string> Msg(ClientNotificationSettingsRequest r) => (await Assert.ThrowsAsync<ValidationException>(() => x.Svc.SaveSettingsAsync(x.Client.PublicId, r, default))).Message;
+        Assert.Equal("El aviso de documentos por vencer solo sale por correo.", await Msg(On(ClientNotificationKinds.DocumentExpiring, true, true, false)));
+        Assert.Equal("El aviso de documentos por vencer solo sale por correo.", await Msg(On(ClientNotificationKinds.DocumentExpiring, true, false, true)));
+        Assert.Empty(await x.F.Db.Set<ClientNotificationSetting>().AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task The_digest_email_also_goes_to_the_main_email_and_flagged_contacts_without_repeating_addresses()
+    {
+        var x = await NewWorldAsync();
+        await using var _ = x.F;
+        // tipos de contacto y entidad del contacto (WmsFixture no los trae)
+        x.F.Db.LookupCodes.AddRange(
+            new Teikem.Domain.Catalogs.LookupCode { LookupCodeId = 9410, Entity = LookupDomains.EntityType, InternalCode = EntityTypes.ClientContact, LabelJson = "{\"es\":\"Contacto\"}", IsActive = true },
+            new Teikem.Domain.Catalogs.LookupCode { LookupCodeId = 9411, Entity = LookupDomains.ContactType, InternalCode = "EMAIL", LabelJson = "{\"es\":\"Correo\"}", IsActive = true });
+        await x.F.Db.SaveChangesAsync();
+        x.F.Lookups.Load(await x.F.Db.LookupCodes.AsNoTracking().ToListAsync());
+        async Task ContactAsync(string name, string email, bool primary, bool flagged)
+        {
+            var c = new ClientContact { ClientId = x.Client.ClientId, FullName = name, IsPrimary = primary, IsActive = true, ReceivesEmailNotifications = flagged };
+            x.F.Db.ClientContacts.Add(c);
+            await x.F.Db.SaveChangesAsync();
+            x.F.Db.ContactPoints.Add(new Teikem.Domain.Contacts.ContactPoint { TenantId = WmsFixture.TenantId, OwnerEntityLookupId = 9410, OwnerId = c.ClientContactId, ContactTypeLookupId = 9411, Value = email, IsPrimary = true, IsActive = true });
+            await x.F.Db.SaveChangesAsync();
+        }
+        await ContactAsync("Principal", "principal@cliente.co", true, false);
+        await ContactAsync("Marcada", "marcada@cliente.co", false, true);
+        await ContactAsync("Repetida", "EXTRA@x.co", false, true);
+        await ContactAsync("Sin marcar", "nomarcada@cliente.co", false, false);
+        var active = x.F.StatusId(StatusDomains.PortalUserStatus, PortalUserStatuses.Active);
+        x.F.Db.Set<PortalUser>().Add(new PortalUser { TenantId = WmsFixture.TenantId, ClientId = x.Client.ClientId, Email = "Principal@Cliente.co", FullName = "Pat", StatusCodeId = active, IsActive = true });
+        await x.F.Db.SaveChangesAsync();
+        x.F.Db.ChangeTracker.Clear();
+
+        await x.Svc.SaveSettingsAsync(x.Client.PublicId, On("PICKED_UP", true, false, false, "extra@x.co"), default);
+        var o = await OrderAsync(x, "O-1", 2);
+        await new ClientNotificationOrderEffect(x.Svc).OnTransitionedAsync(Ctx(StatusDomains.OrderStatus, EntityTypes.TransportOrder, o.TransportOrderId, OrderStatuses.Pickup), default);
+        await x.F.Db.SaveChangesAsync();
+        AfterCutoff(x);
+        await x.Svc.DigestAsync(default);
+
+        var to = x.Email.Sent.Select(s => s.To.ToLowerInvariant()).OrderBy(s => s).ToArray();
+        Assert.Equal(new[] { "extra@x.co", "marcada@cliente.co", "principal@cliente.co" }, to);
     }
 }

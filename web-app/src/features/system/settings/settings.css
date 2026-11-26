@@ -261,3 +261,9 @@
 
 /* Operación → rotación: dos columnas parejas; cada fila alinea sus campos por arriba aunque la ayuda tenga distinto largo */
 .set-even{align-items:start}
+
+/* Lote 248: avisos de vencimiento (prefijo dxs-) */
+.dxs-chips { list-style: none; margin: 4px 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.dxs-chips li { display: inline-flex; align-items: center; gap: 6px; }
+.dxs-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dxs-add input { width: 120px; }

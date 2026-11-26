@@ -129,3 +129,66 @@ export function nextDay(iso: string): string {
 
 export const CATEGORIES = ['TAXABLE', 'EXEMPT', 'ZERO_RATE'] as const
 export type TaxCategory = (typeof CATEGORIES)[number]
+
+// ===== Lote 248: exención atada a su documento y exención por temporada =====
+
+export type ExemptionDocumentErrorKey = 'client' | 'type' | 'file' | 'number' | 'from' | 'to' | 'dates' | 'components'
+
+export interface CaptureDraft {
+  clientPublicId: string | null
+  /** Documento ya subido: no hace falta tipo, archivo, número ni fechas (son los del documento). */
+  existingDocument: boolean
+  type: string
+  hasFile: boolean
+  number: string
+  from: string
+  to: string
+  scope: ExemptionScope
+  components: string[]
+}
+
+/** Primer problema de la captura única (null = bien); el servidor repite todo y manda sus mensajes. */
+export function captureError(d: CaptureDraft): ExemptionDocumentErrorKey | null {
+  if (!d.clientPublicId) return 'client'
+  if (d.scope === 'COMPONENTS' && d.components.length === 0) return 'components'
+  if (d.existingDocument) return null
+  if (!d.type) return 'type'
+  if (!d.hasFile) return 'file'
+  if (!d.number.trim()) return 'number'
+  if (!d.from) return 'from'
+  if (!d.to) return 'to'
+  if (d.to < d.from) return 'dates'
+  return null
+}
+
+export type PeriodState = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'INACTIVE'
+export type PeriodScope = 'ALL' | 'SELECTED'
+
+export interface PeriodDraft {
+  name: string
+  reason: string
+  from: string
+  to: string
+  scope: PeriodScope
+  productPublicIds: string[]
+  categoryIds: number[]
+}
+
+export type PeriodErrorKey = 'name' | 'reason' | 'from' | 'to' | 'dates' | 'selection'
+
+export function periodError(d: PeriodDraft): PeriodErrorKey | null {
+  if (!d.name.trim()) return 'name'
+  if (!d.reason.trim()) return 'reason'
+  if (!d.from) return 'from'
+  if (!d.to) return 'to'
+  if (d.to < d.from) return 'dates'
+  if (d.scope === 'SELECTED' && d.productPublicIds.length === 0 && d.categoryIds.length === 0) return 'selection'
+  return null
+}
+
+/** Qué se puede editar de un período según su estado: programado = todo; ya empezado = solo la fecha final; terminado o de baja = nada. */
+export function periodEditable(state: string | null | undefined): 'ALL' | 'END_DATE' | 'NONE' {
+  if (state === 'SCHEDULED') return 'ALL'
+  if (state === 'ACTIVE') return 'END_DATE'
+  return 'NONE'
+}

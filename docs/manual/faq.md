@@ -13189,3 +13189,209 @@ Es por diseño: una oferta «Incluir» no se queda sin nadie (409, mensaje de ar
 
 **¿Por qué el aviso o el nombre de la lista dedicada salen en español, o con la fecha distinta a la de la pantalla?**
 En la web del personal ya salen en el idioma de la interfaz y con las fechas de la compañía (el aviso de precio, el nombre de la lista dedicada y la vigencia de una oferta). Si los ve en español y con día/mes/año es porque falta algún dato en la respuesta (la web muestra entonces el texto del servidor) o porque están en otro sitio: los avisos de la ventana de la oferta, los mensajes de error, la fuente `SPECIAL_PRICE` o una pantalla que no es la web del personal. Los datos son los mismos.
+
+## Lote 248 — Documentos con vigencia, exención de IVU atada a su certificado y avisos de vencimiento
+<!-- kemi:staff -->
+
+Capítulo: [56 — Documentos con vigencia, exención de IVU y avisos de vencimiento](56-documentos-vigencia-ivu.md). Pantallas: [L248](frontend/l248-documentos-ivu.md). Regla de fondo: la **exención de IVU vale lo que dice su documento** (el certificado); las exenciones de antes siguen valiendo igual y salen «Falta el documento».
+
+### Subir y editar documentos del cliente
+
+**¿Qué significa «El tipo de documento no existe o está apagado en Catálogos de valores.»? (HTTP 400)**
+El código de `documentType` no es un tipo activo de «Tipos de documento del cliente», o la compañía lo apagó. Escoja otro tipo, o enciéndalo en Sistema → Catálogos de valores. Ya no hay una lista fija de tres tipos: la compañía puede agregar los suyos.
+
+**¿Qué significa «El número del documento no puede pasar de 60 caracteres.»? (HTTP 400)**
+El número escrito pasa de 60 caracteres. Escriba solo el número del certificado o permiso.
+
+**¿Qué significa «Este tipo de documento lleva vigencia: escriba la fecha «hasta».»? (HTTP 400)**
+El tipo tiene la marca «Lleva vigencia» y falta el «Hasta». Escríbalo. También sale al **editar** un documento viejo de un tipo que pasó a «lleva vigencia», aunque solo cambie la nota: hay que poner el «Hasta». Si el tipo no debe llevar vigencia, apáguele la marca en Catálogos de valores.
+
+**¿Qué significa «La fecha «hasta» no puede ser anterior a la fecha «desde».»? (HTTP 400)**
+El «Hasta» cae antes del «Desde». Corrija las fechas. Un «Hasta» ya pasado sí se acepta en un documento suelto (es un registro histórico); solo la exención no puede nacer vencida.
+
+**¿Qué significa «La fecha debe tener el formato AAAA-MM-DD.»? (HTTP 400)**
+Por API, `validFrom` o `validTo` del formulario de subir no tienen el formato `2026-12-31`. En la pantalla no sale: el selector de fecha ya lo manda bien.
+
+**¿Qué significa «La nota del documento no puede pasar de 300 caracteres.»? (HTTP 400)**
+Acorte la nota.
+
+**¿Qué significa «rowVersion inválido: se espera el valor base64 devuelto por la ficha.»? (HTTP 400)**
+Por API, el `rowVersion` del `PATCH` no es el valor que devolvió la lista de documentos. Vuelva a leer el documento y mande el valor tal cual.
+
+**¿Qué significa «El documento cambió mientras lo editaba. Vuelva a abrirlo.»? (HTTP 409)**
+Otra persona (o el sistema, al sincronizar la exención) cambió el documento después de que usted lo abrió. Ciérrelo, ábralo otra vez y repita el cambio.
+
+**¿Qué significa «Subir documentos de este cliente exige el permiso de editar clientes (clients.update).»? (HTTP 403)**
+Subir, editar o quitar documentos exige `clients.update`; con `clients.create_basic` solo mientras el cliente es **prospecto**. Pida el permiso al administrador.
+
+**¿Qué significa «Documento '…' no encontrado.»? (HTTP 404)**
+El documento no existe, ya se quitó, o es de otro cliente o de otra compañía. Recargue la ficha.
+
+### Documentos que respaldan una exención de IVU
+
+**¿Qué significa «Este documento respalda una exención de IVU vigente: dé de baja la exención en Impuestos antes de quitarlo.»? (HTTP 409)**
+Quiere quitar el certificado de una exención que todavía vale; si se quitara, se empezaría a cobrar el IVU sin avisar. Contabilidad → Impuestos → Exenciones → dé de baja la exención y luego quite el documento. Si lo que quiere es cambiar el certificado, use «Renovar»: sube el nuevo y la exención pasa a él. Con la exención ya vencida, el documento sí se deja quitar.
+
+**¿Qué significa «Este documento respalda una exención de IVU: cambiar su número o su vigencia exige el permiso de impuestos (tax.manage).»? (HTTP 403)**
+Cambiar el «Hasta» (o el número) de este documento cambia hasta cuándo se exime el IVU, y eso es dinero. Lo puede hacer quien tenga `tax.manage` además de `clients.update`. Cambiar solo la nota no lo exige.
+
+**¿Qué significa «Este documento respalda una exención de IVU: no se le puede quitar la fecha «hasta».»? (HTTP 400)**
+Quiso dejar el «Hasta» vacío en un documento que respalda una exención: la exención quedaría sin fin. Escriba una fecha, o dé de baja la exención.
+
+### Aplicar la exención de IVU (captura única, vincular, renovar)
+
+**¿Qué significa «La exención necesita el documento que la respalda.»? (HTTP 400)**
+Desde este lote, toda exención nueva se respalda con un documento del cliente. Suba el certificado (captura única) o escoja uno ya subido. También sale al **editar o reactivar** una exención de antes de este lote («Falta el documento»): primero vincúlele su certificado con «Vincular documento».
+
+**¿Qué significa «Mande el archivo del certificado o escoja un documento ya subido, no las dos cosas.»? (HTTP 400)**
+Por API, la captura única trae `file` y `clientDocumentPublicId` a la vez. Mande uno solo.
+
+**¿Qué significa «Adjunte el archivo del certificado.»? (HTTP 400)**
+El archivo del certificado va vacío o no se adjuntó. Adjunte el PDF o la foto.
+
+**¿Qué significa «Ese tipo de documento no es de impuestos: no puede respaldar una exención.»? (HTTP 400)**
+El tipo escogido no tiene la marca «Es de impuestos». Escoja un certificado de exención de IVU (estatal, municipal o total) o de revendedor, o encienda la marca en Catálogos de valores.
+
+**¿Qué significa «Escriba el número del certificado.»? (HTTP 400)**
+La captura con archivo nuevo necesita el número del certificado (`documentNumber`).
+
+**¿Qué significa «Escriba desde cuándo vale el certificado.»? (HTTP 400)**
+Falta el «Desde» en la captura con archivo nuevo.
+
+**¿Qué significa «Escriba hasta cuándo vale el certificado.»? (HTTP 400)**
+Falta el «Hasta» en la captura con archivo nuevo. La exención necesita saber cuándo termina.
+
+**¿Qué significa «La fecha «hasta» ya pasó: la exención nacería vencida.»? (HTTP 400)**
+El certificado que está subiendo ya venció. Suba el certificado vigente. (El documento suelto con «Hasta» pasado sí se puede guardar como registro, pero no respalda una exención.)
+
+**¿Qué significa «El tipo de exención no puede pasar de 60 caracteres.»? (HTTP 400)**
+Si no escribe el tipo, se usa el nombre del tipo de documento, recortado a 60. Si lo escribió usted, acórtelo.
+
+**¿Qué significa «Las notas no pueden pasar de 300 caracteres.»? (HTTP 400)**
+Acorte las notas de la exención.
+
+**¿Qué significa «El documento que respaldaba la exención se quitó: suba el certificado vigente.»? (HTTP 400)**
+El documento se quitó (o la exención apunta a uno quitado). Suba el certificado vigente con «Renovar» o «Nueva exención». Mientras tanto la exención no exime nada (estado `DOCUMENT_REMOVED`).
+
+**¿Qué significa «El documento no tiene número: escríbalo en el documento antes de aplicar la exención.»? (HTTP 400)**
+Edite el documento (Documentos del cliente → Editar) y escriba el número del certificado; luego aplique la exención.
+
+**¿Qué significa «El documento no tiene fecha «hasta»: la exención necesita la vigencia del documento.»? (HTTP 400)**
+Edite el documento y escriba el «Hasta». Sale también al reactivar una exención cuyo documento perdió el «Hasta».
+
+**¿Qué significa «El documento ya venció: suba el certificado vigente.»? (HTTP 400)**
+El «Hasta» del documento ya pasó. Suba el certificado renovado; no se puede aplicar ni reactivar una exención con un documento vencido.
+
+**¿Qué significa «La vigencia y el número de la exención son los del documento: corríjalos en Documentos del cliente.»? (HTTP 400)**
+Por API, intentó cambiar `validFrom`, `validTo` o `certificateNumber` de una exención ya vinculada. Esos datos son los del documento: edítelos en la ficha del cliente → Documentos del cliente (con `tax.manage`).
+
+**¿Qué significa «Ese documento ya respalda otra exención activa.»? (HTTP 409)**
+Un documento respalda a lo más una exención activa. Dé de baja la otra, o suba un certificado aparte. También sale si dos personas aplican la exención con el mismo documento a la vez: la segunda recibe este mensaje.
+
+**¿Qué significa «Documento no encontrado.»? (HTTP 404)**
+El documento escogido no existe, o es de otro cliente o de otra compañía (no se dice cuál). Escoja un documento del mismo cliente.
+
+**¿Qué significa «Exención no encontrada.»? (HTTP 404)**
+La exención no existe o es de otra compañía. Recargue la pantalla.
+
+### Exención por temporada
+
+**¿Qué significa «Escriba el nombre del período de exención.»? (HTTP 400)**
+Falta el nombre. Por ejemplo «Útiles escolares agosto 2026».
+
+**¿Qué significa «El nombre del período no puede pasar de 100 caracteres.»? (HTTP 400)**
+Acorte el nombre.
+
+**¿Qué significa «Escriba el motivo de la exención (por ejemplo, la orden administrativa que la decreta).»? (HTTP 400)**
+El motivo es obligatorio: anote qué orden o decreto lo respalda.
+
+**¿Qué significa «El motivo no puede pasar de 300 caracteres.»? (HTTP 400)**
+Acorte el motivo.
+
+**¿Qué significa «Escriba desde qué fecha rige la exención.»? (HTTP 400)**
+Falta la fecha inicial del período.
+
+**¿Qué significa «Escriba hasta qué fecha rige la exención.»? (HTTP 400)**
+Falta la fecha final del período.
+
+**¿Qué significa «La fecha final no puede ser anterior a la inicial.»? (HTTP 400)**
+La fecha final cae antes de la inicial. Corríjalas.
+
+**¿Qué significa «La fecha final no puede quedar antes de hoy.»? (HTTP 400)**
+No se crea ni se programa un período que ya terminó, y a uno vigente no se le puede mover la fecha final al pasado. Para terminarlo hoy, ponga hoy como fecha final; para anularlo, dé el período de baja.
+
+**¿Qué significa «El alcance debe ser ALL (todos los productos) o SELECTED (categorías o productos escogidos).»? (HTTP 400)**
+Por API, `scope` trae otro valor. Use `ALL` o `SELECTED`.
+
+**¿Qué significa «Escoja al menos una categoría o un producto.»? (HTTP 400)**
+Un período «escogidos» necesita al menos una categoría o un producto. Para eximir todo, use el alcance «Todos los productos».
+
+**¿Qué significa «Un período puede escoger hasta 2000 productos y 200 categorías.»? (HTTP 400)**
+Escogió más de 2000 productos o 200 categorías. Use categorías (incluyen sus subcategorías) en lugar de productos sueltos.
+
+**¿Qué significa «El período ya empezó: solo se le puede cambiar la fecha final o darlo de baja.»? (HTTP 409)**
+Un período vigente (o terminado) no cambia su nombre, motivo, fecha inicial, alcance ni selección. Mueva la fecha final, dé el período de baja, o acórtelo y cree otro con la selección nueva.
+
+**¿Qué significa «El registro fue modificado por otro usuario; recargue e intente de nuevo.»? (HTTP 409)**
+Otra persona cambió el período (o el ajuste) mientras usted lo editaba. Recargue y repita el cambio.
+
+**¿Qué significa «Período de exención no encontrado.»? (HTTP 404)**
+El período no existe o es de otra compañía.
+
+**¿Qué significa «Categoría no encontrada.»? (HTTP 404)**
+Una de las categorías escogidas no existe en la compañía. Escójala de la lista.
+
+### Aviso al vender, «Documentos por vencer» y ajustes
+
+**¿Qué significa «Indique el cliente.»? (HTTP 400)**
+Por API, el aviso de exención (`GET /sales-orders/tax-notice`) se pidió sin `client`. Mande el identificador del cliente.
+
+**¿Qué significa «Los días deben ser un número entero entre 1 y 365.»? (HTTP 400)**
+El filtro «Vence dentro de» (`withinDays`) de «Documentos por vencer» está fuera de 1 a 365. Quítelo para usar el primer aviso de la compañía.
+
+**¿Qué significa «Cada umbral es un número entero de días entre -365 y 365 (positivo = antes de vencer, 0 = el día, negativo = después).»? (HTTP 400)**
+En Ajustes → Operación → «Avisos de vencimiento» escribió algo que no es un entero entre -365 y 365. Positivo avisa antes de vencer, 0 el día que vence y negativo después.
+
+**¿Qué significa «Hay un umbral repetido.»? (HTTP 400)**
+Dos umbrales tienen el mismo número. Quite uno.
+
+**¿Qué significa «Se pueden poner hasta 10 umbrales.»? (HTTP 400)**
+Quite umbrales hasta dejar 10 o menos.
+
+**¿Qué significa «El aviso de documentos por vencer solo sale por correo.»? (HTTP 400)**
+Ficha del cliente → «Avisos al cliente»: «Documentos por vencer» no admite la bandeja del portal ni el SMS. Apague esos canales.
+
+**¿Qué significa «El aviso no existe.»? (HTTP 400)**
+Por API, el código de aviso de la configuración del cliente no es ninguno de los conocidos (los de siempre más `DOCUMENT_EXPIRING`).
+
+**¿Qué significa «Falta el permiso 'tax.manage'.»? (HTTP 403)**
+Las exenciones, los períodos y la captura única exigen `tax.manage`. Pida el permiso al administrador. Con otro código (`clients.read`, `admin.tenant`, `jobs.manage`…), es el permiso de esa pantalla.
+
+**¿Qué significa «El módulo 'TAX' no está habilitado para esta compañía.»? (HTTP 403)**
+El módulo de impuestos está apagado. Lo enciende quien administra la compañía. Con `CATALOG` o `SALES_ORDERS` apagados pasa lo mismo con documentos y con el aviso al vender.
+
+### Casos frecuentes
+
+**Subí el certificado y la exención no se aplicó.**
+Subir el documento no crea la exención. Responda «Sí, aplicar» a «¿Aplicar la exención de IVU?» o use «Nueva exención». La pregunta solo sale con tipo «de impuestos», `tax.manage` y el módulo `TAX`.
+
+**Una exención dice «Falta el documento». ¿Dejó de valer?**
+No: las exenciones de antes del lote siguen valiendo igual. La marca avisa que no tienen certificado en el sistema. Use «Vincular documento».
+
+**Se cobró IVU a un cliente con exención.**
+Mire el documento que la respalda: si su «Hasta» ya pasó, la exención venció (el cálculo avisa «El cliente tiene una exención vencida (certificado …, venció el …): se cobró el impuesto.»). Suba el certificado renovado con «Renovar». También revise el alcance: una exención solo de componentes (por ejemplo el municipal) sigue cobrando el resto.
+
+**Una línea salió sin IVU y el cliente no tiene exención.**
+Hay un período de exención por temporada vigente que cubre el producto o su categoría. El motivo de la línea es `EXEMPT_PRODUCT_PERIOD` y trae el nombre del período (Contabilidad → Impuestos → «Exención por temporada»).
+
+**No me llegó el aviso de vencimiento.**
+Revise: una **regla** para «Documento del cliente por vencer» en Reglas de aviso; que el cliente tenga **ruta de venta o vendedor preferido** con usuario activo (si no, el Registro de avisos lo anota «Omitido»); que el documento tenga «Hasta» y no esté **renovado**; y el Registro de avisos. Un aviso anotado antes de crear la regla no se repite.
+
+**El cliente no recibe el aviso.**
+Debe estar encendido «Avisar al cliente» (Ajustes → Operación → «Avisos de vencimiento»), el cliente no debe haberlo apagado en su ficha y debe tener correo principal, un contacto marcado «Recibe avisos por correo» o un correo extra.
+
+**Los resúmenes de avisos al cliente llegan a más personas que antes.**
+Desde este lote, la marca «Recibe avisos por correo» vale para todos los avisos al cliente: los resúmenes también llegan al correo principal y a los contactos marcados. Quite la marca al contacto que no deba recibirlos.
+
+**Un documento ya no sale en «Documentos por vencer».**
+Está renovado (otro documento activo del mismo cliente y tipo con «Hasta» posterior), se quitó, o el cliente está dado de baja.

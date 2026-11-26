@@ -10,6 +10,7 @@ using Teikem.Domain.Contacts;
 using Teikem.Domain.ExitNotices;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
+using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
@@ -21,8 +22,13 @@ namespace Teikem.Infrastructure.Services;
 /// entregada; remesa COD remitida; factura emitida) se anotan SOLO si el cliente tiene ese aviso encendido; el trabajo CLIENT_NOTIFICATION_DIGEST los junta en RESÚMENES (un aviso por cliente y ruta; uno por
 /// remesa; uno por factura) cuando el grupo lleva unos minutos sin hechos nuevos, y manda cada resumen por correo (a los usuarios activos del portal del cliente y a los correos extra), lo deja en la bandeja del
 /// portal (canal APP) y guarda la preferencia de SMS (no sale hasta contratar el proveedor). Los envíos fallidos se reintentan a 1, 5 y 30 minutos.
+/// <para>
+/// Lote 248: la configuración por cliente suma DOCUMENT_EXPIRING (<see cref="ClientNotificationKinds.Configurable"/>; solo por correo, y sin fila sigue el interruptor
+/// «Avisar al cliente» de la compañía: se muestra encendido). DECISIÓN a revisar: el correo de los resúmenes también va al correo principal del cliente y a sus contactos
+/// marcados «Recibe avisos por correo» (<see cref="ClientContactQueries.NoticeEmailsAsync"/>), además de a los usuarios del portal y a los correos extra.
+/// </para>
 /// </summary>
-public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext tenant, ITenantClock clock, ITransactionalEmailSender email)
+public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext tenant, ITenantClock clock, ITransactionalEmailSender email, ILookupCache lookups)
 {
     public const int MaxPageSize = 200;
     private TenantContext T => (TenantContext)tenant;
@@ -34,10 +40,12 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
     {
         var client = await db.Set<Client>().AsNoTracking().FirstOrDefaultAsync(c => c.PublicId == clientPublicId, ct) ?? throw new NotFoundException("Cliente");
         var rows = await db.Set<ClientNotificationSetting>().AsNoTracking().Where(s => s.ClientId == client.ClientId).ToListAsync(ct);
-        var list = ClientNotificationKinds.All.Select(k =>
+        var list = ClientNotificationKinds.Configurable.Select(k =>
         {
             var r = rows.FirstOrDefault(x => x.Kind == k);
-            return new ClientNotificationSettingDto(k, r?.EmailEnabled ?? false, r?.AppEnabled ?? false, r?.SmsEnabled ?? false, r?.ExtraEmails, r?.ExtraPhones);
+            // Lote 248: DOCUMENT_EXPIRING sin fila sigue a la compañía (Tenant.DocExpiryNotifyClient): se muestra con el correo encendido
+            var emailOn = r?.EmailEnabled ?? k == ClientNotificationKinds.DocumentExpiring;
+            return new ClientNotificationSettingDto(k, emailOn, r?.AppEnabled ?? false, r?.SmsEnabled ?? false, r?.ExtraEmails, r?.ExtraPhones);
         }).ToList();
         return new ClientNotificationSettingsDto(client.PublicId, client.Name, (await PortalEmailsAsync(client.ClientId, null, ct)).Count, email.IsConfigured, false, list, client.NoticeDigestHour ?? ClientNotificationRules.DefaultDigestHour);
     }
@@ -56,8 +64,11 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
         if (req.DigestHour is int digestHour && (digestHour < 0 || digestHour > 23)) throw new ValidationException("digestHour", ClientNotificationRules.DigestHourInvalid);
         var client = await db.Set<Client>().AsNoTracking().FirstOrDefaultAsync(c => c.PublicId == clientPublicId, ct) ?? throw new NotFoundException("Cliente");
         var kinds = req.Settings.Select(s => s.Kind?.Trim().ToUpperInvariant() ?? string.Empty).ToList();
-        if (kinds.Any(k => !ClientNotificationKinds.IsKnown(k))) throw new ValidationException("settings", ClientNotificationRules.KindInvalid);
+        if (kinds.Any(k => !ClientNotificationKinds.IsConfigurable(k))) throw new ValidationException("settings", ClientNotificationRules.KindInvalid);
         if (kinds.Distinct().Count() != kinds.Count) throw new ValidationException("settings", ClientNotificationRules.DuplicateKind);
+        // Lote 248: el aviso de documentos por vencer solo sale por correo
+        if (req.Settings.Any(s => string.Equals(s.Kind?.Trim(), ClientNotificationKinds.DocumentExpiring, StringComparison.OrdinalIgnoreCase) && (s.AppEnabled || s.SmsEnabled)))
+            throw new ValidationException("settings", ClientNotificationRules.DocumentExpiringEmailOnly);
         // validación de todos antes de guardar nada
         var cleaned = new List<(string Kind, ClientNotificationSettingDto S, string? Emails, string? Phones)>();
         var defaultCc = await DefaultCountryAsync(ct);
@@ -85,7 +96,11 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
             var row = existing.FirstOrDefault(x => x.Kind == kind);
             if (row is null)
             {
-                if (!s.EmailEnabled && !s.AppEnabled && !s.SmsEnabled && emails is null && phones is null) continue;   // apagado y sin nada: no hace falta fila
+                // apagado y sin nada: no hace falta fila. Lote 248: DOCUMENT_EXPIRING sin fila sigue a la compañía (encendido), así que lo que no hace falta guardar es el correo encendido sin extras
+                var asDefault = kind == ClientNotificationKinds.DocumentExpiring
+                    ? s.EmailEnabled && !s.AppEnabled && !s.SmsEnabled && emails is null && phones is null
+                    : !s.EmailEnabled && !s.AppEnabled && !s.SmsEnabled && emails is null && phones is null;
+                if (asDefault) continue;
                 row = new ClientNotificationSetting { TenantId = tenantId, ClientId = client.ClientId, Kind = kind };
                 db.Set<ClientNotificationSetting>().Add(row);
             }
@@ -214,7 +229,10 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
         return (summaries, sent, failed);
     }
 
-    /// <summary>Los envíos de un aviso: correo (usuarios activos del portal que no lo apagaron + correos extra de cada aviso incluido), la bandeja del portal (en el aviso) y SMS (se guarda; no sale hasta contratar el proveedor).</summary>
+    /// <summary>
+    /// Los envíos de un aviso: correo (usuarios activos del portal que no lo apagaron + correos extra de cada aviso incluido + Lote 248: el correo principal del cliente y sus
+    /// contactos marcados «Recibe avisos por correo», sin repetir direcciones), la bandeja del portal (en el aviso) y SMS (se guarda; no sale hasta contratar el proveedor).
+    /// </summary>
     private async Task AddDeliveriesAsync(ClientNotification n, IReadOnlyList<ClientNotificationSetting> settings, CancellationToken ct)
     {
         void Add(string channel, string recipient, string status, string? message) => db.Set<ClientNotificationDelivery>().Add(new ClientNotificationDelivery
@@ -226,8 +244,9 @@ public sealed class ClientNotificationService(TeikemDbContext db, ITenantContext
         {
             var to = new List<string>();
             foreach (var s in settings.Where(x => x.EmailEnabled)) to.AddRange((await PortalEmailsAsync(n.ClientId, s.Kind, ct)).Concat(ClientNotificationRules.ParseEmails(s.ExtraEmails)));
+            to.AddRange((await ClientContactQueries.NoticeEmailsAsync(db, lookups, n.TenantId, n.ClientId, ct)).Select(e => e.Email));
             to = to.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            if (to.Count == 0) Add(ClientNotificationChannels.Email, string.Empty, ClientNotificationDeliveryStatuses.Skipped, "No hay destinatarios: el cliente no tiene usuarios activos en el portal ni correos extra.");
+            if (to.Count == 0) Add(ClientNotificationChannels.Email, string.Empty, ClientNotificationDeliveryStatuses.Skipped, "No hay destinatarios: el cliente no tiene usuarios activos en el portal, correo principal, contactos marcados ni correos extra.");
             foreach (var r in to) Add(ClientNotificationChannels.Email, r, ClientNotificationDeliveryStatuses.Pending, null);
         }
         if (settings.Any(s => s.SmsEnabled))

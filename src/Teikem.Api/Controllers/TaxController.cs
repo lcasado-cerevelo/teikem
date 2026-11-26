@@ -10,6 +10,8 @@ namespace Teikem.Api.Controllers;
 /// <summary>
 /// Lote 55 (P3) — impuestos (IVU), módulo TAX, permiso tax.manage. Las tasas no se editan (se cierra la vigencia y se crea otra): por eso no hay
 /// PUT/PATCH/DELETE de tasas. Las exenciones y la categoría del producto se cambian; las exenciones se dan de baja, nunca se borran.
+/// Lote 248 — POST exemptions exige clientDocumentPublicId (el documento del cliente que la respalda); PATCH lo acepta para vincular o renovar. La captura única con
+/// archivo vive en ClientTaxExemptionsController y la exención por temporada en TaxExemptionPeriodsController.
 /// </summary>
 [ApiController]
 [Route("api/v1/tax")]

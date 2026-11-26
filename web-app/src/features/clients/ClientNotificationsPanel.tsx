@@ -8,7 +8,7 @@ import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, Panel, PhoneListInput, Spinner, toast, type DataColumn } from '../../kernel/ui'
 import { IconBolt } from '../../kernel/ui/screenIcons'
 import { useClientNotificationLog, useClientNotificationSettings, useSaveClientNotificationSettings, type ClientNotificationDto } from './notificationsApi'
-import { DEFAULT_DIGEST_HOUR, enabledCount, isDirty, rowError, rowsFrom, type NotificationRow } from './notificationRules'
+import { DEFAULT_DIGEST_HOUR, DOCUMENT_EXPIRING_KIND, enabledCount, isDirty, rowError, rowsFrom, type NotificationRow } from './notificationRules'
 import type { ClientDetail } from './clientRules'
 
 export function ClientNotificationsPanel({ client }: { client: ClientDetail }) {
@@ -118,10 +118,11 @@ export function ClientNotificationsPanel({ client }: { client: ClientDetail }) {
                   <fieldset key={r.kind} className="cl-notif-row" disabled={!canEdit}>
                     <legend>{t(`clients.notif.kinds.${r.kind}.title`)}</legend>
                     <p className="help">{t(`clients.notif.kinds.${r.kind}.help`)}</p>
+                    {r.kind === DOCUMENT_EXPIRING_KIND && <p className="help" data-testid="notif-doc-expiring-note">{t('clients.notif.documentExpiringNote')}</p>}
                     <div className="cl-notif-channels">
                       <label className="vw-check"><input type="checkbox" checked={r.emailEnabled} onChange={(e) => patch(r.kind, { emailEnabled: e.target.checked })} /> {t('clients.notif.channels.email')}</label>
-                      <label className="vw-check"><input type="checkbox" checked={r.appEnabled} onChange={(e) => patch(r.kind, { appEnabled: e.target.checked })} /> {t('clients.notif.channels.app')}</label>
-                      <label className="vw-check"><input type="checkbox" checked={r.smsEnabled} onChange={(e) => patch(r.kind, { smsEnabled: e.target.checked })} /> {t('clients.notif.channels.sms')}</label>
+                      <label className="vw-check"><input type="checkbox" checked={r.appEnabled} disabled={r.kind === DOCUMENT_EXPIRING_KIND} onChange={(e) => patch(r.kind, { appEnabled: e.target.checked })} /> {t('clients.notif.channels.app')}</label>
+                      <label className="vw-check"><input type="checkbox" checked={r.smsEnabled} disabled={r.kind === DOCUMENT_EXPIRING_KIND} onChange={(e) => patch(r.kind, { smsEnabled: e.target.checked })} /> {t('clients.notif.channels.sms')}</label>
                     </div>
                     {(r.emailEnabled || r.smsEnabled) && (
                       <div className="cl-notif-extra">

@@ -268,6 +268,10 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Teikem.Domain.Tax.TenantTaxSetting> TenantTaxSettings => Set<Teikem.Domain.Tax.TenantTaxSetting>();
     public DbSet<Teikem.Domain.Tax.TaxChargeRule> TaxChargeRules => Set<Teikem.Domain.Tax.TaxChargeRule>();
     public DbSet<Teikem.Domain.Tax.ClientTaxExemption> ClientTaxExemptions => Set<Teikem.Domain.Tax.ClientTaxExemption>();
+    // Lote 248 — exención de producto por temporada (período y sus productos y categorías escogidos)
+    public DbSet<Teikem.Domain.Tax.TaxExemptionPeriod> TaxExemptionPeriods => Set<Teikem.Domain.Tax.TaxExemptionPeriod>();
+    public DbSet<Teikem.Domain.Tax.TaxExemptionPeriodProduct> TaxExemptionPeriodProducts => Set<Teikem.Domain.Tax.TaxExemptionPeriodProduct>();
+    public DbSet<Teikem.Domain.Tax.TaxExemptionPeriodCategory> TaxExemptionPeriodCategories => Set<Teikem.Domain.Tax.TaxExemptionPeriodCategory>();
     // Lote 57 (P4, S1) — órdenes de venta
     public DbSet<Teikem.Domain.Sales.SalesOrder> SalesOrders => Set<Teikem.Domain.Sales.SalesOrder>();
     public DbSet<Teikem.Domain.Sales.SalesOrderLine> SalesOrderLines => Set<Teikem.Domain.Sales.SalesOrderLine>();

@@ -214,6 +214,20 @@ public sealed class TaxSqlTests(MessagingSqlFixture fx) : IClassFixture<Messagin
 
     private static async Task<T> Thrown<T>(Func<Task> act) where T : Exception => await Assert.ThrowsAsync<T>(act);
 
+    /// <summary>Lote 248: un documento «de impuestos» del cliente (el certificado).</summary>
+    private async Task<ClientDocument> DocAsync(int tenantId, int clientId, string? number, DateOnly? to, DateOnly? from = null, bool isTax = true, bool isActive = true)
+    {
+        await using var db = fx.NewDb(new TenantContext { TenantId = tenantId });
+        return await TaxTestData.SeedTaxDocumentAsync(db, tenantId, clientId, number, from, to, isTax ? TaxTestData.TaxDocumentType : TaxTestData.PlainDocumentType, isTax, isActive);
+    }
+
+    /// <summary>Lote 248: documento + exención por el servicio.</summary>
+    private async Task<TaxExemptionDto> DocExemptionAsync(int tenantId, int clientId, string certificate, DateOnly from, DateOnly to, string? exemptionType = null)
+    {
+        var doc = await DocAsync(tenantId, clientId, certificate, to, from);
+        return await Svc(tenantId).CreateExemptionAsync(new TaxExemptionRequest(clientId, exemptionType, ClientDocumentPublicId: doc.PublicId), default);
+    }
+
     [SqlServerFact]
     public async Task A_rate_has_components_that_add_up_and_the_same_code_cannot_overlap_dates()
     {
@@ -313,7 +327,7 @@ public sealed class TaxSqlTests(MessagingSqlFixture fx) : IClassFixture<Messagin
 
         // cliente con exención vigente: nada paga impuesto, con el certificado anotado
         var client = await ClientAsync(A);
-        var ex = await Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, "Sin fines de lucro", "CERT-001", new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31)), default);
+        var ex = await DocExemptionAsync(A, client, "CERT-001", new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31), "Sin fines de lucro");
         Assert.Equal("VALID", ex.Status);
         var exemptSale = await Svc(A).CalculateAsync(new TaxCalcRequest(client, null, lines), default);
         Assert.Equal(0m, exemptSale.TaxAmount);
@@ -327,14 +341,17 @@ public sealed class TaxSqlTests(MessagingSqlFixture fx) : IClassFixture<Messagin
         await Svc(A).CreateRateAsync(Rate("IVU", new DateOnly(2026, 1, 1)), default);
         await Svc(A).UpdateSettingsAsync(new TaxSettingsRequest(DefaultRateCode: "IVU"), default);
         var client = await ClientAsync(A);
-        var ex = await Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, "Gobierno", "CERT-OLD", new DateOnly(2025, 1, 1), new DateOnly(2025, 12, 31)), default);
-        Assert.Equal("EXPIRED", ex.Status);
+        // Lote 248: una exención vieja (sin documento) ya vencida, como las que hay en producción: sigue calculando igual que antes
+        await using (var seed = fx.NewDb(new TenantContext { TenantId = A }))
+            await TaxTestData.SeedLegacyExemptionAsync(seed, A, client, "Gobierno", "CERT-OLD", new DateOnly(2025, 1, 1), new DateOnly(2025, 12, 31));
+        var ex = Assert.Single(await Svc(A).ListExemptionsAsync(client, default));
+        Assert.Equal(("EXPIRED", true), (ex.Status, ex.MissingDocument));
         var r = await Svc(A).CalculateAsync(new TaxCalcRequest(client, null, new[] { new TaxCalcLineRequest("a", null, "PRODUCT_SALE", 100m) }), default);
         Assert.Equal(11.5m, r.TaxAmount);
         Assert.Contains("CERT-OLD", Assert.Single(r.Warnings));
 
         // dada de baja una exención vigente tampoco exime
-        var live = await Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, "Gobierno", "CERT-NEW", new DateOnly(2026, 1, 1), null), default);
+        var live = await DocExemptionAsync(A, client, "CERT-NEW", new DateOnly(2026, 1, 1), new DateOnly(2027, 12, 31), "Gobierno");
         Assert.Equal(0m, (await Svc(A).CalculateAsync(new TaxCalcRequest(client, null, new[] { new TaxCalcLineRequest("a", null, "PRODUCT_SALE", 100m) }), default)).TaxAmount);
         Assert.Equal("INACTIVE", (await Svc(A).SetExemptionActiveAsync(live.Id, false, default)).Status);
         Assert.Equal(11.5m, (await Svc(A).CalculateAsync(new TaxCalcRequest(client, null, new[] { new TaxCalcLineRequest("a", null, "PRODUCT_SALE", 100m) }), default)).TaxAmount);
@@ -346,16 +363,74 @@ public sealed class TaxSqlTests(MessagingSqlFixture fx) : IClassFixture<Messagin
         var client = await ClientAsync(A);
         var otherClient = await ClientAsync(B);
         Assert.Equal("Cliente no encontrado.", (await Thrown<NotFoundException>(() => Svc(A).CreateExemptionAsync(new TaxExemptionRequest(otherClient, "X", "Y", Today), default))).Message);
-        Assert.Equal(TaxRules.ExemptionTypeRequired, (await Thrown<ValidationException>(() => Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, " ", "Y", Today), default))).Message);
-        Assert.Equal(TaxRules.CertificateRequired, (await Thrown<ValidationException>(() => Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, "X", "", Today), default))).Message);
-        Assert.Equal(TaxRules.DatesOrder, (await Thrown<ValidationException>(() => Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, "X", "Y", Today, Today.AddDays(-1)), default))).Message);
+        // Lote 248: la exención nace del documento que la respalda
+        Assert.Equal(ClientExemptionRules.DocumentRequired, (await Thrown<ValidationException>(() => Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, "X", "Y", Today), default))).Message);
+        var n1 = await DocAsync(A, client, "N-1", Today.AddDays(30));
+        Assert.Equal(TaxRules.ExemptionTypeTooLong, (await Thrown<ValidationException>(() => Svc(A).CreateExemptionAsync(
+            new TaxExemptionRequest(client, new string('x', 61), ClientDocumentPublicId: n1.PublicId), default))).Message);
         Assert.Equal(TaxRules.LinesRequired, (await Thrown<ValidationException>(() => Svc(A).CalculateAsync(new TaxCalcRequest(null, null, Array.Empty<TaxCalcLineRequest>()), default))).Message);
         Assert.Equal(TaxRules.NoDefaultRate, (await Thrown<ValidationException>(() => Svc(B).CalculateAsync(new TaxCalcRequest(null, null, new[] { new TaxCalcLineRequest("a", null, "PRODUCT_SALE", 10m) }), default))).Message);
         Assert.Equal("Producto no encontrado.", (await Thrown<NotFoundException>(() => Svc(A).CalculateAsync(new TaxCalcRequest(null, null, new[] { new TaxCalcLineRequest("a", 999999, null, 10m) }), default))).Message);
 
-        await Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, "X", "Y", Today), default);
+        await DocExemptionAsync(A, client, "Y", Today, Today.AddDays(30));
         Assert.Single(await Svc(A).ListExemptionsAsync(null, default));
         Assert.Empty(await Svc(B).ListExemptionsAsync(null, default));
+    }
+
+    [SqlServerFact]
+    public async Task Lote248_the_exemption_follows_its_document_and_legacy_ones_must_be_linked_to_be_edited_or_reactivated()
+    {
+        var client = await ClientAsync(A);
+        var otherClient = await ClientAsync(A);
+        async Task<string> Bad(Guid doc) => (await Thrown<ValidationException>(() => Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, ClientDocumentPublicId: doc), default))).Message;
+        Assert.Equal(ClientExemptionRules.DocumentExpired, await Bad((await DocAsync(A, client, "V-1", Today.AddDays(-1))).PublicId));
+        Assert.Equal(ClientExemptionRules.DocumentWithoutNumber, await Bad((await DocAsync(A, client, null, Today.AddDays(9))).PublicId));
+        Assert.Equal(ClientExemptionRules.DocumentWithoutValidTo, await Bad((await DocAsync(A, client, "S-1", null)).PublicId));
+        Assert.Equal(ClientExemptionRules.DocumentInactive, await Bad((await DocAsync(A, client, "Q-1", Today.AddDays(9), isActive: false)).PublicId));
+        Assert.Equal(ClientExemptionRules.DocumentNotTax, await Bad((await DocAsync(A, client, "O-1", Today.AddDays(9), isTax: false)).PublicId));
+        var foreignDoc = await DocAsync(A, otherClient, "AJ-1", Today.AddDays(9));
+        Assert.Equal("Documento no encontrado.", (await Thrown<NotFoundException>(() => Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, ClientDocumentPublicId: foreignDoc.PublicId), default))).Message);
+
+        // vinculada: el número y las fechas son los del documento
+        var linked = await DocExemptionAsync(A, client, "TOT-1", Today.AddDays(-5), Today.AddDays(60));
+        Assert.Equal(("TOT-1", Today.AddDays(-5), (DateOnly?)Today.AddDays(60), false), (linked.CertificateNumber, linked.ValidFrom, linked.ValidTo, linked.MissingDocument));
+        Assert.Equal(ClientExemptionRules.DatesFollowDocument, (await Thrown<ValidationException>(() => Svc(A).UpdateExemptionAsync(linked.Id, new TaxExemptionPatchRequest(ValidTo: Today.AddDays(90)), default))).Message);
+        Assert.Equal(ClientExemptionRules.DatesFollowDocument, (await Thrown<ValidationException>(() => Svc(A).UpdateExemptionAsync(linked.Id, new TaxExemptionPatchRequest(CertificateNumber: "X"), default))).Message);
+        Assert.Equal("Notas", (await Svc(A).UpdateExemptionAsync(linked.Id, new TaxExemptionPatchRequest(Notes: "Notas"), default)).Notes);
+        // el documento se renueva (otro «hasta»): la exención lo sigue sin tocarla
+        await using (var db = fx.NewDb(new TenantContext { TenantId = A }))
+        {
+            var d = await db.Set<ClientDocument>().AsTracking().SingleAsync(x => x.PublicId == linked.DocumentPublicId);
+            d.ValidTo = Today.AddDays(400);
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(Today.AddDays(400), Assert.Single(await Svc(A).ListExemptionsAsync(client, default), e => e.Id == linked.Id).ValidTo);
+
+        // vieja sin documento: no se edita sin vincular; vincular funciona y toma los datos del documento
+        int legacyId;
+        await using (var db = fx.NewDb(new TenantContext { TenantId = A }))
+            legacyId = await TaxTestData.SeedLegacyExemptionAsync(db, A, client, "Gobierno", "VIEJA-1", new DateOnly(2025, 1, 1), null);
+        Assert.Equal(ClientExemptionRules.DocumentRequired, (await Thrown<ValidationException>(() => Svc(A).UpdateExemptionAsync(legacyId, new TaxExemptionPatchRequest(Notes: "x"), default))).Message);
+        var renewal = await DocAsync(A, client, "NUEVA-1", Today.AddDays(120), Today);
+        var relinked = await Svc(A).UpdateExemptionAsync(legacyId, new TaxExemptionPatchRequest(ClientDocumentPublicId: renewal.PublicId), default);
+        Assert.Equal(("NUEVA-1", (DateOnly?)Today.AddDays(120), false, renewal.PublicId), (relinked.CertificateNumber, relinked.ValidTo, relinked.MissingDocument, relinked.DocumentPublicId));
+        // el mismo documento no respalda dos exenciones activas
+        Assert.Equal(ClientExemptionRules.DocumentAlreadyBacks, (await Thrown<ConflictException>(() => Svc(A).CreateExemptionAsync(new TaxExemptionRequest(client, ClientDocumentPublicId: renewal.PublicId), default))).Message);
+
+        // dar de baja siempre; reactivar exige el documento activo: quitado el documento, 400 y la exención ya no exime
+        await Svc(A).SetExemptionActiveAsync(relinked.Id, false, default);
+        await using (var db = fx.NewDb(new TenantContext { TenantId = A }))
+        {
+            var d = await db.Set<ClientDocument>().AsTracking().SingleAsync(x => x.PublicId == renewal.PublicId);
+            d.IsActive = false;
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(ClientExemptionRules.DocumentInactive, (await Thrown<ValidationException>(() => Svc(A).SetExemptionActiveAsync(relinked.Id, true, default))).Message);
+        int legacy2;
+        await using (var db = fx.NewDb(new TenantContext { TenantId = A }))
+            legacy2 = await TaxTestData.SeedLegacyExemptionAsync(db, A, client, "Gobierno", "VIEJA-2", new DateOnly(2025, 1, 1), null);
+        await Svc(A).SetExemptionActiveAsync(legacy2, false, default);
+        Assert.Equal(ClientExemptionRules.DocumentRequired, (await Thrown<ValidationException>(() => Svc(A).SetExemptionActiveAsync(legacy2, true, default))).Message);
     }
 
     [SqlServerFact]

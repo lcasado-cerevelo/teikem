@@ -32,3 +32,35 @@ export function recvSummaryRows(
     return { w, direct, noBin: !direct && !w.defaultReceivingBinId, open: c?.open ?? null, pending: c?.pending ?? null }
   })
 }
+
+// ===== Lote 248: avisos de vencimiento de documentos (Ajustes → Operación) =====
+export const DOC_EXPIRY_DEFAULT_THRESHOLDS = [30, 15, 5]
+export const DOC_EXPIRY_MAX_THRESHOLDS = 10
+export const DOC_EXPIRY_RANGE = 365
+
+export type ThresholdErrorKey = 'format' | 'repeated' | 'tooMany'
+
+/** Umbral escrito a mano: entero entre -365 y 365 (positivo = antes de vencer, 0 = el día, negativo = después). null si no se entiende. */
+export function parseThreshold(text: string): number | null {
+  const clean = text.trim()
+  if (!/^-?\d+$/.test(clean)) return null
+  const n = Number(clean)
+  return Math.abs(n) <= DOC_EXPIRY_RANGE ? n : null
+}
+
+/** Problema de la lista de umbrales (el servidor repite la regla con sus mensajes). */
+export function thresholdsError(list: readonly number[]): ThresholdErrorKey | null {
+  if (list.some((n) => !Number.isInteger(n) || Math.abs(n) > DOC_EXPIRY_RANGE)) return 'format'
+  if (new Set(list).size !== list.length) return 'repeated'
+  if (list.length > DOC_EXPIRY_MAX_THRESHOLDS) return 'tooMany'
+  return null
+}
+
+/** De mayor a menor, como los guarda el servidor. */
+export function sortThresholds(list: readonly number[]): number[] {
+  return [...list].sort((a, b) => b - a)
+}
+
+export function sameThresholds(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && sortThresholds(a).every((n, i) => n === sortThresholds(b)[i])
+}

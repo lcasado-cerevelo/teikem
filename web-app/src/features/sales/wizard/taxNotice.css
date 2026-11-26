@@ -1,0 +1,5 @@
+/* Lote 248: aviso de la exención de IVU al vender (prefijo txn-); colores del tema, no bloquea nada */
+.txn-banner{margin:8px 0;padding:8px 12px;border-left:3px solid var(--warn);background:var(--warnbg);color:var(--text);border-radius:6px;font-size:13px;line-height:1.4;overflow-wrap:anywhere;min-width:0}
+.txn-banner.txn-expired{border-left-color:var(--fail,var(--warn))}
+.txn-label{font-weight:700}
+.txn-cert{color:var(--muted)}

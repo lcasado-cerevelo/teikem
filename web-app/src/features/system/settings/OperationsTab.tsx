@@ -39,6 +39,7 @@ import { useProductCategories, useReceiptSummaryByWarehouse, useWarehouses } fro
 import { problemText } from '../../warehouse/problemText'
 import { useCapabilities, useSaveTenantSettings, useSetCapabilities, type TenantSettingsDto } from '../tenantSettingsApi'
 import { SettingsQuickBooksSection } from './SettingsQuickBooksSection'
+import { SettingsDocumentExpirySection } from './SettingsDocumentExpirySection'
 import { SettingsSalesSection } from './SettingsSalesSection'
 import { capabilityAllowed, ORDER_CAPABILITIES, recvSummaryRows, type RecvRow } from './operations'
 
@@ -768,6 +769,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
   const orders = useModule(ModuleKeys.LtlGround)
   const wms = useModule(ModuleKeys.WmsLotSerial)
   const sales = useModule(ModuleKeys.SalesOrders)
+  const catalog = useModule(ModuleKeys.Catalog)
   // Lote 225: Ajustes → QuickBooks lo leen sales.quickbooks.view o admin.tenant (como el API)
   const quickBooks = useCanAny('sales.quickbooks.view', 'admin.tenant')
   return (
@@ -786,6 +788,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
       {wms && <RecvSummaryPanel />}
       {sales && <SettingsSalesSection canEdit={canEdit} />}
       {sales && quickBooks && <SettingsQuickBooksSection canEdit={canEdit} />}
+      {catalog && <SettingsDocumentExpirySection settings={settings} canEdit={canEdit} />}
     </>
   )
 }

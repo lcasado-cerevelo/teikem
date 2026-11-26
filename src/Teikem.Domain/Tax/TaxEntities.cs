@@ -8,6 +8,8 @@ public static class TaxCodes
     public const string RateEntityType = "TAX_RATE";
     public const string ExemptionEntityType = "TAX_EXEMPTION";
     public const string SettingEntityType = "TAX_SETTING";
+    /// <summary>Lote 248 — EntityType de la bitácora del período de exención por temporada (sembrado en la sección del Lote 248 de update.sql).</summary>
+    public const string ExemptionPeriodEntityType = "TAX_EXEMPTION_PERIOD";
     /// <summary>Dominio de catálogo (LookupCode) con la categoría de impuesto de un producto.</summary>
     public const string CategoryDomain = "TaxCategory";
 }
@@ -40,6 +42,10 @@ public static class TaxReasons
     /// <summary>Lote 237 — el cliente tiene exenta solo una parte de la tasa (p. ej. el componente municipal): la línea paga el resto.</summary>
     public const string ExemptClientPartial = "EXEMPT_CLIENT_PARTIAL";
     public const string NotTaxableCharge = "NOT_TAXABLE_CHARGE";
+    /// <summary>Lote 248 — el producto está dentro de un período de exención por temporada (TaxExemptionPeriod): la línea sale sin impuesto.</summary>
+    public const string ExemptProductPeriod = "EXEMPT_PRODUCT_PERIOD";
+    /// <summary>Lote 248 — contrato con el Lote E (IVU manual por línea): aquí solo se declara, no se usa.</summary>
+    public const string ManualOverride = "MANUAL_OVERRIDE";
 }
 
 /// <summary>Lote 237 — alcance de la exención de un cliente: todo el impuesto o solo algunos componentes de la tasa (p. ej. el municipal).</summary>
@@ -50,6 +56,14 @@ public static class TaxExemptionScopes
     public static readonly string[] Values = { All, Components };
     /// <summary>Tope de componentes que una exención puede nombrar (cabe en la columna ComponentCodes).</summary>
     public const int MaxComponents = 10;
+}
+
+/// <summary>Lote 248 — alcance de un período de exención por temporada: todos los productos o los escogidos (categorías, con sus subcategorías, y productos).</summary>
+public static class TaxExemptionPeriodScopes
+{
+    public const string All = "ALL";
+    public const string Selected = "SELECTED";
+    public static readonly string[] Values = { All, Selected };
 }
 
 /// <summary>
@@ -135,8 +149,68 @@ public class ClientTaxExemption : ITenantScoped, IAuditStamped
     public bool IsActive { get; set; } = true;
     public string Scope { get; set; } = TaxExemptionScopes.All;
     public string? ComponentCodes { get; set; }
+    /// <summary>
+    /// Lote 248 — el documento del cliente que respalda la exención (FK compuesta (ClientDocumentId, TenantId, ClientId) en el SQL). Vinculada, la vigencia y el número
+    /// son los del DOCUMENTO (ClientExemptionBacking); ValidFrom/ValidTo/CertificateNumber de esta fila son una copia sincronizada para los listados. NULL = exención
+    /// vieja «falta el documento»: sigue valiendo como antes, pero editarla o reactivarla exige vincular un documento. Un documento respalda a lo más una exención activa.
+    /// </summary>
+    public int? ClientDocumentId { get; set; }
     [NotAudited] public DateTime CreatedAtUtc { get; set; }
     public int? CreatedBy { get; set; }
     [NotAudited] public DateTime? UpdatedAtUtc { get; set; }
     public int? UpdatedBy { get; set; }
+}
+
+/// <summary>
+/// Lote 248 — exención de producto por temporada (p. ej. los artículos escolares en agosto por orden administrativa): mientras rige (ValidFrom..ValidTo, bordes incluidos)
+/// las líneas de PRODUCTO gravables o de tasa cero que cubre salen sin impuesto con el motivo EXEMPT_PRODUCT_PERIOD (los cargos no se tocan). Scope ALL = todos los productos;
+/// SELECTED = los productos y las categorías (con sus subcategorías) escogidos. Programado se edita todo; ya empezado solo se mueve la fecha final o se da de baja.
+/// Sin StatusCode: el estado (programado, vigente, terminado, inactivo) se deriva de la fecha. Nunca DELETE.
+/// </summary>
+[AuditEntity(TaxCodes.ExemptionPeriodEntityType)]
+public class TaxExemptionPeriod : ITenantScoped, ISoftDeletable, IAuditStamped
+{
+    public int TaxExemptionPeriodId { get; set; }
+    [NotAudited] public Guid PublicId { get; set; }
+    public int TenantId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    /// <summary>Por qué se exime (p. ej. la orden administrativa que lo decreta). Obligatorio.</summary>
+    public string Reason { get; set; } = string.Empty;
+    public DateOnly ValidFrom { get; set; }
+    public DateOnly ValidTo { get; set; }
+    public string Scope { get; set; } = TaxExemptionPeriodScopes.All;
+    public bool IsActive { get; set; } = true;
+    [NotAudited] public DateTime CreatedAtUtc { get; set; }
+    public int? CreatedBy { get; set; }
+    [NotAudited] public DateTime? UpdatedAtUtc { get; set; }
+    public int? UpdatedBy { get; set; }
+    [NotAudited] public byte[]? RowVersion { get; set; }
+    public List<TaxExemptionPeriodProduct> Products { get; set; } = new();
+    public List<TaxExemptionPeriodCategory> Categories { get; set; } = new();
+}
+
+/// <summary>Lote 248 — un producto escogido de un período SELECTED (FK compuestas con la compañía en el SQL). Quitarlo = IsActive 0; volver a escogerlo lo reactiva.</summary>
+[AuditEntity(TaxCodes.ExemptionPeriodEntityType)]
+public class TaxExemptionPeriodProduct : ITenantScoped, ISoftDeletable
+{
+    public int TaxExemptionPeriodProductId { get; set; }
+    public int TenantId { get; set; }
+    public int TaxExemptionPeriodId { get; set; }
+    public int ProductId { get; set; }
+    public bool IsActive { get; set; } = true;
+    [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public int? CreatedBy { get; set; }
+}
+
+/// <summary>Lote 248 — una categoría de productos escogida de un período SELECTED (incluye sus subcategorías). Quitarla = IsActive 0; volver a escogerla la reactiva.</summary>
+[AuditEntity(TaxCodes.ExemptionPeriodEntityType)]
+public class TaxExemptionPeriodCategory : ITenantScoped, ISoftDeletable
+{
+    public int TaxExemptionPeriodCategoryId { get; set; }
+    public int TenantId { get; set; }
+    public int TaxExemptionPeriodId { get; set; }
+    public int ProductCategoryId { get; set; }
+    public bool IsActive { get; set; } = true;
+    [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public int? CreatedBy { get; set; }
 }
